@@ -1,0 +1,35 @@
+import React from 'react'
+// Set ikon garis tipis berujung bulat (gaya One UI): 24x24, stroke 1.8, warna mengikuti teks.
+const P: Record<string, React.ReactNode> = {
+  home: <path d="M4 11.2 12 4.8l8 6.4V19a1 1 0 0 1-1 1h-4.2v-5.2H9.2V20H5a1 1 0 0 1-1-1z" />,
+  users: <><circle cx="9" cy="8.5" r="3.2" /><path d="M3.5 19.5c.5-3.200 2.800-4.800 5.500-4.800s5 1.600 5.500 4.800" /><path d="M15.500 5.600a3.100 3.100 0 0 1 0 5.800M17 14.900c2 .5 3.300 2 3.600 4.600" /></>,
+  store: <><path d="M4 9.500 5.500 5h13L20 9.500" /><path d="M4 9.500C4 10.900 5.100 12 6.500 12S9 10.900 9 9.500M9 9.500c0 1.400 1.300 2.500 3 2.500s3-1.100 3-2.500M15 9.500c0 1.400 1.100 2.500 2.500 2.500s2.500-1.100 2.500-2.500" /><path d="M5.500 12v7h13v-7M10 19v-4h4v4" /></>,
+  chart: <path d="M5 20V11M12 20V4M19 20v-6" />,
+  box: <path d="M12 3 4 7v10l8 4 8-4V7zM4 7l8 4 8-4M12 11v10" />,
+  building: <path d="M5 20V5a1 1 0 0 1 1-1h8a1 1 0 0 1 1 1v15M15 10h3a1 1 0 0 1 1 1v9M3 20h18M8.500 8h3M8.500 12h3M8.500 16h3" />,
+  shield: <><path d="M12 3 5 6v5c0 4.500 3 8 7 10 4-2 7-5.500 7-10V6z" /><path d="m9 12 2 2 4-4" /></>,
+  dots: <><circle cx="12" cy="5" r="1.700" fill="currentColor" stroke="none" /><circle cx="12" cy="12" r="1.700" fill="currentColor" stroke="none" /><circle cx="12" cy="19" r="1.700" fill="currentColor" stroke="none" /></>,
+  refresh: <path d="M20 12a8 8 0 1 1-2.500-5.800M20 4.500v4.700h-4.700" />,
+  plus: <path d="M12 5v14M5 12h14" />,
+  minus: <path d="M5 12h14" />,
+  basket: <path d="M4 9.500h16l-1.600 8.500a2 2 0 0 1-2 1.600H7.600a2 2 0 0 1-2-1.600zM8 9.500l3-5.500M16 9.500 13 4" />,
+  list: <path d="M9 6h11M9 12h11M9 18h11M4.500 6h.01M4.500 12h.01M4.500 18h.01" />,
+  user: <><circle cx="12" cy="8" r="3.800" /><path d="M4.500 20c.6-3.900 3.700-6 7.500-6s6.900 2.100 7.500 6" /></>,
+  nav: <path d="M21 3 3 10.500l7 2.500 2.500 7z" />,
+  back: <path d="M19 12H5M11 6l-6 6 6 6" />,
+  chevron: <path d="m9 6 6 6-6 6" />,
+  pin: <><path d="M12 21s7-5.500 7-11a7 7 0 1 0-14 0c0 5.500 7 11 7 11z" /><circle cx="12" cy="10" r="2.500" /></>,
+  check: <path d="m5 12.500 4.500 4.500L19 7.500" />,
+  close: <path d="M6 6l12 12M18 6 6 18" />,
+  logout: <path d="M10 4H6a1 1 0 0 0-1 1v14a1 1 0 0 0 1 1h4M15 8l4 4-4 4M19 12H9" />,
+  edit: <path d="M4 20h4L19 9a2.100 2.100 0 0 0-3-3L5 17zM14 8l3 3" />,
+  trash: <path d="M5 7h14M10 7V5h4v2M7 7l1 12h8l1-12M10 11v5M14 11v5" />,
+  download: <path d="M12 4v11M7 11l5 5 5-5M5 20h14" />,
+  search: <><circle cx="11" cy="11" r="6" /><path d="m20 20-4-4" /></>,
+  up: <path d="m4 16 6-6 4 4 6-7M15 7h5v5" />,
+  down: <path d="m4 8 6 6 4-4 6 7M15 17h5v-5" />,
+  info: <><circle cx="12" cy="12" r="9" /><path d="M12 11v5M12 8h.01" /></>,
+}
+export default function Icon({ name, size = 22, className }: { name: string; size?: number; className?: string }) {
+  return <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className={className} style={{ flex: 'none' }}>{P[name]}</svg>
+}
