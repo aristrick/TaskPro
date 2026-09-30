@@ -14,15 +14,18 @@ function Home() {
   const [n, setN] = useState<any>({})
   const [role, setRole] = useState('')
   const [radius, setRadius] = useState<boolean | null>(null)
+  const [stok, setStok] = useState<boolean | null>(null)
   const [rk, setRk] = useState<any>(null)
   useEffect(() => {
     (async () => setN({ Cabang: await cnt('cabang'), Outlet: await cnt('outlets'), Frontliner: await cnt('profiles', 'frontliner') }))()
     loadMe().then(({ me }) => setRole(me?.role || ''))
     supabase.from('settings').select('value').eq('key', 'radius_enforced').single().then(({ data }) => setRadius(data ? data.value === true : true))
+    supabase.from('settings').select('value').eq('key', 'stok_enforced').maybeSingle().then(({ data }) => setStok(data ? data.value === true : true))
     const m = `${day(new Date()).slice(0, 8)}01T00:00:00+07:00`
     fetchAll((a, b) => supabase.from('visits').select(VSEL).gte('checkin_at', m).order('checkin_at').range(a, b)).then(v => setRk(rekap(v))).catch(() => setRk({}))
   }, [])
   async function toggle(v: boolean) { const { error } = await supabase.from('settings').update({ value: v }).eq('key', 'radius_enforced'); if (!error) setRadius(v) }
+  async function toggleStok(v: boolean) { const { error } = await supabase.from('settings').update({ value: v }).eq('key', 'stok_enforced'); if (!error) setStok(v) }
   const days = rk ? Object.values(rk) as any[] : []
   const hari = rk?.[day(new Date())]
   const bulan = days.reduce((a, d) => a + d.value, 0), ocB = days.reduce((a, d) => a + d.oc, 0)
@@ -46,6 +49,12 @@ function Home() {
       <b>Wajib dekat outlet saat input penjualan</b>
       <p className="muted">{radius === null ? '…' : radius ? 'Aktif: check-in dan input penjualan hanya bisa maksimal 50 m dari outlet.' : 'Nonaktif: bisa input di mana saja.'}</p>
       {role === 'mdm' ? <label><input type="checkbox" checked={!!radius} onChange={e => toggle(e.target.checked)} /> Aktifkan aturan 50 meter</label>
+        : <p className="muted" style={{ margin: 0 }}>Hanya MDM yang bisa mengubah pengaturan ini.</p>}
+    </div>
+    <div className="card">
+      <b>Batasi penjualan sesuai stok pembawaan</b>
+      <p className="muted">{stok === null ? '…' : stok ? 'Aktif: frontliner harus mengisi stok pembawaan harian, dan penjualan tidak bisa melebihi stok yang dibawa hari itu.' : 'Nonaktif: penjualan tidak dibatasi stok.'}</p>
+      {role === 'mdm' ? <label><input type="checkbox" checked={!!stok} onChange={e => toggleStok(e.target.checked)} /> Aktifkan batas stok pembawaan</label>
         : <p className="muted" style={{ margin: 0 }}>Hanya MDM yang bisa mengubah pengaturan ini.</p>}
     </div>
   </>)

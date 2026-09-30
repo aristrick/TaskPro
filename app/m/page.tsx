@@ -7,6 +7,7 @@ import { logout, keluarLokal, useHeartbeat } from '../../lib/sesi'
 import { useDialog } from '../../components/Dialog'
 import { rekap, day, rp, VSEL } from '../../lib/rekap'
 import OutletForm from '../../components/OutletForm'
+import StokForm from '../../components/StokForm'
 import Icon from '../../components/Icon'
 
 const R = 6371000, rad = (x: number) => (x * Math.PI) / 180
@@ -52,6 +53,17 @@ export default function Frontliner() {
   const [pf, setPf] = useState<'all' | 'focus' | 'sel'>('all')
   const [confirmOut, setConfirmOut] = useState(false)
   const [loadErr, setLoadErr] = useState('')
+  // Stok pembawaan hari ini: penjualan tidak boleh melebihi stok yang dibawa (dijaga juga di database)
+  const [stokOpen, setStokOpen] = useState(false)
+  const [stok, setStok] = useState<Record<string, { dibawa: number; terjual: number }>>({})
+  const [stokOn, setStokOn] = useState(true)          // saklar MDM di halaman Home
+  const [stokMissing, setStokMissing] = useState(false) // migrasi 09 belum dijalankan: jangan memblokir
+  const [stokReady, setStokReady] = useState(false)
+  const [stokTick, setStokTick] = useState(0)
+  const [draftId, setDraftId] = useState('')
+  const enforce = stokOn && !stokMissing
+  const sisaOf = (id: string) => (enforce ? Math.max(0, (stok[id]?.dibawa || 0) - (stok[id]?.terjual || 0)) : 9999)
+  const draftKey = (id: string) => `taskpro-draft-${id}`
   useHeartbeat(!!me, async () => {
     await dlg.alert({ title: 'Sesi berakhir', icon: 'logout', message: 'Akun Anda keluar karena login di perangkat lain atau sesinya diakhiri admin.' })
     await keluarLokal(); router.replace('/login')
@@ -84,6 +96,12 @@ export default function Frontliner() {
       setMe(p); loadVisit(p.id)
     })
     setRayon(+(localStorage.getItem('rayon') || 1)); getPos()
+    try {   // buang draf penjualan yang sudah lebih dari 3 hari
+      for (let i = localStorage.length - 1; i >= 0; i--) {
+        const k = localStorage.key(i)!
+        if (k.startsWith('taskpro-draft-')) { const d = JSON.parse(localStorage.getItem(k) || '{}'); if (!d.t || Date.now() - d.t > 3 * 864e5) localStorage.removeItem(k) }
+      }
+    } catch {}
   }, [router])
   useEffect(loadRows, [me, rayon])
   useEffect(() => {
@@ -101,6 +119,40 @@ export default function Frontliner() {
     supabase.from('visits').select(VSEL).eq('frontliner_id', me.id).gte('checkin_at', `${day(new Date(Date.now() - 35 * 864e5))}T00:00:00+07:00`).limit(2000)
       .then(({ data }) => setRk(rekap(data || [])))
   }, [tab, me])
+
+  // Mode Edit Outlet: warna status bar ikut merah, dan mode otomatis berakhir jika pindah tab
+  useEffect(() => { document.querySelector('meta[name="theme-color"]')?.setAttribute('content', editMode && tab === 'sell' ? '#B3261E' : '#0B1F4B') }, [editMode, tab])
+  useEffect(() => { if (tab !== 'sell') setEditMode(false) }, [tab])
+  // Draf penjualan: tersimpan otomatis per kunjungan, pulih saat halaman dimuat ulang, dihapus setelah check-out
+  useEffect(() => {
+    if (!visit) { setDraftId(''); return }
+    try { const d = JSON.parse(localStorage.getItem(draftKey(visit.id)) || 'null'); if (d?.qty) setQty(d.qty) } catch {}
+    setDraftId(visit.id)
+  }, [visit?.id])
+  useEffect(() => {
+    if (!visit || draftId !== visit.id) return
+    try {
+      if (Object.values(qty).some(v => v > 0)) localStorage.setItem(draftKey(visit.id), JSON.stringify({ qty, t: Date.now() }))
+      else localStorage.removeItem(draftKey(visit.id))
+    } catch {}
+  }, [qty, draftId, visit?.id])
+  // Stok hari ini (di layar penjualan tidak menghitung penjualan kunjungan yang sedang berjalan)
+  useEffect(() => {
+    if (!me) return
+    let off = false; setStokReady(false)
+    supabase.rpc('stok_hari_ini', visit ? { p_exclude: visit.id } : {}).then(({ data, error }) => {
+      if (off) return
+      if (error) setStokMissing(true)
+      setStok(Object.fromEntries((data || []).map((x: any) => [x.product_id, { dibawa: x.dibawa, terjual: x.terjual }]))); setStokReady(true)
+    })
+    return () => { off = true }
+  }, [me, visit?.id, stokTick])
+  useEffect(() => { if (me) supabase.from('settings').select('value').eq('key', 'stok_enforced').maybeSingle().then(({ data }) => setStokOn(data ? data.value === true : true)) }, [me])
+  // Draf lama yang melebihi stok saat ini dipangkas
+  useEffect(() => {
+    if (!enforce || !stokReady) return
+    setQty(q => { let c = false; const n = { ...q }; for (const id in n) { const s = sisaOf(id); if (n[id] > s) { n[id] = s; c = true } if (n[id] <= 0) { delete n[id]; c = true } } return c ? n : q })
+  }, [stok, stokReady, enforce])
 
   // Frontliner yang dikecualikan MDM boleh tanpa GPS: posisi kosong dan server tidak menerapkan batas 50 m
   const geo = async () => { try { return await fresh() } catch (e) { if (me.gps_required === false) return null; throw e } }
@@ -124,6 +176,7 @@ export default function Frontliner() {
       const items = products.filter(x => qty[x.id] > 0).map(x => ({ product_id: x.id, qty: qty[x.id] }))
       if (items.length) { const p = await geo(); const { error } = await supabase.rpc('save_sales', { p_visit: visit.id, p_items: items, ...payload(p) }); if (error) throw error }
       const { error } = await supabase.rpc('checkout', { p_visit: visit.id }); if (error) throw error
+      try { localStorage.removeItem(draftKey(visit.id)) } catch {}
       setAnim('back'); setVisit(null); setQty({}); say('Check-out berhasil')
     } catch (e: any) { if (!jauh(e, visit.outlets?.name, visit.outlets?.lat, visit.outlets?.long)) setErr(e.message || 'Gagal membaca lokasi') }
     setBusy(false)
@@ -150,33 +203,39 @@ export default function Frontliner() {
     <div className="dbtns"><button className="ghost" onClick={() => setFar(null)}>Cancel</button>
       {far.lat != null && <a className="btnlink" target="_blank" onClick={() => setFar(null)} href={`https://www.google.com/maps/dir/?api=1&destination=${far.lat},${far.long}`}><Icon name="nav" size={18} /> Menuju Outlet</a>}</div></div></div>
 
+  const stokModal = stokOpen && <StokForm onClose={() => setStokOpen(false)} onSaved={() => { setStokTick(t => t + 1); say('Stok tersimpan') }} />
+
   // ---------- Layar input penjualan ----------
-  const ch = (id: string, v: number) => { buzz(8); setQty(q => ({ ...q, [id]: Math.max(0, Math.min(9999, Math.round(v) || 0)) })) }
+  const ch = (id: string, v: number) => { buzz(8); setQty(q => ({ ...q, [id]: Math.max(0, Math.min(9999, sisaOf(id), Math.round(v) || 0)) })) }
+  const totalSisa = products.reduce((a, x) => a + sisaOf(x.id) * (enforce ? 1 : 0), 0)
+  const noStock = enforce && stokReady && products.length > 0 && totalSisa === 0
   const inTime = visit?.checkin_at ? new Date(visit.checkin_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jakarta' }) : ''
   const nFocus = products.filter(x => x.is_focus).length
   const shown = products.filter(x => (!pq.trim() || (x.product + ' ' + (x.brand || '')).toLowerCase().includes(pq.trim().toLowerCase()))
     && (pf === 'all' || (pf === 'focus' ? x.is_focus : qty[x.id] > 0)))
   const focusRows = shown.filter(x => x.is_focus), otherRows = shown.filter(x => !x.is_focus)
   const prodRow = (x: any) => {
-    const n = qty[x.id] || 0, price = Number(x.price)
+    const n = qty[x.id] || 0, price = Number(x.price), s = sisaOf(x.id), lim = enforce && stokReady
     return (
-      <div key={x.id} className={`prow ${n > 0 ? 'on' : ''}`} onClick={() => n === 0 && ch(x.id, 1)}>
+      <div key={x.id} className={`prow ${n > 0 ? 'on' : ''}`} onClick={() => n === 0 && (!lim || s > 0) && ch(x.id, 1)}>
         <div><div className="pname2">{x.product}{x.is_focus && <span className="badge">FOKUS</span>}</div>
-          <div className="pmeta">{[x.brand, rp(price)].filter(Boolean).join(' · ')}</div></div>
+          <div className="pmeta">{[x.brand, rp(price)].filter(Boolean).join(' · ')}{lim && <span className={`stk ${s === 0 ? 'zero' : s <= 5 ? 'low' : ''}`}> · Sisa {s}</span>}</div></div>
         {n === 0
-          ? <button className="addbtn" aria-label={`Tambah ${x.product}`} onClick={e => { e.stopPropagation(); ch(x.id, 1) }}><Icon name="plus" size={20} /></button>
+          ? <button className="addbtn" disabled={lim && s === 0} aria-label={`Tambah ${x.product}`} onClick={e => { e.stopPropagation(); ch(x.id, 1) }}><Icon name="plus" size={20} /></button>
           : <div className="stepper" onClick={e => e.stopPropagation()}>
               <button aria-label="Kurangi" onClick={() => ch(x.id, n - 1)}><Icon name="minus" size={18} /></button>
               <input inputMode="numeric" aria-label={`Jumlah ${x.product}`} value={n} onFocus={e => e.target.select()}
                 onChange={e => { const v = e.target.value.replace(/\D/g, ''); ch(x.id, v === '' ? 1 : +v) }} />
-              <button aria-label="Tambah" onClick={() => ch(x.id, n + 1)}><Icon name="plus" size={18} /></button></div>}
-        {n > 0 && <div className="psub"><span>{n} × {rp(price)}</span><b key={n} className="pop">{rp(n * price)}</b></div>}
+              <button aria-label="Tambah" disabled={lim && n >= s} onClick={() => ch(x.id, n + 1)}><Icon name="plus" size={18} /></button></div>}
+        {n > 0 && <div className="psub"><span>{n} × {rp(price)}{lim && n >= s && <span className="stk zero"> · sesuai sisa stok</span>}</span><b key={n} className="pop">{rp(n * price)}</b></div>}
       </div>)
   }
 
   if (visit) return (
     <div className={`phone dark ${anim}`}>
       {farDialog}
+      {stokModal}
+      {toast && <div className="toast" role="status"><Icon name="check" size={18} /> {toast}</div>}
       {confirmOut && <div className="overlay" onClick={() => setConfirmOut(false)}><div className="dialog left" role="dialog" onClick={e => e.stopPropagation()}>
         <h3>{items ? 'Simpan penjualan & check-out?' : 'Check-out tanpa penjualan?'}</h3>
         {items ? <div className="sumlist">
@@ -187,6 +246,8 @@ export default function Frontliner() {
           <button disabled={busy} onClick={() => { setConfirmOut(false); keluar() }}>{items ? 'Simpan & Check-out' : 'Check-out'}</button></div></div></div>}
       <div className="hero compact"><span className="label">Kunjungan berjalan · sejak {inTime}</span><h2>{visit.outlets?.name}</h2><div className="hint">{visit.outlets?.address}</div></div>
       <div className="sheet">
+        {noStock && <div className="notice warn row"><span className="grow">{Object.values(stok).some(x => x.dibawa > 0) ? 'Stok pembawaan hari ini sudah habis terjual.' : 'Belum ada stok pembawaan hari ini. Tambahkan dulu agar penjualan bisa diinput.'}</span>
+          <button className="ghost small" onClick={() => setStokOpen(true)}>Tambahkan stok</button></div>}
         <div className="shead">
           <div className="searchbox"><Icon name="search" size={18} /><input placeholder="Cari produk…" aria-label="Cari produk" value={pq} onChange={e => setPq(e.target.value)} /></div>
           <div className="seg" role="tablist">
@@ -211,6 +272,7 @@ export default function Frontliner() {
     .filter(r => !q.trim() || (r.name + ' ' + r.address).toLowerCase().includes(q.trim().toLowerCase()))
     .sort((a, b) => (a.d ?? 1e12) - (b.d ?? 1e12))
   const done = rows.filter(r => visited.has(r.id)).length
+  const stokSum = Object.values(stok).reduce((a, x) => (x.dibawa > 0 ? { n: a.n + 1, pcs: a.pcs + x.dibawa, sisa: a.sisa + x.dibawa - x.terjual } : a), { n: 0, pcs: 0, sisa: 0 })
   const days = rk ? Object.keys(rk).sort().reverse() : []
   const dd = sel && rk?.[sel]
   const tgl = (d: string, o: Intl.DateTimeFormatOptions) => new Date(d + 'T00:00:00+07:00').toLocaleDateString('id-ID', { ...o, timeZone: 'Asia/Jakarta' })
@@ -223,19 +285,22 @@ export default function Frontliner() {
   return (
     <div className={`phone ${anim}`}>
       {farDialog}
+      {stokModal}
       {toast && <div className="toast" role="status"><Icon name="check" size={18} /> {toast}</div>}
       {form && <OutletForm me={me} rayon={rayon} pos={pos} outlet={form === 'new' ? null : form} onClose={() => setForm(null)} onSaved={() => { setForm(null); setEditMode(false); loadRows(); say('Outlet tersimpan') }}
         onDeleted={(r: string) => { setForm(null); setEditMode(false); loadRows(); say(r === 'deleted' ? 'Outlet dihapus' : 'Outlet dinonaktifkan') }} />}
       {menu && <div className={`drawer ${closingMenu ? 'out' : ''}`} onClick={closeMenu}><div onClick={e => e.stopPropagation()}>
         <h3>Menu</h3>
-        <a onClick={() => { closeMenu(); setTab('sell'); setEditMode(true) }}><Icon name="edit" size={20} /> Edit Outlet</a>
+        <a onClick={() => { closeMenu(); setTab('sell'); setEditMode(true); buzz(25) }}><Icon name="edit" size={20} /> Edit Outlet</a>
         <a onClick={() => { closeMenu(); dlg.alert({ title: 'TaskPro', message: 'Aplikasi kunjungan dan penjualan Taskforce.' }) }}><Icon name="info" size={20} /> About</a></div></div>}
-      <div className="ph-head">
+      <div className={`ph-head ${editMode && tab === 'sell' ? 'editing' : ''}`}>
         {tab === 'sell' && <div className="hrow">
           <button className="icon" aria-label="Menu" onClick={() => setMenu(true)}><Icon name="dots" /></button>
-          <h3 className="htitle">Input Selling</h3><div className="grow" />
-          <button className="icon" aria-label="Refresh lokasi" onClick={() => { setSpin(true); setTimeout(() => setSpin(false), 700); getPos(); buzz(10) }}><Icon name="refresh" className={spin ? 'spin' : ''} /></button>
-          <button className="icon" aria-label="Tambah outlet" onClick={() => setForm('new')}><Icon name="plus" /></button></div>}
+          <h3 className="htitle">{editMode ? 'Mode Edit Outlet' : 'Input Selling'}</h3><div className="grow" />
+          {editMode
+            ? <button className="donebtn" onClick={() => setEditMode(false)}><Icon name="check" size={18} /> Selesai</button>
+            : <>          <button className="icon" aria-label="Refresh lokasi" onClick={() => { setSpin(true); setTimeout(() => setSpin(false), 700); getPos(); buzz(10) }}><Icon name="refresh" className={spin ? 'spin' : ''} /></button>
+          <button className="icon" aria-label="Tambah outlet" onClick={() => setForm('new')}><Icon name="plus" /></button></>}</div>}
         {tab === 'rekap' && <div className="hrow">
           <button className="back" aria-label={sel ? 'Kembali ke daftar tanggal' : 'Kembali ke Input'} onClick={backRekap}><Icon name="back" /></button>
           <h3 className="htitle">{sel ? 'Detail Harian' : 'Rekap'}</h3></div>}
@@ -244,10 +309,9 @@ export default function Frontliner() {
           <div className="hrow"><input placeholder="Cari outlet…" value={q} onChange={e => setQ(e.target.value)} style={{ flex: 1 }} />
             <select value={rayon} style={{ width: 92 }} onChange={e => { setRayon(+e.target.value); localStorage.setItem('rayon', e.target.value) }}>
               {Array.from({ length: 24 }, (_, i) => <option key={i} value={i + 1}>R{String(i + 1).padStart(2, '0')}</option>)}</select></div>
-          <div className="progress" aria-label="Progres kunjungan"><div className="bar" style={{ width: rows.length ? `${(done / rows.length) * 100}%` : 0 }} /></div>
-          <div className="hint">{done} dari {rows.length} outlet sudah dikunjungi hari ini</div></>}
+          {!editMode && <div className="progress" aria-label="Progres kunjungan"><div className="bar" style={{ width: rows.length ? `${(done / rows.length) * 100}%` : 0 }} /></div>}
+          <div className="hint">{editMode ? 'Ketuk outlet yang ingin diubah. Check-in dinonaktifkan sampai Anda menekan Selesai.' : `${done} dari ${rows.length} outlet sudah dikunjungi hari ini`}</div></>}
       </div>
-      {editMode && tab === 'sell' && <div className="notice row" style={{ margin: 0, borderRadius: 0 }}><span className="grow">Mode edit: pilih outlet yang ingin diubah.</span><button className="ghost" onClick={() => setEditMode(false)}>Selesai</button></div>}
       {err && tab === 'sell' && <p className="err" role="alert" style={{ padding: '8px 16px', margin: 0 }}>{err}</p>}
       {tab === 'sell' && (list.length === 0 ? <div className="empty"><b>Belum ada outlet di rayon R{String(rayon).padStart(2, '0')}</b><p className="muted">Pilih rayon lain, atau tambah outlet baru dengan tombol + di kanan atas.</p></div>
         : list.map((r, i) => <div className={`item ${r.lat == null ? 'nolat-row' : ''}`} style={{ ['--i' as any]: Math.min(i, 10) }} key={r.id} onClick={() => !busy && (editMode ? setForm(r) : masuk(r))}>
@@ -299,6 +363,10 @@ export default function Frontliner() {
         <div className="avatar" aria-hidden="true"><svg viewBox="0 0 120 120"><circle cx="60" cy="46" r="20" /><path d="M20 108c2-24 18-36 40-36s38 12 40 36z" /></svg></div>
         <h2 className="pname">{me.nama}</h2>
         <p className="pid">{me.user_id}</p>
+        <button className="menurow" onClick={() => setStokOpen(true)}>
+          <span className="mi"><Icon name="box" /></span>
+          <span className="mt"><b>Tambahkan stok pembawaan</b><small>{stokSum.n ? `Hari ini: ${stokSum.n} produk · ${stokSum.pcs} pcs (sisa ${stokSum.sisa})` : 'Belum ada stok hari ini'}</small></span>
+          <Icon name="chevron" size={18} /></button>
         <button className="logout" onClick={keluarAkun}>LOG OUT</button></div>}
       <div className="tabbar">
         <button className={tab === 'profile' ? 'on' : ''} onClick={() => setTab('profile')}><span className="pill"><Icon name="user" /></span>Profile</button>
