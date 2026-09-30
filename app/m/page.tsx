@@ -45,11 +45,14 @@ export default function Frontliner() {
   const [sub, setSub] = useState('')
   const [closingMenu, setClosingMenu] = useState(false)
   const [far, setFar] = useState<any>(null)
+  const [pq, setPq] = useState('')
+  const [pf, setPf] = useState<'all' | 'focus' | 'sel'>('all')
+  const [confirmOut, setConfirmOut] = useState(false)
   const say = (t: string) => { buzz(18); setTimeout(() => { setToast(t); setTimeout(() => setToast(''), 2200) }, 350) }
   const closeMenu = () => { setClosingMenu(true); setTimeout(() => { setMenu(false); setClosingMenu(false) }, 200) }
 
   const loadVisit = async (uid: string, a = '') => {
-    const { data } = await supabase.from('visits').select('id,outlet_id,outlets(name,address,lat,long)').eq('frontliner_id', uid).is('checkout_at', null).maybeSingle()
+    const { data } = await supabase.from('visits').select('id,outlet_id,checkin_at,outlets(name,address,lat,long)').eq('frontliner_id', uid).is('checkout_at', null).maybeSingle()
     setAnim(a); setVisit(data)
   }
   function getPos() {
@@ -100,7 +103,7 @@ export default function Frontliner() {
     try {
       const p = await geo(); if (p) setPos({ lat: p.coords.latitude, lng: p.coords.longitude })
       const { error } = await supabase.rpc('checkin', { p_outlet: r.id, ...payload(p) }); if (error) throw error
-      setQty({}); await loadVisit(me.id, 'fwd'); buzz()
+      setQty({}); setPq(''); setPf('all'); await loadVisit(me.id, 'fwd'); buzz()
     } catch (e: any) { if (!jauh(e, r.name, r.lat, r.long)) setErr(e.message || 'Gagal membaca lokasi') }
     setBusy(false)
   }
@@ -116,6 +119,7 @@ export default function Frontliner() {
   }
   const total = products.reduce((a, x) => a + (qty[x.id] || 0) * Number(x.price), 0)
   const items = products.filter(x => qty[x.id] > 0).length
+  const pcs = products.reduce((a, x) => a + (qty[x.id] || 0), 0)
 
   if (!me) return <p className="muted" style={{ padding: 24 }}>Memuat…</p>
   if (gps !== 'ok' && me.gps_required !== false) return (
@@ -134,25 +138,60 @@ export default function Frontliner() {
     <div className="dbtns"><button className="ghost" onClick={() => setFar(null)}>Cancel</button>
       {far.lat != null && <a className="btnlink" target="_blank" onClick={() => setFar(null)} href={`https://www.google.com/maps/dir/?api=1&destination=${far.lat},${far.long}`}><Icon name="nav" size={18} /> Menuju Outlet</a>}</div></div></div>
 
+  // ---------- Layar input penjualan ----------
+  const ch = (id: string, v: number) => { buzz(8); setQty(q => ({ ...q, [id]: Math.max(0, Math.min(9999, Math.round(v) || 0)) })) }
+  const inTime = visit?.checkin_at ? new Date(visit.checkin_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jakarta' }) : ''
+  const nFocus = products.filter(x => x.is_focus).length
+  const shown = products.filter(x => (!pq.trim() || (x.product + ' ' + (x.brand || '')).toLowerCase().includes(pq.trim().toLowerCase()))
+    && (pf === 'all' || (pf === 'focus' ? x.is_focus : qty[x.id] > 0)))
+  const focusRows = shown.filter(x => x.is_focus), otherRows = shown.filter(x => !x.is_focus)
+  const prodRow = (x: any) => {
+    const n = qty[x.id] || 0, price = Number(x.price)
+    return (
+      <div key={x.id} className={`prow ${n > 0 ? 'on' : ''}`} onClick={() => n === 0 && ch(x.id, 1)}>
+        <div><div className="pname2">{x.product}{x.is_focus && <span className="badge">FOKUS</span>}</div>
+          <div className="pmeta">{[x.brand, rp(price)].filter(Boolean).join(' · ')}</div></div>
+        {n === 0
+          ? <button className="addbtn" aria-label={`Tambah ${x.product}`} onClick={e => { e.stopPropagation(); ch(x.id, 1) }}><Icon name="plus" size={20} /></button>
+          : <div className="stepper" onClick={e => e.stopPropagation()}>
+              <button aria-label="Kurangi" onClick={() => ch(x.id, n - 1)}><Icon name="minus" size={18} /></button>
+              <input inputMode="numeric" aria-label={`Jumlah ${x.product}`} value={n} onFocus={e => e.target.select()}
+                onChange={e => { const v = e.target.value.replace(/\D/g, ''); ch(x.id, v === '' ? 1 : +v) }} />
+              <button aria-label="Tambah" onClick={() => ch(x.id, n + 1)}><Icon name="plus" size={18} /></button></div>}
+        {n > 0 && <div className="psub"><span>{n} × {rp(price)}</span><b key={n} className="pop">{rp(n * price)}</b></div>}
+      </div>)
+  }
+
   if (visit) return (
     <div className={`phone dark ${anim}`}>
       {farDialog}
-      <div className="hero"><span className="label">Kunjungan berjalan</span><h2>{visit.outlets?.name}</h2><div className="hint">{visit.outlets?.address}</div></div>
+      {confirmOut && <div className="overlay" onClick={() => setConfirmOut(false)}><div className="dialog left" role="dialog" onClick={e => e.stopPropagation()}>
+        <h3>{items ? 'Simpan penjualan & check-out?' : 'Check-out tanpa penjualan?'}</h3>
+        {items ? <div className="sumlist">
+            {products.filter(x => qty[x.id] > 0).map(x => <div className="line" key={x.id}><span>{qty[x.id]} × {x.product}</span><b>{rp(qty[x.id] * Number(x.price))}</b></div>)}
+            <div className="line tot"><span>Total</span><b>{rp(total)}</b></div></div>
+          : <p>Belum ada produk yang diisi. Kunjungan akan dicatat tanpa penjualan (bukan Effective Call).</p>}
+        <div className="dbtns"><button className="ghost" onClick={() => setConfirmOut(false)}>Kembali</button>
+          <button disabled={busy} onClick={() => { setConfirmOut(false); keluar() }}>{items ? 'Simpan & Check-out' : 'Check-out'}</button></div></div></div>}
+      <div className="hero compact"><span className="label">Kunjungan berjalan · sejak {inTime}</span><h2>{visit.outlets?.name}</h2><div className="hint">{visit.outlets?.address}</div></div>
       <div className="sheet">
-        <p className="notice">Penjualan baru tersimpan saat Check-out. Jika halaman ditutup, kunjungan tetap terbuka dan belum terhitung.</p>
-        {Object.keys(last).length > 0 && <button className="ghost" style={{ marginBottom: 8 }} onClick={() => setQty(last)}><Icon name="refresh" size={16} /> Isi seperti kunjungan terakhir</button>}
-        {products.map(x => <div className="prod" key={x.id}>
-          <div className="row" style={{ margin: 0 }}><b>{x.product}</b>{x.is_focus && <span className="badge">FOKUS</span>}<div className="grow" /><span className="muted">{rp(Number(x.price))}</span></div>
-          <div className="row" style={{ margin: '8px 0 0' }}>
-            <button className="ghost step" aria-label="Kurangi" onClick={() => { buzz(8); setQty({ ...qty, [x.id]: Math.max(0, (qty[x.id] || 0) - 1) }) }}><Icon name="minus" size={18} /></button>
-            <b key={qty[x.id] || 0} className="qty pop">{qty[x.id] || 0}</b>
-            <button className="ghost step" aria-label="Tambah" onClick={() => { buzz(8); setQty({ ...qty, [x.id]: (qty[x.id] || 0) + 1 }) }}><Icon name="plus" size={18} /></button>
-            <div className="grow" />{QUICK.map(n => <button key={n} className={`ghost quick ${qty[x.id] === n ? 'on' : ''}`} onClick={() => { buzz(8); setQty({ ...qty, [x.id]: n }) }}>{n}</button>)}
-          </div></div>)}
+        <div className="shead">
+          <div className="searchbox"><Icon name="search" size={18} /><input placeholder="Cari produk…" aria-label="Cari produk" value={pq} onChange={e => setPq(e.target.value)} /></div>
+          <div className="seg" role="tablist">
+            {([['all', `Semua ${products.length}`], ['focus', `Fokus ${nFocus}`], ['sel', `Terpilih ${items}`]] as const).map(([k, t]) =>
+              <button key={k} role="tab" aria-selected={pf === k} className={pf === k ? 'on' : ''} onClick={() => setPf(k)}>{t}</button>)}</div>
+          {Object.keys(last).length > 0 && <button className="ghost small" onClick={() => setQty(last)}><Icon name="refresh" size={16} /> Isi seperti kunjungan terakhir</button>}
+        </div>
+        {shown.length === 0 && <div className="empty"><b>{pf === 'sel' && !pq ? 'Belum ada produk dipilih' : 'Produk tidak ditemukan'}</b>
+          <p className="muted">{pf === 'sel' && !pq ? 'Ketuk tombol ＋ pada produk untuk menambahkannya.' : 'Coba kata kunci lain atau pilih tab Semua.'}</p></div>}
+        {focusRows.length > 0 && <><span className="label sec">Produk fokus</span>{focusRows.map(prodRow)}</>}
+        {otherRows.length > 0 && <>{focusRows.length > 0 && <span className="label sec">Produk lain</span>}{otherRows.map(prodRow)}</>}
         {err && <p className="err" role="alert">{err}</p>}
       </div>
-      <div className="stickybar"><div className="muted" style={{ fontSize: 13, marginBottom: 6 }}>{items ? `${items} produk dipilih` : 'Belum ada penjualan'}</div>
-        <button disabled={busy} style={{ width: '100%' }} onClick={keluar}>{busy ? 'Memproses…' : items ? `Check-out · ${rp(total)}` : 'Check-out tanpa penjualan'}</button></div>
+      <div className="stickybar sumbar">
+        <div className="sumtxt">{items ? <><span className="muted">{items} produk · {pcs} pcs</span><b>{rp(total)}</b></> : <span className="muted">Belum ada penjualan</span>}</div>
+        <button disabled={busy} onClick={() => setConfirmOut(true)}>{busy ? 'Memproses…' : 'Check-out'}</button>
+      </div>
     </div>)
 
   const list = rows
