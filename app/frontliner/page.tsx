@@ -1,18 +1,22 @@
 'use client'
 import { useEffect, useState } from 'react'
 import Shell from '../../components/Shell'
+import Icon from '../../components/Icon'
+import { useDialog } from '../../components/Dialog'
 import { supabase } from '../../lib/supabase'
+import { loadMe } from '../../lib/auth'
+import { api as call } from '../../lib/api'
+import { useAktif } from '../../lib/sesi'
+import { jam } from '../../lib/rekap'
 
-async function api(method: string, body: any) {
-  const { data } = await supabase.auth.getSession()
-  const r = await fetch('/api/akun', { method, body: JSON.stringify(body),
-    headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + data.session?.access_token } })
-  return r.ok ? '' : ((await r.json()).error as string)
-}
+const api = (method: string, body: any) => call('/api/akun', method, body)
+
 const LABEL: Record<string, string> = { tl: 'TL', kormot: 'Kormot', frontliner: 'Frontliner' }
 const EMPTY = { role: 'frontliner', user_id: '', nama: '', password: '', atasan_id: '' }
 
 function Frontliner() {
+  const dlg = useDialog()
+  const [aktif, refreshAktif] = useAktif()
   const [cabang, setCabang] = useState<any[]>([])
   const [cid, setCid] = useState('')
   const [list, setList] = useState<any[]>([])
@@ -23,7 +27,7 @@ function Frontliner() {
   const kode = cabang.find(c => c.id === cid)?.kode
   useEffect(() => {
     supabase.from('cabang').select('id,kode,nama').order('kode').then(({ data }) => { setCabang(data || []); if (data?.length) setCid(data[0].id) })
-    supabase.auth.getUser().then(async ({ data }) => { const { data: p } = await supabase.from('profiles').select('role').eq('id', data.user!.id).single(); setRole(p?.role || '') })
+    loadMe().then(({ me }) => setRole(me?.role || ''))
   }, [])
   async function load() {
     if (!cid) return setList([])
@@ -40,9 +44,13 @@ function Frontliner() {
   }
   function edit(x: any) { setEditId(x.id); setF({ role: x.role, user_id: x.user_id, nama: x.nama, password: '', atasan_id: x.atasan_id || '' }); setErr('') }
   async function setGps(id: string, v: boolean) { setErr(await api('PATCH', { id, gps_required: v })); load() }
-  async function remove(id: string) {
-    if (!confirm('Hapus akun ini?')) return
-    setErr(await api('DELETE', { id })); load()
+  async function remove(x: any) {
+    if (!(await dlg.confirm({ title: 'Hapus akun ini?', tone: 'danger', okText: 'Hapus', message: <><b>{x.nama}</b> ({x.user_id}) akan dihapus permanen.</> }))) return
+    const e = await api('DELETE', { id: x.id }); if (e) await dlg.alert({ title: 'Gagal menghapus', message: e, tone: 'danger', icon: 'close' }); load()
+  }
+  async function paksa(x: any) {
+    if (!(await dlg.confirm({ title: 'Logout paksa?', icon: 'logout', tone: 'danger', okText: 'Logout paksa', message: <><b>{x.nama}</b> akan dikeluarkan dari perangkatnya dalam hitungan detik.</> }))) return
+    const e = await call('/api/sesi', 'POST', { id: x.id }); if (e) await dlg.alert({ title: 'Gagal', message: e, tone: 'danger', icon: 'close' }); refreshAktif()
   }
   return (<>
     <h2>Frontliner</h2>
@@ -70,13 +78,15 @@ function Frontliner() {
         {err && <p className="err">{err}</p>}
       </div>
       <div className="scroll"><table>
-        <thead><tr><th>User ID</th><th>Nama</th><th>Role</th><th>Atasan</th><th>GPS wajib</th><th /></tr></thead>
+        <thead><tr><th>User ID</th><th>Nama</th><th>Role</th><th>Atasan</th><th>GPS wajib</th><th>Status</th><th /></tr></thead>
         <tbody>{list.map(x => <tr key={x.id}><td>{x.user_id}</td><td>{x.nama}</td><td>{LABEL[x.role] || x.role.toUpperCase()}</td>
           <td>{x.atasan_id ? nama(x.atasan_id) : '-'}</td>
           <td>{x.role !== 'frontliner' ? '-' : role === 'mdm'
             ? <label className="switch" title="Matikan untuk mengecualikan frontliner ini dari GPS wajib dan batas 50 m"><input type="checkbox" checked={x.gps_required !== false} onChange={e => setGps(x.id, e.target.checked)} /><span /></label>
             : (x.gps_required === false ? 'Dikecualikan' : 'Wajib')}</td>
-          <td>{LABEL[x.role] && <><button className="ghost" onClick={() => edit(x)}>Edit</button> <button className="ghost danger" onClick={() => remove(x.id)}>Hapus</button></>}</td></tr>)}</tbody>
+          <td>{aktif[x.id] ? <><span className="on-badge">Aktif</span><div className="off-badge">terakhir {jam(aktif[x.id]).slice(0, 5)}</div></> : <span className="off-badge">Tidak aktif</span>}</td>
+          <td style={{ whiteSpace: 'nowrap' }}>{aktif[x.id] && <><button className="ghost danger" onClick={() => paksa(x)}><Icon name="logout" size={16} /> Logout paksa</button> </>}
+            {LABEL[x.role] && <><button className="ghost" onClick={() => edit(x)}>Edit</button> <button className="ghost danger" onClick={() => remove(x)}>Hapus</button></>}</td></tr>)}</tbody>
       </table></div>
     </>}
   </>)

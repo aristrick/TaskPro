@@ -28,6 +28,7 @@ const P: Record<string, React.ReactNode> = {
   search: <><circle cx="11" cy="11" r="6" /><path d="m20 20-4-4" /></>,
   up: <path d="m4 16 6-6 4 4 6-7M15 7h5v5" />,
   down: <path d="m4 8 6 6 4-4 6 7M15 17h5v-5" />,
+  alert: <><path d="M12 4 3 19.500h18z" /><path d="M12 10v4.500M12 17.500h.01" /></>,
   info: <><circle cx="12" cy="12" r="9" /><path d="M12 11v5M12 8h.01" /></>,
 }
 export default function Icon({ name, size = 22, className }: { name: string; size?: number; className?: string }) {

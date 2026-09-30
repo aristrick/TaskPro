@@ -3,10 +3,13 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { alamatDari } from '../lib/geo'
 import Icon from './Icon'
+import { useDialog } from './Dialog'
+import { hapusOutlet } from '../lib/outlet'
 import { KATEGORI, ACCOUNTS, PREFIX } from '../lib/const'
 
 // Tambah/Edit outlet di HP. Nilai awal diisi otomatis (lokasi, alamat, kota/kecamatan/kelurahan, rayon aktif).
-export default function OutletForm({ me, rayon, pos, outlet, onClose, onSaved }: any) {
+export default function OutletForm({ me, rayon, pos, outlet, onClose, onSaved, onDeleted }: any) {
+  const dlg = useDialog()
   const baru = !outlet
   const wilayah = { province_name: '', city_name: '', district: '', village: '' }
   const [f, setF] = useState<any>(outlet
@@ -41,6 +44,10 @@ export default function OutletForm({ me, rayon, pos, outlet, onClose, onSaved }:
       : await supabase.from('outlets').update({ ...d, name: f.name.trim(), status: f.status }).eq('id', outlet.id)
     setBusy(false); if (error) return setErr(error.message); setOut(true); setTimeout(onSaved, 220)
   }
+  async function hapus() {
+    const r = await hapusOutlet(dlg, outlet)
+    if (r === 'deleted' || r === 'inactive') { setOut(true); setTimeout(() => onDeleted?.(r), 220) }
+  }
   const fld = (label: string, el: any) => <label className="fld"><span className="label">{label}</span>{el}</label>
   return (
     <div className={`modal ${out ? 'out' : ''}`}><div>
@@ -74,6 +81,7 @@ export default function OutletForm({ me, rayon, pos, outlet, onClose, onSaved }:
       {fld('Account', <select value={f.account || ''} onChange={e => set('account', e.target.value)}>{ACCOUNTS.map(x => <option key={x}>{x}</option>)}</select>)}
       {!baru && fld('Status', <select value={f.status} onChange={e => set('status', e.target.value)}><option>AKTIF</option><option>INAKTIF</option></select>)}
       {err && <p className="err" role="alert">{err}</p>}
+      {!baru && <button className="ghost danger" style={{ width: '100%', marginTop: 8, minHeight: 48 }} onClick={hapus}><Icon name="trash" size={18} /> Hapus outlet</button>}
       <div className="stickybar"><button disabled={busy} style={{ width: '100%' }} onClick={simpan}>{busy ? 'Menyimpan…' : baru ? 'Simpan Outlet Baru' : 'Simpan Perubahan'}</button></div>
     </div></div>)
 }

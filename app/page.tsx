@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react'
 import Shell from '../components/Shell'
 import { supabase } from '../lib/supabase'
+import { loadMe } from '../lib/auth'
 import Icon from '../components/Icon'
 import { rekap, day, rp, VSEL, fetchAll } from '../lib/rekap'
 
@@ -16,9 +17,7 @@ function Home() {
   const [rk, setRk] = useState<any>(null)
   useEffect(() => {
     (async () => setN({ Cabang: await cnt('cabang'), Outlet: await cnt('outlets'), Frontliner: await cnt('profiles', 'frontliner') }))()
-    supabase.auth.getUser().then(async ({ data }) => {
-      const { data: p } = await supabase.from('profiles').select('role').eq('id', data.user!.id).single(); setRole(p?.role || '')
-    })
+    loadMe().then(({ me }) => setRole(me?.role || ''))
     supabase.from('settings').select('value').eq('key', 'radius_enforced').single().then(({ data }) => setRadius(data ? data.value === true : true))
     const m = `${day(new Date()).slice(0, 8)}01T00:00:00+07:00`
     fetchAll((a, b) => supabase.from('visits').select(VSEL).gte('checkin_at', m).order('checkin_at').range(a, b)).then(v => setRk(rekap(v))).catch(() => setRk({}))

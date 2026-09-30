@@ -2,6 +2,9 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '../../lib/supabase'
+import { loadMe } from '../../lib/auth'
+import { logout, keluarLokal, useHeartbeat } from '../../lib/sesi'
+import { useDialog } from '../../components/Dialog'
 import { rekap, day, rp, VSEL } from '../../lib/rekap'
 import OutletForm from '../../components/OutletForm'
 import Icon from '../../components/Icon'
@@ -19,7 +22,7 @@ const buzz = (ms = 14) => { try { navigator.vibrate?.(ms) } catch {} }
 const todayStart = () => `${day(new Date())}T00:00:00+07:00`
 
 export default function Frontliner() {
-  const router = useRouter()
+  const router = useRouter(), dlg = useDialog()
   const [me, setMe] = useState<any>(null)
   const [pos, setPos] = useState<{ lat: number; lng: number } | null>(null)
   const [gps, setGps] = useState<'wait' | 'ok' | 'denied' | 'nogeo'>('wait')
@@ -48,6 +51,15 @@ export default function Frontliner() {
   const [pq, setPq] = useState('')
   const [pf, setPf] = useState<'all' | 'focus' | 'sel'>('all')
   const [confirmOut, setConfirmOut] = useState(false)
+  const [loadErr, setLoadErr] = useState('')
+  useHeartbeat(!!me, async () => {
+    await dlg.alert({ title: 'Sesi berakhir', icon: 'logout', message: 'Akun Anda keluar karena login di perangkat lain atau sesinya diakhiri admin.' })
+    await keluarLokal(); router.replace('/login')
+  })
+  async function keluarAkun() {
+    if (!(await dlg.confirm({ title: 'Keluar dari akun?', icon: 'logout', tone: 'danger', okText: 'Log out', message: 'Anda perlu login lagi untuk memakai TaskPro di perangkat ini.' }))) return
+    await logout(); router.replace('/login')
+  }
   const say = (t: string) => { buzz(18); setTimeout(() => { setToast(t); setTimeout(() => setToast(''), 2200) }, 350) }
   const closeMenu = () => { setClosingMenu(true); setTimeout(() => { setMenu(false); setClosingMenu(false) }, 200) }
 
@@ -65,9 +77,8 @@ export default function Frontliner() {
   const loadRows = () => { if (me) supabase.from('outlets').select('*').eq('kode_md', me.user_id).eq('rayon', rayon).eq('status', 'AKTIF').limit(1000).then(({ data }) => setRows(data || [])) }
 
   useEffect(() => {
-    supabase.auth.getUser().then(async ({ data }) => {
-      if (!data.user) return router.replace('/login')
-      const { data: p } = await supabase.from('profiles').select('*').eq('id', data.user.id).single()
+    loadMe().then(({ me: p, error }) => {
+      if (error) return setLoadErr(error)
       if (!p) return router.replace('/login')
       if (p.role !== 'frontliner') return router.replace('/')
       setMe(p); loadVisit(p.id)
@@ -98,7 +109,7 @@ export default function Frontliner() {
     setFar({ name, d: +m[1], lat, long }); return true
   }
   async function masuk(r: any) {
-    if (!confirm(`Check-in di ${r.name}?`)) return
+    if (!(await dlg.confirm({ title: 'Check-in di outlet ini?', icon: 'pin', okText: 'Check-in', message: <>Mulai kunjungan di <b>{r.name}</b>.</> }))) return
     setBusy(true); setErr('')
     try {
       const p = await geo(); if (p) setPos({ lat: p.coords.latitude, lng: p.coords.longitude })
@@ -121,6 +132,7 @@ export default function Frontliner() {
   const items = products.filter(x => qty[x.id] > 0).length
   const pcs = products.reduce((a, x) => a + (qty[x.id] || 0), 0)
 
+  if (loadErr) return <div className="gate"><h2>Gagal memuat akun</h2><p className="muted">{loadErr}</p><button onClick={() => location.reload()}>Coba lagi</button></div>
   if (!me) return <p className="muted" style={{ padding: 24 }}>Memuat…</p>
   if (gps !== 'ok' && me.gps_required !== false) return (
     <div className="gate">
@@ -128,7 +140,7 @@ export default function Frontliner() {
       <p className="muted">{gps === 'wait' ? 'Meminta izin lokasi…' : gps === 'nogeo' ? 'Perangkat ini tidak mendukung GPS.'
         : 'TaskPro butuh lokasi Anda untuk menghitung jarak ke outlet. Nyalakan GPS dan izinkan lokasi untuk situs ini di pengaturan browser, lalu coba lagi.'}</p>
       <button onClick={getPos}>Coba lagi</button>
-      <button className="ghost" onClick={async () => { await supabase.auth.signOut(); router.replace('/login') }}><Icon name="logout" size={18} /> Logout</button>
+      <button className="ghost" onClick={keluarAkun}><Icon name="logout" size={18} /> Logout</button>
     </div>)
 
   const farDialog = far && <div className="overlay" onClick={() => setFar(null)}><div className="dialog" role="alertdialog" onClick={e => e.stopPropagation()}>
@@ -201,6 +213,10 @@ export default function Frontliner() {
   const done = rows.filter(r => visited.has(r.id)).length
   const days = rk ? Object.keys(rk).sort().reverse() : []
   const dd = sel && rk?.[sel]
+  const tgl = (d: string, o: Intl.DateTimeFormatOptions) => new Date(d + 'T00:00:00+07:00').toLocaleDateString('id-ID', { ...o, timeZone: 'Asia/Jakarta' })
+  const bulanDays = days.filter(x => x.startsWith(day(new Date()).slice(0, 7)))
+  const bulanVal = bulanDays.reduce((a, x) => a + rk[x].value, 0), bulanOc = bulanDays.reduce((a, x) => a + rk[x].oc, 0)
+  const backRekap = () => { if (sel) { setSub('back'); setSel('') } else { setSub(''); setTab('sell') } }
   const others = days.filter(x => x !== sel).map(x => rk[x].value).filter(v => v > 0)
   const avg = others.length ? others.reduce((a, b) => a + b, 0) / others.length : 0
 
@@ -208,17 +224,22 @@ export default function Frontliner() {
     <div className={`phone ${anim}`}>
       {farDialog}
       {toast && <div className="toast" role="status"><Icon name="check" size={18} /> {toast}</div>}
-      {form && <OutletForm me={me} rayon={rayon} pos={pos} outlet={form === 'new' ? null : form} onClose={() => setForm(null)} onSaved={() => { setForm(null); setEditMode(false); loadRows(); say('Outlet tersimpan') }} />}
+      {form && <OutletForm me={me} rayon={rayon} pos={pos} outlet={form === 'new' ? null : form} onClose={() => setForm(null)} onSaved={() => { setForm(null); setEditMode(false); loadRows(); say('Outlet tersimpan') }}
+        onDeleted={(r: string) => { setForm(null); setEditMode(false); loadRows(); say(r === 'deleted' ? 'Outlet dihapus' : 'Outlet dinonaktifkan') }} />}
       {menu && <div className={`drawer ${closingMenu ? 'out' : ''}`} onClick={closeMenu}><div onClick={e => e.stopPropagation()}>
         <h3>Menu</h3>
         <a onClick={() => { closeMenu(); setTab('sell'); setEditMode(true) }}><Icon name="edit" size={20} /> Edit Outlet</a>
-        <a onClick={() => alert('TaskPro — aplikasi kunjungan dan penjualan Taskforce')}><Icon name="info" size={20} /> About</a></div></div>}
+        <a onClick={() => { closeMenu(); dlg.alert({ title: 'TaskPro', message: 'Aplikasi kunjungan dan penjualan Taskforce.' }) }}><Icon name="info" size={20} /> About</a></div></div>}
       <div className="ph-head">
-        <div className="hrow">
+        {tab === 'sell' && <div className="hrow">
           <button className="icon" aria-label="Menu" onClick={() => setMenu(true)}><Icon name="dots" /></button>
-          <h3 className="htitle">{tab === 'sell' ? 'Input Selling' : tab === 'rekap' ? 'Rekap' : 'Profile'}</h3><div className="grow" />
+          <h3 className="htitle">Input Selling</h3><div className="grow" />
           <button className="icon" aria-label="Refresh lokasi" onClick={() => { setSpin(true); setTimeout(() => setSpin(false), 700); getPos(); buzz(10) }}><Icon name="refresh" className={spin ? 'spin' : ''} /></button>
-          <button className="icon" aria-label="Tambah outlet" onClick={() => setForm('new')}><Icon name="plus" /></button></div>
+          <button className="icon" aria-label="Tambah outlet" onClick={() => setForm('new')}><Icon name="plus" /></button></div>}
+        {tab === 'rekap' && <div className="hrow">
+          <button className="back" aria-label={sel ? 'Kembali ke daftar tanggal' : 'Kembali ke Input'} onClick={backRekap}><Icon name="back" /></button>
+          <h3 className="htitle">{sel ? 'Detail Harian' : 'Rekap'}</h3></div>}
+        {tab === 'profile' && <div className="hrow"><h3 className="htitle">Profile</h3></div>}
         {tab === 'sell' && <>
           <div className="hrow"><input placeholder="Cari outlet…" value={q} onChange={e => setQ(e.target.value)} style={{ flex: 1 }} />
             <select value={rayon} style={{ width: 92 }} onChange={e => { setRayon(+e.target.value); localStorage.setItem('rayon', e.target.value) }}>
@@ -229,33 +250,56 @@ export default function Frontliner() {
       {editMode && tab === 'sell' && <div className="notice row" style={{ margin: 0, borderRadius: 0 }}><span className="grow">Mode edit: pilih outlet yang ingin diubah.</span><button className="ghost" onClick={() => setEditMode(false)}>Selesai</button></div>}
       {err && tab === 'sell' && <p className="err" role="alert" style={{ padding: '8px 16px', margin: 0 }}>{err}</p>}
       {tab === 'sell' && (list.length === 0 ? <div className="empty"><b>Belum ada outlet di rayon R{String(rayon).padStart(2, '0')}</b><p className="muted">Pilih rayon lain, atau tambah outlet baru dengan tombol + di kanan atas.</p></div>
-        : list.map((r, i) => <div className="item" style={{ ['--i' as any]: Math.min(i, 10) }} key={r.id} onClick={() => !busy && (editMode ? setForm(r) : masuk(r))}>
-          <div className={`dist ${r.d != null && r.d <= 50 ? 'near' : ''}`}>{r.d == null ? '?' : fmt(r.d)}</div>
+        : list.map((r, i) => <div className={`item ${r.lat == null ? 'nolat-row' : ''}`} style={{ ['--i' as any]: Math.min(i, 10) }} key={r.id} onClick={() => !busy && (editMode ? setForm(r) : masuk(r))}>
+          <div className={`dist ${r.lat == null ? 'nolat' : r.d != null && r.d <= 50 ? 'near' : ''}`} title={r.lat == null ? 'Lokasi outlet belum ada' : undefined}>{r.lat == null ? <Icon name="alert" size={24} /> : r.d == null ? '?' : fmt(r.d)}</div>
           <div className="grow"><b>{r.name}</b>{visited.has(r.id) && <span className="badge ok"><Icon name="check" size={12} /> SUDAH</span>}
             <div className="muted" style={{ fontSize: 13 }}>{r.address}</div>
-            {r.lat == null && <div className="err" style={{ fontSize: 12 }}>lokasi outlet belum ada</div>}</div>
+            {r.lat == null && <div className="nolat-msg"><Icon name="alert" size={14} /> Lokasi outlet belum ada</div>}</div>
           {r.lat != null && <a className="go" aria-label="Menuju lokasi" target="_blank" onClick={e => e.stopPropagation()} href={`https://www.google.com/maps/dir/?api=1&destination=${r.lat},${r.long}`}><Icon name="nav" size={20} /></a>}
         </div>))}
-      {tab === 'rekap' && (!rk ? <p className="muted" style={{ padding: 16 }}>Memuat…</p> : dd ? <div className={`slide ${sub}`} style={{ padding: 16 }}>
-        <button className="ghost" onClick={() => { setSub('back'); setSel('') }}><Icon name="back" size={18} /> Semua tanggal</button>
-        <h3 style={{ marginTop: 12 }}>{new Date(sel + 'T00:00:00+07:00').toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'Asia/Jakarta' })}</h3>
-        <div className="kpis"><div className="kpi"><span className="label">Total</span><b>{rp(dd.value)}</b></div><div className="kpi"><span className="label">OC</span><b>{dd.oc}</b></div><div className="kpi"><span className="label">Kunjungan</span><b>{dd.visits}</b></div></div>
-        {avg > 0 && dd.value > 0 && <p className="muted"><Icon name={dd.value >= avg ? 'up' : 'down'} size={16} /> {Math.abs(Math.round((dd.value / avg - 1) * 100))}% {dd.value >= avg ? 'di atas' : 'di bawah'} rata-rata harianmu ({rp(avg)})</p>}
-        <span className="label">Produk fokus</span>
-        {Object.entries(dd.prod).filter(([, p]: any) => p.focus).length === 0 ? <p className="muted">Belum ada penjualan produk fokus.</p>
-          : Object.entries(dd.prod).filter(([, p]: any) => p.focus).map(([n, p]: any) => <div className="line" key={n}><span>{n}</span><b>EC {p.ec} · Qty {p.qty}</b></div>)}
-        <span className="label" style={{ display: 'block', marginTop: 16 }}>Semua produk</span>
-        {Object.entries(dd.prod).map(([n, p]: any) => <div className="line" key={n}><span>{n} × {p.qty}</span><b>{rp(p.value)}</b></div>)}
-        <span className="label" style={{ display: 'block', marginTop: 16 }}>Outlet bertransaksi</span>
-        {dd.outlets.map((o: any, i: number) => <div className="line" key={i}><span>{o.name}</span><b>{rp(o.value)}</b></div>)}
-      </div> : days.length === 0 ? <div className="empty"><b>Belum ada kunjungan</b><p className="muted">Rekap muncul setelah Anda check-out di outlet pertama.</p></div>
-        : days.map(x => <div className="item" key={x} onClick={() => { setSub('fwd'); setSel(x) }}><div className="grow"><b>{new Date(x + 'T00:00:00+07:00').toLocaleDateString('id-ID', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'Asia/Jakarta' })}</b>
-          <div className="muted" style={{ fontSize: 13 }}>{rk[x].oc} OC · {rk[x].visits} kunjungan</div></div><b>{rp(rk[x].value)}</b></div>))}
+      {tab === 'rekap' && (!rk ? <p className="muted" style={{ padding: 16 }}>Memuat…</p> : dd ? (() => {
+        const prods = Object.entries(dd.prod).map(([n, p]: any) => ({ n, ...p })).sort((a: any, b: any) => b.value - a.value)
+        const fokus = prods.filter((p: any) => p.focus), pcsHari = prods.reduce((a: number, p: any) => a + p.qty, 0)
+        const pct = avg > 0 && dd.value > 0 ? Math.round((dd.value / avg - 1) * 100) : null
+        return <div className={`rk ${sub}`}>
+          <section className="rk-hero">
+            <div className="rk-eyebrow">{tgl(sel, { weekday: 'long' })}</div>
+            <div className="rk-date">{tgl(sel, { day: 'numeric', month: 'long', year: 'numeric' })}</div>
+            <div className="rk-total num">{rp(dd.value)}</div>
+            <div className="rk-sub">Total penjualan</div>
+            {pct !== null && <div className={`rk-cmp ${pct >= 0 ? 'up' : 'down'}`}><Icon name={pct >= 0 ? 'up' : 'down'} size={16} />{Math.abs(pct)}% {pct >= 0 ? 'di atas' : 'di bawah'} rata-rata <span>({rp(avg)})</span></div>}
+          </section>
+          <div className="rk-stats">
+            <div className="rk-stat"><b>{dd.oc}</b><span>OC</span></div>
+            <div className="rk-stat"><b>{dd.visits}</b><span>Kunjungan</span></div>
+            <div className="rk-stat"><b>{pcsHari}</b><span>Pcs</span></div></div>
+          <section className="rk-card"><header><h4>Produk fokus</h4><small>EC = outlet yang membeli</small></header>
+            {fokus.length === 0 ? <p className="rk-empty">Belum ada penjualan produk fokus.</p>
+              : fokus.map((p: any) => <div className="rk-row" key={p.n}><div className="rk-name">{p.n}</div>
+                <div className="rk-pills"><span className="rk-pill">EC {p.ec}</span><span className="rk-pill">{p.qty} pcs</span></div></div>)}</section>
+          <section className="rk-card"><header><h4>Penjualan per produk</h4><small>{prods.length} produk</small></header>
+            {prods.length === 0 ? <p className="rk-empty">Belum ada penjualan.</p>
+              : prods.map((p: any) => <div className="rk-row" key={p.n}>
+                <div><div className="rk-name">{p.n}</div><div className="rk-meta">{p.qty} pcs</div></div><div className="rk-val">{rp(p.value)}</div>
+                <div className="rk-bar" aria-hidden="true"><i style={{ width: `${dd.value ? Math.max(3, (p.value / dd.value) * 100) : 0}%` }} /></div></div>)}</section>
+          <section className="rk-card"><header><h4>Outlet bertransaksi</h4><small>{dd.outlets.length} outlet</small></header>
+            {dd.outlets.length === 0 ? <p className="rk-empty">Belum ada outlet bertransaksi.</p>
+              : dd.outlets.map((o: any, i: number) => <div className="rk-row rank" key={i}><span className="rk-rank">{i + 1}</span><div className="rk-name">{o.name}</div><div className="rk-val">{rp(o.value)}</div></div>)}</section>
+        </div>
+      })() : days.length === 0 ? <div className="empty"><b>Belum ada kunjungan</b><p className="muted">Rekap muncul setelah Anda check-out di outlet pertama.</p></div>
+        : <div className={`rk ${sub}`}>
+            <section className="rk-hero"><div className="rk-eyebrow">Bulan ini</div><div className="rk-total num">{rp(bulanVal)}</div>
+              <div className="rk-sub">{bulanDays.length} hari kunjungan · {bulanOc} OC</div></section>
+            <div className="rk-list">{days.map(x => <div className="rk-day" role="button" tabIndex={0} key={x} onClick={() => { setSub('fwd'); setSel(x) }} onKeyDown={e => e.key === 'Enter' && (setSub('fwd'), setSel(x))}>
+              <div className="rk-dt"><b>{tgl(x, { day: 'numeric' })}</b><span>{tgl(x, { month: 'short' })}</span></div>
+              <div className="grow"><div className="rk-name">{tgl(x, { weekday: 'long' })}</div><div className="rk-meta">{rk[x].oc} OC · {rk[x].visits} kunjungan</div></div>
+              <div className="rk-val">{rp(rk[x].value)}</div><Icon name="chevron" size={18} /></div>)}</div>
+          </div>)}
       {tab === 'profile' && <div className="profile fade">
         <div className="avatar" aria-hidden="true"><svg viewBox="0 0 120 120"><circle cx="60" cy="46" r="20" /><path d="M20 108c2-24 18-36 40-36s38 12 40 36z" /></svg></div>
         <h2 className="pname">{me.nama}</h2>
         <p className="pid">{me.user_id}</p>
-        <button className="logout" onClick={async () => { await supabase.auth.signOut(); router.replace('/login') }}>LOG OUT</button></div>}
+        <button className="logout" onClick={keluarAkun}>LOG OUT</button></div>}
       <div className="tabbar">
         <button className={tab === 'profile' ? 'on' : ''} onClick={() => setTab('profile')}><span className="pill"><Icon name="user" /></span>Profile</button>
         <button className={tab === 'sell' ? 'on' : ''} onClick={() => setTab('sell')}><span className="pill"><Icon name="basket" /></span>Input</button>

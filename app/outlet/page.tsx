@@ -4,21 +4,25 @@ import Link from 'next/link'
 import Shell from '../../components/Shell'
 import { supabase } from '../../lib/supabase'
 import Icon from '../../components/Icon'
+import { useDialog } from '../../components/Dialog'
+import { hapusOutlet } from '../../lib/outlet'
 import { fetchAll, dt, day } from '../../lib/rekap'
 
 const PAGE = 50
 function Outlet() {
+  const dlg = useDialog()
   const [cabang, setCabang] = useState<any[]>([])
   const [kmd, setKmd] = useState(''); const [kmds, setKmds] = useState<string[]>([])
   const [cid, setCid] = useState(''); const [q, setQ] = useState(''); const [rayon, setRayon] = useState(''); const [page, setPage] = useState(0)
   const [rows, setRows] = useState<any[]>([]); const [total, setTotal] = useState(0)
-  const [ed, setEd] = useState<any>(null); const [err, setErr] = useState('')
+  const [ed, setEd] = useState<any>(null); const [err, setErr] = useState(''); const [tanpa, setTanpa] = useState(false)
   useEffect(() => { supabase.rpc('kode_md_list').then(({ data }) => setKmds((data as string[]) || [])) }, [])
   useEffect(() => { supabase.from('cabang').select('id,kode,nama').order('kode').then(({ data }) => setCabang(data || [])) }, [])
   const filt = (s: any) => {
     if (cid) s = s.eq('cabang_id', cid)
     if (rayon) s = s.eq('rayon', +rayon)
     if (kmd) s = s.eq('kode_md', kmd)
+    if (tanpa) s = s.or('lat.is.null,long.is.null')
     const t = q.replace(/[,()%]/g, ' ').trim()
     if (t) s = s.or(`name.ilike.%${t}%,code.ilike.%${t}%,kode_md.ilike.%${t}%`)
     return s
@@ -30,7 +34,7 @@ function Outlet() {
   async function unduh() {
     try {
       const all = await fetchAll((a, b) => filt(supabase.from('outlets').select('*').order('code').range(a, b)))
-      if (!all.length) return alert('Tidak ada data untuk diunduh.')
+      if (!all.length) return void dlg.alert({ title: 'Tidak ada data', message: 'Tidak ada outlet yang cocok dengan filter saat ini.' })
       const kd = Object.fromEntries(cabang.map(c => [c.id, c.kode]))
       const data = all.map(o => ({ 'Outlet ID': o.ext_id || '', 'Outlet Code': o.code, Cabang: kd[o.cabang_id] || '', 'Kode MD': o.kode_md || '', Rayon: o.rayon ? 'R' + String(o.rayon).padStart(2, '0') : '',
         Cycle: o.cycle || '', Name: o.name, Address: o.address, Province: o.province_name || '', City: o.city_name || '', District: o.district || '', Village: o.village || '',
@@ -39,9 +43,9 @@ function Outlet() {
       const XLSX = await import('xlsx'); const wb = XLSX.utils.book_new()
       XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(data), 'OUTLET')
       XLSX.writeFile(wb, `OUTLET_${day(new Date())}.xlsx`)
-    } catch (e: any) { alert(e.message || 'Gagal mengunduh') }
+    } catch (e: any) { dlg.alert({ title: 'Gagal mengunduh', message: e.message || 'Terjadi kesalahan.', tone: 'danger', icon: 'close' }) }
   }
-  useEffect(() => { const t = setTimeout(load, 300); return () => clearTimeout(t) }, [cid, rayon, q, page, kmd])
+  useEffect(() => { const t = setTimeout(load, 300); return () => clearTimeout(t) }, [cid, rayon, q, page, kmd, tanpa])
   const kode = (id: string) => cabang.find(c => c.id === id)?.kode
 
   async function save() {
@@ -55,6 +59,10 @@ function Outlet() {
     const { error } = await supabase.from('outlets').update({ name: ed.name.trim(), address: ed.address.trim(), lat: la, long: lo, rayon: +ed.rayon,
       kode_md: ed.kode_md.trim(), city_name: ed.city_name || null, district: ed.district || null, village: ed.village || null, category: ed.category || null, account: ed.account || null, profile_outlet: ed.profile_outlet || null, status: ed.status }).eq('id', ed.id)
     setErr(error ? error.message : ''); if (!error) { setEd(null); load() }
+  }
+  async function hapus(o: any) {
+    const r = await hapusOutlet(dlg, o)
+    if (r === 'deleted' || r === 'inactive') { if (ed?.id === o.id) setEd(null); load(); dlg.alert({ title: r === 'deleted' ? 'Outlet dihapus' : 'Outlet dinonaktifkan', tone: 'ok', message: <><b>{o.name}</b> {r === 'deleted' ? 'sudah dihapus.' : 'sekarang berstatus INAKTIF.'}</> }) }
   }
   const f = (k: string, ph: string) => <input placeholder={ph} value={ed[k] ?? ''} onChange={e => setEd({ ...ed, [k]: e.target.value })} />
 
@@ -71,21 +79,22 @@ function Outlet() {
         <option value="">Semua Kode MD</option>{kmds.map(k => <option key={k} value={k}>{k}</option>)}
       </select>
       <input placeholder="Cari nama / kode / KODE MD" value={q} onChange={e => { setQ(e.target.value); setPage(0) }} />
+      <label className={`chipcheck ${tanpa ? 'on' : ''}`}><input type="checkbox" checked={tanpa} onChange={e => { setTanpa(e.target.checked); setPage(0) }} /><Icon name="alert" size={16} /> Tanpa koordinat</label>
     </div>
     {ed && <div className="card">
-      <b>Edit {ed.code}</b>
+      <b>Edit {ed.code}</b>{(ed.lat == null || ed.lat === '') && <span className="nolat-badge" style={{ marginLeft: 8 }}><Icon name="alert" size={14} /> Belum ada lokasi</span>}
       <div className="row" style={{ marginTop: 8 }}>{f('name', 'Nama')}{f('address', 'Alamat')}{f('lat', 'Latitude')}{f('long', 'Longitude')}{f('rayon', 'Rayon (1–24)')}{f('kode_md', 'KODE MD')}
         {f('city_name', 'Kota')}{f('district', 'Kecamatan')}{f('village', 'Kelurahan')}{f('category', 'Category')}{f('account', 'Account')}{f('profile_outlet', 'Profile outlet')}
         <select value={ed.status} onChange={e => setEd({ ...ed, status: e.target.value })}><option>AKTIF</option><option>INAKTIF</option></select></div>
       {err && <p className="err">{err}</p>}
-      <div className="row"><button onClick={save}>Simpan</button><button className="ghost" onClick={() => { setEd(null); setErr('') }}>Batal</button></div>
+      <div className="row"><button onClick={save}>Simpan</button><button className="ghost" onClick={() => { setEd(null); setErr('') }}>Batal</button><div className="grow" /><button className="ghost danger" onClick={() => hapus(ed)}><Icon name="trash" size={16} /> Hapus outlet</button></div>
     </div>}
     <p className="muted">{total} outlet · halaman {page + 1} dari {Math.max(1, Math.ceil(total / PAGE))}</p>
     <div className="scroll"><table>
       <thead><tr><th>Kode</th><th>Nama</th><th>Alamat</th><th>Rayon</th><th>KODE MD</th><th>Lat, Long</th><th>Status</th><th /></tr></thead>
-      <tbody>{rows.map(r => <tr key={r.id}><td>{r.code}</td><td>{r.name}</td><td>{r.address}</td><td>{r.rayon ? 'R' + String(r.rayon).padStart(2, '0') : '-'}</td>
-        <td>{r.kode_md || '-'}</td><td>{r.lat == null ? <span className="err">belum ada</span> : `${r.lat}, ${r.long}`}</td><td>{r.status}</td>
-        <td><button className="ghost" onClick={() => { setEd({ ...r }); setErr('') }}>Edit</button></td></tr>)}</tbody>
+      <tbody>{rows.map(r => <tr key={r.id} className={r.lat == null || r.long == null ? 'nolat-tr' : ''}><td>{r.code}</td><td>{r.name}</td><td>{r.address}</td><td>{r.rayon ? 'R' + String(r.rayon).padStart(2, '0') : '-'}</td>
+        <td>{r.kode_md || '-'}</td><td>{r.lat == null || r.long == null ? <span className="nolat-badge"><Icon name="alert" size={14} /> Belum ada lokasi</span> : `${r.lat}, ${r.long}`}</td><td>{r.status}</td>
+        <td style={{ whiteSpace: 'nowrap' }}><button className="ghost" onClick={() => { setEd({ ...r }); setErr('') }}>Edit</button> <button className="ghost danger" aria-label={`Hapus ${r.name}`} onClick={() => hapus(r)}><Icon name="trash" size={16} /> Hapus</button></td></tr>)}</tbody>
     </table></div>
     <div className="row" style={{ marginTop: 12 }}>
       <button className="ghost" disabled={page === 0} onClick={() => setPage(page - 1)}>← Sebelumnya</button>

@@ -192,3 +192,73 @@ button.small{min-height:36px;font-size:13px;align-self:flex-start}
 .sumbar button{min-width:150px;min-height:52px}
 .dialog.left{text-align:left} .dialog h3{margin-bottom:12px}
 .sumlist{max-height:40vh;overflow:auto;margin-bottom:16px} .line.tot{border-bottom:0;font-size:17px;padding-top:12px}
+
+/* ===== Dialog aplikasi (pengganti pop up bawaan browser) ===== */
+.overlay.out{animation:fadeOut .15s forwards} .overlay.out .dialog{animation:none;opacity:0;transform:scale(.96);transition:all .15s}
+.dialog{box-shadow:0 20px 50px rgba(11,31,75,.28);max-height:calc(100dvh - 48px);overflow:auto}
+.dialog h3{font-size:18px;margin-bottom:8px;overflow-wrap:anywhere} .dialog p b{color:var(--navy)}
+.dialog .dicon.danger{background:var(--danger-bg);color:var(--danger)} .dialog .dicon.ok{background:var(--ok-bg);color:var(--ok)}
+.dialog .fld{margin-bottom:14px} .dialog.left h3{margin-bottom:12px}
+.dbtns button{min-height:48px} .dbtns .primary{background:var(--navy)}
+.dbtns .primary.dangerfill{background:var(--danger)} .dbtns .primary.dangerfill:hover:not(:disabled){background:#8F1D17}
+@media (min-width:701px){.dialog{max-width:400px}}
+
+/* Status akun aktif */
+.on-badge{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:700;color:var(--ok);background:var(--ok-bg);border-radius:999px;padding:2px 10px;white-space:nowrap}
+.on-badge::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--ok)}
+.off-badge{font-size:12px;color:var(--muted);white-space:nowrap}
+nav .onl{display:flex;align-items:center;gap:6px;margin-top:2px} nav .onl i{width:8px;height:8px;border-radius:50%;background:#5EE0A0;box-shadow:0 0 0 3px rgba(94,224,160,.2)}
+button.danger-fill{background:var(--danger)} button.danger-fill:hover:not(:disabled){background:#8F1D17}
+.fld-inline{display:flex;flex-direction:column;gap:4px;min-width:150px;flex:1}
+.hint-box{background:#FFF7E0;color:#6B4E00;border-radius:12px;padding:10px 14px;font-size:14px;margin:0 0 12px}
+
+/* Header HP tanpa tombol aksi (Rekap/Profile) */
+.ph-head .back{width:44px;height:44px;min-height:44px;padding:0;border-radius:50%;background:var(--navy-700)}
+.ph-head .back:active{transform:scale(.88)}
+
+/* ===== Rekap HP: kartu di atas latar abu, hierarki jelas, angka rata kanan ===== */
+.rk{flex:1;background:var(--bg);padding:16px 16px 24px;display:flex;flex-direction:column;gap:16px}
+.rk .num{font-variant-numeric:tabular-nums}
+.rk-hero{background:var(--navy);color:#fff;border-radius:24px;padding:20px}
+.rk-hero .rk-eyebrow{font-size:12px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;opacity:.75}
+.rk-hero .rk-date{font-size:16px;font-weight:600;margin-top:4px}
+.rk-hero .rk-total{font-size:34px;font-weight:800;line-height:1.15;margin-top:12px;letter-spacing:-.01em}
+.rk-hero .rk-sub{font-size:13px;opacity:.75;margin-top:2px}
+.rk-cmp{display:inline-flex;align-items:center;gap:6px;margin-top:14px;padding:6px 12px;border-radius:999px;background:rgba(255,255,255,.12);font-size:13px;font-weight:600}
+.rk-cmp.up{color:#9BE3BC} .rk-cmp.down{color:#F7BDB7} .rk-cmp span{color:#fff;opacity:.8;font-weight:500}
+.rk-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.rk-stat{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:12px;text-align:center}
+.rk-stat b{display:block;font-size:22px;color:var(--navy);line-height:1.2;font-variant-numeric:tabular-nums}
+.rk-stat span{font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.rk-card{background:var(--surface);border:1px solid var(--line);border-radius:20px;padding:16px 16px 4px}
+.rk-card>header{display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin-bottom:4px}
+.rk-card h4{margin:0;font-size:15px;color:var(--navy)} .rk-card header small{color:var(--muted);font-size:12px}
+.rk-row{display:grid;grid-template-columns:1fr auto;gap:2px 12px;align-items:center;padding:12px 0;border-top:1px solid var(--line)}
+.rk-card>header+.rk-row{border-top:0}
+.rk-name{font-weight:600;line-height:1.35;overflow-wrap:anywhere} .rk-meta{color:var(--muted);font-size:13px}
+.rk-val{font-weight:700;text-align:right;font-variant-numeric:tabular-nums;color:var(--text)}
+.rk-bar{grid-column:1/-1;height:4px;border-radius:99px;background:var(--navy-100);margin-top:6px;overflow:hidden}
+.rk-bar i{display:block;height:100%;background:var(--navy);border-radius:99px}
+.rk-pills{display:flex;gap:6px;justify-content:flex-end}
+.rk-pill{background:var(--navy-100);color:var(--navy);border-radius:999px;padding:2px 10px;font-size:12px;font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap}
+.rk-rank{flex:none;width:26px;height:26px;border-radius:50%;background:var(--navy-100);color:var(--navy);font-size:12px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;margin-right:10px}
+.rk-row.rank{grid-template-columns:auto 1fr auto} .rk-row.rank .rk-rank{margin:0}
+.rk-empty{color:var(--muted);font-size:14px;padding:4px 0 16px;margin:0}
+.rk-day{display:flex;align-items:center;gap:14px;background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:12px 14px;cursor:pointer;transition:transform .12s var(--ease),background .15s}
+.rk-day:active{transform:scale(.985);background:var(--navy-100)}
+.rk-dt{flex:none;width:48px;height:52px;border-radius:14px;background:var(--navy-100);color:var(--navy);display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.1}
+.rk-dt b{font-size:19px} .rk-dt span{font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase}
+.rk-day .rk-val{font-size:15px} .rk-day svg{color:var(--muted)}
+.rk-list{display:flex;flex-direction:column;gap:8px}
+
+/* ===== Outlet tanpa koordinat: ditandai merah + ikon alert ===== */
+.nolat-badge{display:inline-flex;align-items:center;gap:4px;color:var(--danger);background:var(--danger-bg);font-weight:700;font-size:12px;border-radius:999px;padding:2px 10px;white-space:nowrap}
+.nolat-tr td{background:#FFF6F5} .nolat-tr td:first-child{box-shadow:inset 3px 0 0 var(--danger)}
+.dist.nolat{border-color:var(--danger);background:var(--danger-bg);color:var(--danger)}
+.item.nolat-row{background:#FFF6F5;box-shadow:inset 4px 0 0 var(--danger)}
+.nolat-msg{display:flex;align-items:flex-start;gap:4px;color:var(--danger);font-size:12px;font-weight:600;margin-top:2px}
+.nolat-msg svg{margin-top:1px}
+.chipcheck{display:inline-flex;align-items:center;gap:6px;min-height:40px;padding:0 14px;border:1px solid var(--line);border-radius:999px;background:var(--surface);cursor:pointer;font-weight:600;color:var(--muted);user-select:none}
+.chipcheck input{position:absolute;opacity:0;width:0;min-height:0;pointer-events:none}
+.chipcheck.on{border-color:var(--danger);background:var(--danger-bg);color:var(--danger)}
+.chipcheck:focus-within{outline:3px solid var(--focus);outline-offset:2px}

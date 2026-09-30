@@ -3,9 +3,11 @@ import { useEffect, useState } from 'react'
 import Shell from '../../components/Shell'
 import Icon from '../../components/Icon'
 import { supabase } from '../../lib/supabase'
+import { useDialog } from '../../components/Dialog'
 
 const EMPTY = { product: '', sku_code: '', brand: '', category_product: '', price: '' }
 function Produk() {
+  const dlg = useDialog()
   const [rows, setRows] = useState<any[]>([])
   const [f, setF] = useState<any>(EMPTY)
   const [editId, setEditId] = useState('')
@@ -21,7 +23,7 @@ function Produk() {
   }
   function edit(r: any) { setEditId(r.id); setF({ product: r.product, sku_code: r.sku_code || '', brand: r.brand || '', category_product: r.category_product || '', price: String(r.price) }); setErr(''); window.scrollTo({ top: 0, behavior: 'smooth' }) }
   async function hapus(r: any) {
-    if (!confirm(`Hapus produk ${r.product}?`)) return
+    if (!(await dlg.confirm({ title: 'Hapus produk?', tone: 'danger', okText: 'Hapus', message: <><b>{r.product}</b> akan dihapus permanen.</> }))) return
     const { error } = await supabase.from('products').delete().eq('id', r.id)
     setErr(error ? (error.code === '23503' ? `${r.product} sudah punya riwayat penjualan, jadi tidak bisa dihapus. Nonaktifkan saja (hilangkan centang Aktif).` : error.message) : ''); load()
   }

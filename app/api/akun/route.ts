@@ -1,17 +1,7 @@
-import { createClient } from '@supabase/supabase-js'
-import { NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
+import { caller as who, fail, handler, Ctx } from '../../../lib/server'
 
 const ROLES = ['tl', 'kormot', 'frontliner']
-const fail = (error: string, status = 400) => NextResponse.json({ error }, { status })
-type Ctx = NonNullable<Awaited<ReturnType<typeof who>>>
-
-async function who(req: NextRequest) {
-  const db = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
-  const { data: u } = await db.auth.getUser(req.headers.get('authorization')?.replace('Bearer ', ''))
-  if (!u.user) return null
-  const { data: p } = await db.from('profiles').select('role').eq('id', u.user.id).single()
-  return p ? { db, uid: u.user.id, role: p.role as string } : null
-}
 // MDM: semua cabang. MDS/RMDM: hanya cabang yang dipegang/dicovernya.
 async function bolehCabang(c: Ctx, cabangId: string) {
   if (c.role === 'mdm') return true
@@ -25,25 +15,26 @@ async function atasanOk(c: Ctx, atasanId: string, cabangId: string) {
   return !!a && ['tl', 'kormot'].includes(a.role) && a.cabang_id === cabangId
 }
 
-export async function POST(req: NextRequest) {
+export const POST = handler(async req => {
   const c = await who(req); if (!c) return fail('Tidak diizinkan', 403)
   const { user_id, nama, password, role, cabang_id, atasan_id } = await req.json()
   if (!user_id || !nama || !password || !cabang_id || !ROLES.includes(role)) return fail('Semua kolom wajib diisi')
+  if (String(password).length < 6) return fail('Password minimal 6 karakter')
   if (!(await bolehCabang(c, cabang_id))) return fail('Cabang ini bukan wewenang Anda', 403)
   const { data: cb } = await c.db.from('cabang').select('kode').eq('id', cabang_id).single()
   const uid = String(user_id).trim().toUpperCase()
   if (!cb || !uid.startsWith(cb.kode + '-')) return fail(`User ID harus diawali ${cb?.kode}- (kode cabang)`)
   if (role === 'frontliner' && !(await atasanOk(c, atasan_id, cabang_id))) return fail('Atasan harus TL/Kormot di cabang yang sama')
   const { data, error } = await c.db.auth.admin.createUser({ email: uid.toLowerCase() + '@taskpro.app', password, email_confirm: true })
-  if (error) return fail(error.message.includes('already') ? 'User ID sudah dipakai' : error.message)
+  if (error) return fail(/already|registered|exists/i.test(error.message) ? 'User ID sudah dipakai' : error.message)
   const { error: e2 } = await c.db.from('profiles').insert({
     id: data.user.id, user_id: uid, nama, role, cabang_id, atasan_id: role === 'frontliner' ? atasan_id : null })
   if (e2) { await c.db.auth.admin.deleteUser(data.user.id); return fail(e2.message) }
   return NextResponse.json({ ok: true })
-}
+})
 
-// Edit: nama, atasan (frontliner), reset password. User ID tidak bisa diubah.
-export async function PATCH(req: NextRequest) {
+// Edit: nama, atasan (frontliner), reset password, GPS. User ID tidak bisa diubah.
+export const PATCH = handler(async req => {
   const c = await who(req); if (!c) return fail('Tidak diizinkan', 403)
   const { id, nama, password, atasan_id, gps_required } = await req.json()
   const { data: t } = await c.db.from('profiles').select('role,cabang_id').eq('id', id).single()
@@ -61,11 +52,14 @@ export async function PATCH(req: NextRequest) {
     upd.atasan_id = atasan_id
   }
   if (Object.keys(upd).length) { const { error } = await c.db.from('profiles').update(upd).eq('id', id); if (error) return fail(error.message) }
-  if (password) { const { error } = await c.db.auth.admin.updateUserById(id, { password }); if (error) return fail(error.message) }
+  if (password) {
+    if (String(password).length < 6) return fail('Password minimal 6 karakter')
+    const { error } = await c.db.auth.admin.updateUserById(id, { password }); if (error) return fail(error.message)
+  }
   return NextResponse.json({ ok: true })
-}
+})
 
-export async function DELETE(req: NextRequest) {
+export const DELETE = handler(async req => {
   const c = await who(req); if (!c) return fail('Tidak diizinkan', 403)
   const { id } = await req.json()
   const { data: t } = await c.db.from('profiles').select('role,cabang_id').eq('id', id).single()
@@ -75,4 +69,4 @@ export async function DELETE(req: NextRequest) {
   if (count) return fail(`Masih punya ${count} frontliner. Pindahkan atau hapus mereka dulu.`)
   const { error } = await c.db.auth.admin.deleteUser(id)
   return error ? fail(error.message) : NextResponse.json({ ok: true })
-}
+})
