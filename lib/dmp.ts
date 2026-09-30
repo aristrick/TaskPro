@@ -1,4 +1,4 @@
-export type Row = { ext_id: string; name: string; address: string; category: string | null; account: string | null
+export type Row = { src_id: string; name: string; address: string; category: string | null; account: string | null
   province_name: string | null; city_name: string | null; district: string | null; profile_outlet: string | null
   lat: number | null; long: number | null; kode_md: string; rayon: number; cycle: string | null; status: string }
 export type Rejected = { row: number; reason: string }
@@ -20,21 +20,21 @@ export function parseDmp(sheet: any[][], kodeCabang: string) {
   for (let i = h + 1; i < sheet.length; i++) {
     const r = sheet[i]; const row = i + 1
     if (!r || r.every(c => c == null || c === '')) continue
-    const ext_id = g(r, 'code outlet'), name = g(r, 'name'), address = g(r, 'full_address'), kode_md = g(r, 'kode md')
+    const src_id = g(r, 'code outlet'), name = g(r, 'name'), address = g(r, 'full_address'), kode_md = g(r, 'kode md')
     const m = /^R0*(\d{1,2})$/i.exec(g(r, 'rayon') || ''); const rayon = m ? +m[1] : 0
     const la = g(r, 'latitude'), lo = g(r, 'longitude')
     const lat = la === null ? null : Number(la), long = lo === null ? null : Number(lo)
-    const why = !ext_id ? 'ID outlet (code outlet) kosong' : !name ? 'Nama kosong' : !address ? 'Alamat kosong'
+    const why = !src_id ? 'ID outlet (code outlet) kosong' : !name ? 'Nama kosong' : !address ? 'Alamat kosong'
       : !kode_md || !kode_md.startsWith(kodeCabang + '-') ? `KODE MD harus diawali ${kodeCabang}-`
       : rayon < 1 || rayon > 24 ? 'Rayon harus R01–R24'
       : (la === null) !== (lo === null) ? 'Lat/long harus diisi keduanya atau dikosongkan'
       : (lat !== null && (isNaN(lat) || isNaN(long!) || Math.abs(lat) > 90 || Math.abs(long!) > 180)) ? 'Lat/long tidak valid' : ''
     if (why) { rejected.push({ row, reason: why }); continue }
-    if (seenExt.has(ext_id!)) { dupes.push({ row, reason: 'ID outlet ganda di file' }); continue }
+    if (seenExt.has(src_id!)) { dupes.push({ row, reason: 'ID outlet ganda di file' }); continue }
     const key = lat === null ? '' : `${name!.toLowerCase()}|${lat}|${long}`
     if (key && seenKey.has(key)) { dupes.push({ row, reason: 'Double data (nama dan koordinat sama)' }); continue }
-    seenExt.add(ext_id!); if (key) seenKey.add(key)
-    valid.push({ _row: row, ext_id: ext_id!, name: name!, address: address!, category: g(r, 'category'), account: g(r, 'account'),
+    seenExt.add(src_id!); if (key) seenKey.add(key)
+    valid.push({ _row: row, src_id: src_id!, name: name!, address: address!, category: g(r, 'category'), account: g(r, 'account'),
       province_name: g(r, 'province'), city_name: g(r, 'city'), district: g(r, 'district / kecamatan'), profile_outlet: g(r, 'profile outlet'),
       lat, long, kode_md: kode_md!, rayon, cycle: g(r, 'cycle'), status: g(r, 'status') || 'AKTIF' })
   }

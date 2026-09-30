@@ -138,3 +138,30 @@ nav button{width:100%}
 .drawer{animation:fade .2s} .drawer>div{animation:drawerIn .28s var(--ease)}
 .drawer.out{animation:fadeOut .2s forwards} .drawer.out>div{animation:drawerOut .2s var(--ease) forwards}
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
+
+/* Header HP: judul sejajar tombol; dialog jarak; saklar */
+.ph-head{padding-bottom:12px}
+.hrow{display:flex;align-items:center;gap:10px} .hrow+.hrow{margin-top:10px}
+.htitle{margin:0;font-size:20px;color:#fff}
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:40;display:flex;align-items:center;justify-content:center;padding:24px;animation:fade .2s}
+.dialog{background:var(--surface);border-radius:28px;padding:24px;max-width:340px;width:100%;text-align:center;animation:pop .3s var(--ease)}
+.dialog .dicon{width:56px;height:56px;border-radius:50%;background:var(--navy-100);color:var(--navy);display:flex;align-items:center;justify-content:center;margin:0 auto 12px}
+.dialog p{color:#3B4459;margin:0 0 20px}
+.dbtns{display:flex;gap:10px} .dbtns>*{flex:1}
+.btnlink{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:44px;padding:8px 16px;border-radius:999px;background:var(--navy);color:#fff;text-decoration:none;font-weight:600;transition:transform .14s var(--ease)} .btnlink:active{transform:scale(.95)}
+.dbtns .ghost{min-height:44px}
+.switch{position:relative;display:inline-block;width:44px;height:26px}
+.switch input{opacity:0;width:0;height:0;min-height:0;position:absolute}
+.switch span{position:absolute;inset:0;background:#C5CCDB;border-radius:999px;transition:background .2s;cursor:pointer}
+.switch span::after{content:"";position:absolute;left:3px;top:3px;width:20px;height:20px;background:#fff;border-radius:50%;transition:transform .22s var(--ease);box-shadow:0 1px 3px rgba(0,0,0,.3)}
+.switch input:checked+span{background:var(--ok)} .switch input:checked+span::after{transform:translateX(18px)}
+.switch input:focus-visible+span{outline:3px solid var(--focus);outline-offset:2px}
+
+/* Halaman Profile HP: avatar besar, nama, User ID, tombol LOG OUT */
+.profile{flex:1;display:flex;flex-direction:column;align-items:center;padding:56px 24px 32px;text-align:center}
+.avatar{width:168px;height:168px;border-radius:50%;background:var(--navy-100);overflow:hidden;display:flex;align-items:flex-end;justify-content:center;margin-bottom:20px}
+.avatar svg{width:100%;height:100%;fill:#B4BFD8}
+.pname{margin:0;font-size:22px;letter-spacing:.06em;text-transform:uppercase}
+.pid{margin:4px 0 0;color:var(--muted);letter-spacing:.08em;font-weight:500}
+.logout{margin-top:48px;min-width:220px;min-height:52px;background:transparent;color:var(--navy);border:2px solid var(--navy);letter-spacing:.14em;font-size:15px}
+.logout:hover:not(:disabled){background:var(--navy);color:#fff}

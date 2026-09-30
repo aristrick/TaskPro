@@ -15,12 +15,16 @@ function Mds() {
   const [cabang, setCabang] = useState<any[]>([])
   const [f, setF] = useState({ role: 'mds', user_id: '', nama: '', password: '' })
   const [err, setErr] = useState('')
+  const [role, setRole] = useState('')
   async function load() {
     const { data: p } = await supabase.from('profiles').select('id,user_id,nama,role').in('role', ['mds', 'rmdm']).order('user_id')
     const { data: c } = await supabase.from('cabang').select('id,kode,nama,mds_id,rmdm_id').order('kode')
     setList(p || []); setCabang(c || [])
   }
-  useEffect(() => { load() }, [])
+  useEffect(() => {
+    load()
+    supabase.auth.getUser().then(async ({ data }) => { const { data: p } = await supabase.from('profiles').select('role').eq('id', data.user!.id).single(); setRole(p?.role || '') })
+  }, [])
   async function create() {
     const e = await api('POST', f); setErr(e)
     if (!e) { setF({ ...f, user_id: '', nama: '', password: '' }); load() }
@@ -32,6 +36,8 @@ function Mds() {
   async function assign(cabangId: string, mdsId: string | null) {
     await supabase.from('cabang').update({ mds_id: mdsId }).eq('id', cabangId); load()
   }
+  async function assignR(cabangId: string, rid: string | null) { await supabase.from('cabang').update({ rmdm_id: rid }).eq('id', cabangId); load() }
+  const kosongR = cabang.filter(c => !c.rmdm_id)
   const kosong = cabang.filter(c => !c.mds_id)
   return (<>
     <h2>MDS &amp; RMDM</h2>
@@ -52,7 +58,11 @@ function Mds() {
             <select value="" onChange={e => e.target.value && assign(e.target.value, m.id)}>
               <option value="">+ Tambah cabang…</option>{kosong.map(c => <option key={c.id} value={c.id}>{c.kode} {c.nama}</option>)}
             </select></div>
-        : <div className="row muted">Cabang dicover: {cabang.filter(c => c.rmdm_id === m.id).map(c => c.kode + ' ' + c.nama).join(', ') || '- (atur di halaman Cabang)'}</div>}
+        : <div className="row">
+            {cabang.filter(c => c.rmdm_id === m.id).map(c => <span className="chip" key={c.id}>{c.kode} {c.nama}{role === 'mdm' && <a onClick={() => assignR(c.id, null)}> ✕</a>}</span>)}
+            {role === 'mdm' ? <select value="" onChange={e => e.target.value && assignR(e.target.value, m.id)}>
+              <option value="">+ Tambah cabang yang dicover…</option>{kosongR.map(c => <option key={c.id} value={c.id}>{c.kode} {c.nama}</option>)}</select>
+              : <span className="muted">Hanya MDM yang bisa mengatur cakupan RMDM.</span>}</div>}
     </div>)}
   </>)
 }

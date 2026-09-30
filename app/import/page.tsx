@@ -26,10 +26,10 @@ function Import() {
       // buang yang sudah ada di database (halaman per 1000 baris)
       const have = new Set<string>()
       for (let from = 0; ; from += 1000) {
-        const { data } = await supabase.from('outlets').select('ext_id').eq('cabang_id', cid).not('ext_id', 'is', null).range(from, from + 999)
-        ;(data || []).forEach(x => have.add(x.ext_id)); if (!data || data.length < 1000) break
+        const { data } = await supabase.from('outlets').select('src_id').eq('cabang_id', cid).not('src_id', 'is', null).range(from, from + 999)
+        ;(data || []).forEach(x => have.add(x.src_id)); if (!data || data.length < 1000) break
       }
-      const baru = out.valid.filter((v: any) => !have.has(v.ext_id))
+      const baru = out.valid.filter((v: any) => !have.has(v.src_id))
       setRes({ ...out, baru, sudahAda: out.valid.length - baru.length }); setMsg('')
     } catch (e: any) { setMsg(e.message) }
   }

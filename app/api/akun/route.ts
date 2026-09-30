@@ -45,12 +45,17 @@ export async function POST(req: NextRequest) {
 // Edit: nama, atasan (frontliner), reset password. User ID tidak bisa diubah.
 export async function PATCH(req: NextRequest) {
   const c = await who(req); if (!c) return fail('Tidak diizinkan', 403)
-  const { id, nama, password, atasan_id } = await req.json()
+  const { id, nama, password, atasan_id, gps_required } = await req.json()
   const { data: t } = await c.db.from('profiles').select('role,cabang_id').eq('id', id).single()
   if (!t || !ROLES.includes(t.role)) return fail('Akun tidak ditemukan')
   if (!(await bolehCabang(c, t.cabang_id))) return fail('Cabang ini bukan wewenang Anda', 403)
   const upd: any = {}
   if (nama) upd.nama = nama
+  if (typeof gps_required === 'boolean') {
+    if (c.role !== 'mdm') return fail('Hanya MDM yang boleh mengatur GPS', 403)
+    if (t.role !== 'frontliner') return fail('Pengaturan GPS hanya untuk frontliner')
+    upd.gps_required = gps_required
+  }
   if (t.role === 'frontliner' && atasan_id) {
     if (!(await atasanOk(c, atasan_id, t.cabang_id))) return fail('Atasan harus TL/Kormot di cabang yang sama')
     upd.atasan_id = atasan_id

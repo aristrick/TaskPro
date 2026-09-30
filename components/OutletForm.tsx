@@ -5,16 +5,20 @@ import { alamatDari } from '../lib/geo'
 import Icon from './Icon'
 import { KATEGORI, ACCOUNTS, PREFIX } from '../lib/const'
 
-// Tambah/Edit outlet di HP. Nilai awal diisi otomatis (lokasi, rayon aktif, kategori umum) -> pengguna cukup memeriksa.
+// Tambah/Edit outlet di HP. Nilai awal diisi otomatis (lokasi, alamat, kota/kecamatan/kelurahan, rayon aktif).
 export default function OutletForm({ me, rayon, pos, outlet, onClose, onSaved }: any) {
   const baru = !outlet
-  const [f, setF] = useState<any>(outlet ? { ...outlet, lat: outlet.lat ?? '', long: outlet.long ?? '', owner: outlet.owner ?? '', phone: outlet.phone ?? '' }
-    : { prefix: 'Wr', name: '', address: '', lat: pos?.lat ?? '', long: pos?.lng ?? '', category: 'General Trade', account: 'Retail', owner: '', phone: '', rayon, status: 'AKTIF' })
-  const [geo, setGeo] = useState<any>({}); const [err, setErr] = useState(''); const [busy, setBusy] = useState(false); const [out, setOut] = useState(false)
+  const wilayah = { province_name: '', city_name: '', district: '', village: '' }
+  const [f, setF] = useState<any>(outlet
+    ? { ...wilayah, ...Object.fromEntries(Object.entries(outlet).map(([k, v]) => [k, v ?? ''])) }
+    : { ...wilayah, prefix: 'Wr', name: '', owner: '', phone: '', address: '', lat: pos?.lat ?? '', long: pos?.lng ?? '', category: 'General Trade', account: 'Retail', rayon, status: 'AKTIF' })
+  const [err, setErr] = useState(''); const [busy, setBusy] = useState(false); const [out, setOut] = useState(false)
   const close = () => { setOut(true); setTimeout(onClose, 220) }
   const set = (k: string, v: any) => setF((x: any) => ({ ...x, [k]: v }))
   async function isiAlamat(lat: number, lng: number) {
-    const g = await alamatDari(lat, lng); if (g) { setGeo(g); if (g.address) set('address', g.address) } else setErr('Alamat otomatis gagal. Isi manual.')
+    const g = await alamatDari(lat, lng)
+    if (g) setF((x: any) => ({ ...x, address: g.address || x.address, province_name: g.province_name || '', city_name: g.city_name || '', district: g.district || '', village: g.village || '' }))
+    else setErr('Alamat otomatis gagal. Isi manual.')
   }
   useEffect(() => { if (baru && f.lat !== '') isiAlamat(+f.lat, +f.long) }, [])
   function pakaiLokasi() {
@@ -23,14 +27,15 @@ export default function OutletForm({ me, rayon, pos, outlet, onClose, onSaved }:
   }
   async function simpan() {
     const la = Number(f.lat), lo = Number(f.long)
-    const why = !String(f.name).trim() ? 'Nama outlet wajib diisi' : !String(f.address).trim() ? 'Alamat wajib diisi'
+    const why = !String(f.name).trim() ? 'Nama outlet wajib diisi' : !String(f.owner).trim() ? 'Nama pemilik wajib diisi'
+      : !/^[0-9+\- ]{8,16}$/.test(String(f.phone).trim()) ? 'No. HP tidak valid (8–16 angka)' : !String(f.address).trim() ? 'Alamat wajib diisi'
       : f.lat === '' || f.long === '' || isNaN(la) || isNaN(lo) || Math.abs(la) > 90 || Math.abs(lo) > 180 ? 'Lokasi (lat/long) wajib valid'
-      : !String(f.owner).trim() ? 'Nama pemilik wajib diisi' : !/^[0-9+\- ]{8,16}$/.test(String(f.phone).trim()) ? 'No. HP tidak valid (8–16 angka)'
       : !(+f.rayon >= 1 && +f.rayon <= 24) ? 'Rayon harus 1–24' : ''
     if (why) return setErr(why)
     setBusy(true)
+    const n = (v: any) => (String(v).trim() ? String(v).trim() : null)
     const d: any = { address: f.address.trim(), lat: la, long: lo, category: f.category, account: f.account, owner: f.owner.trim(), phone: f.phone.trim(), rayon: +f.rayon,
-      ...(geo.province_name ? { province_name: geo.province_name, city_name: geo.city_name, district: geo.district } : {}) }
+      province_name: n(f.province_name), city_name: n(f.city_name), district: n(f.district), village: n(f.village) }
     const { error } = baru
       ? await supabase.from('outlets').insert({ ...d, name: `${f.prefix} ${f.name.trim()}`, cabang_id: me.cabang_id, kode_md: me.user_id, status: 'AKTIF' })
       : await supabase.from('outlets').update({ ...d, name: f.name.trim(), status: f.status }).eq('id', outlet.id)
@@ -40,25 +45,33 @@ export default function OutletForm({ me, rayon, pos, outlet, onClose, onSaved }:
   return (
     <div className={`modal ${out ? 'out' : ''}`}><div>
       <div className="row"><h3 style={{ margin: 0 }}>{baru ? 'Tambah Outlet' : 'Edit Outlet'}</h3><div className="grow" /><button className="ghost" onClick={close}><Icon name="close" size={16} /> Tutup</button></div>
-      {!baru && <p className="muted" style={{ margin: '0 0 12px' }}>{outlet.code}</p>}
-      <div className="row" style={{ flexWrap: 'nowrap', alignItems: 'flex-end' }}>
+      <p className="muted" style={{ margin: '0 0 12px', fontSize: 13 }}>{baru ? 'Outlet ID dan kode outlet dibuat otomatis saat disimpan.' : `Kode ${outlet.code} · Outlet ID ${outlet.ext_id || '-'}`}</p>
+      <span className="label" style={{ marginBottom: 8 }}>Data outlet</span>
+      <div className="row" style={{ flexWrap: 'nowrap', alignItems: 'flex-end', marginBottom: 0 }}>
         {baru && fld('Jenis', <select value={f.prefix} onChange={e => set('prefix', e.target.value)}>{PREFIX.map(p => <option key={p}>{p}</option>)}</select>)}
         <div className="grow">{fld('Nama outlet', <input value={f.name} onChange={e => set('name', e.target.value)} placeholder={baru ? 'mis. Ibu Yuni' : ''} />)}</div>
       </div>
+      {fld('Nama pemilik', <input value={f.owner} onChange={e => set('owner', e.target.value)} />)}
+      {fld('No. HP', <input inputMode="tel" value={f.phone} onChange={e => set('phone', e.target.value)} />)}
+      <span className="label" style={{ margin: '8px 0' }}>Lokasi</span>
       {fld('Alamat', <input value={f.address} onChange={e => set('address', e.target.value)} />)}
-      <div className="row" style={{ flexWrap: 'nowrap' }}>
+      <div className="row" style={{ flexWrap: 'nowrap', marginBottom: 0 }}>
+        <div className="grow">{fld('Kota', <input value={f.city_name} onChange={e => set('city_name', e.target.value)} />)}</div>
+        <div className="grow">{fld('Kecamatan', <input value={f.district} onChange={e => set('district', e.target.value)} />)}</div>
+      </div>
+      {fld('Kelurahan', <input value={f.village} onChange={e => set('village', e.target.value)} />)}
+      <div className="row" style={{ flexWrap: 'nowrap', marginBottom: 0 }}>
         <div className="grow">{fld('Latitude', <input inputMode="decimal" value={f.lat} onChange={e => set('lat', e.target.value)} />)}</div>
         <div className="grow">{fld('Longitude', <input inputMode="decimal" value={f.long} onChange={e => set('long', e.target.value)} />)}</div>
       </div>
       <div className="row"><button className="ghost" onClick={pakaiLokasi}><Icon name="pin" size={16} /> Pakai lokasi saya</button>
         <button className="ghost" disabled={f.lat === '' || f.long === ''} onClick={() => isiAlamat(+f.lat, +f.long)}>Isi alamat dari titik</button></div>
-      <div className="row" style={{ flexWrap: 'nowrap' }}>
+      <span className="label" style={{ margin: '8px 0' }}>Klasifikasi</span>
+      <div className="row" style={{ flexWrap: 'nowrap', marginBottom: 0 }}>
         <div className="grow">{fld('Kategori', <select value={f.category || ''} onChange={e => set('category', e.target.value)}>{KATEGORI.map(x => <option key={x}>{x}</option>)}</select>)}</div>
         <div style={{ width: 96 }}>{fld('Rayon', <select value={f.rayon} onChange={e => set('rayon', e.target.value)}>{Array.from({ length: 24 }, (_, i) => <option key={i} value={i + 1}>R{String(i + 1).padStart(2, '0')}</option>)}</select>)}</div>
       </div>
       {fld('Account', <select value={f.account || ''} onChange={e => set('account', e.target.value)}>{ACCOUNTS.map(x => <option key={x}>{x}</option>)}</select>)}
-      {fld('Nama pemilik', <input value={f.owner} onChange={e => set('owner', e.target.value)} />)}
-      {fld('No. HP', <input inputMode="tel" value={f.phone} onChange={e => set('phone', e.target.value)} />)}
       {!baru && fld('Status', <select value={f.status} onChange={e => set('status', e.target.value)}><option>AKTIF</option><option>INAKTIF</option></select>)}
       {err && <p className="err" role="alert">{err}</p>}
       <div className="stickybar"><button disabled={busy} style={{ width: '100%' }} onClick={simpan}>{busy ? 'Menyimpan…' : baru ? 'Simpan Outlet Baru' : 'Simpan Perubahan'}</button></div>

@@ -5,7 +5,7 @@ import { supabase } from '../../lib/supabase'
 import Icon from '../../components/Icon'
 import { day, jam, hari, dt, dur, fetchAll } from '../../lib/rekap'
 
-const SEL = 'id,checkin_at,checkout_at,effective,outlets(ext_id,code,name,address,province_name,city_name,district,category,account,created_at),fl:profiles(user_id,nama,atasan_id),cabang(nama),sales(qty,price,value,products(product,sku_code,brand,category_product))'
+const SEL = 'id,checkin_at,checkout_at,effective,outlets(ext_id,code,name,address,province_name,city_name,district,village,category,account,created_at),fl:profiles(user_id,nama,atasan_id),cabang(nama),sales(qty,price,value,products(product,sku_code,brand,category_product))'
 const up = (s: any) => (s ? String(s).toUpperCase() : '')
 
 function Report() {
@@ -32,13 +32,13 @@ function Report() {
         const proj = `TASKFORCE BEVERAGE ${area}`
         if (jenis === 'kunjungan') rows.push({ 'Checkin Date': day(ci), 'Checkin Time': jam(ci), 'Checkin Day': hari(ci), 'Checkout Date': co ? day(co) : '', 'Checkout Time': co ? jam(co) : '',
           Project: proj, 'ID Teamleader': a.user_id || '', 'Teamleader Name': a.nama || '', 'ID Frontliner': v.fl?.user_id, 'Frontliner Name': v.fl?.nama, Position: 'TF', Area: area,
-          'Oultet ID': o.ext_id || '', 'Oultet Code': o.code, 'Oulte Name': o.name, 'Oulte Address': o.address, Province: up(o.province_name), City: up(o.city_name), District: up(o.district), Village: '',
+          'Oultet ID': o.ext_id || '', 'Oultet Code': o.code, 'Oulte Name': o.name, 'Oulte Address': o.address, Province: up(o.province_name), City: up(o.city_name), District: up(o.district), Village: up(o.village),
           Category: o.category || '', Account: o.account || '', Duration: dur(ci, co), 'Effective Call': v.effective ? 'Yes' : 'No', 'Dashboard Checkout': '',
           'Outlet Created at': o.created_at ? dt(o.created_at) : '', Penjualan: v.sales.reduce((s: number, x: any) => s + Number(x.value), 0) || '' })
         else for (const s of v.sales) { const p = s.products || {}
           rows.push({ 'Checkin Date': day(ci), 'Checkin Time': jam(ci), 'Checkin Day': hari(ci), 'Checkout Date': co ? day(co) : '', 'Checkout Time': co ? jam(co) : '', Duration: dur(ci, co),
             Project: proj, 'ID Teamleader': a.user_id || '', 'Teamleader Name': a.nama || '', 'ID Frontliner': v.fl?.user_id, 'Frontliner Name': v.fl?.nama, Position: 'TF', Area: area,
-            'Oultet ID': o.ext_id || '', 'Oultet Code': o.code, 'Oulte Name': o.name, 'Oulte Address': o.address, Province: up(o.province_name), City: up(o.city_name), District: up(o.district), Village: '',
+            'Oultet ID': o.ext_id || '', 'Oultet Code': o.code, 'Oulte Name': o.name, 'Oulte Address': o.address, Province: up(o.province_name), City: up(o.city_name), District: up(o.district), Village: up(o.village),
             Category: o.category || '', Account: o.account || '', 'SKU Code': p.sku_code || '', Product: p.product, Description: `${String(p.product).replace(/ /g, '-')}-${p.product}`, Brand: p.brand || '',
             'Category Product': p.category_product || '', Price: Number(s.price), 'Total (Pcs)': s.qty, Value: Number(s.value), Images: '' }) }
       }

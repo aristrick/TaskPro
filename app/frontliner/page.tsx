@@ -19,11 +19,15 @@ function Frontliner() {
   const [f, setF] = useState(EMPTY)
   const [editId, setEditId] = useState('')
   const [err, setErr] = useState('')
+  const [role, setRole] = useState('')
   const kode = cabang.find(c => c.id === cid)?.kode
-  useEffect(() => { supabase.from('cabang').select('id,kode,nama').order('kode').then(({ data }) => setCabang(data || [])) }, [])
+  useEffect(() => {
+    supabase.from('cabang').select('id,kode,nama').order('kode').then(({ data }) => { setCabang(data || []); if (data?.length) setCid(data[0].id) })
+    supabase.auth.getUser().then(async ({ data }) => { const { data: p } = await supabase.from('profiles').select('role').eq('id', data.user!.id).single(); setRole(p?.role || '') })
+  }, [])
   async function load() {
     if (!cid) return setList([])
-    const { data } = await supabase.from('profiles').select('id,user_id,nama,role,atasan_id').eq('cabang_id', cid).order('user_id')
+    const { data } = await supabase.from('profiles').select('id,user_id,nama,role,atasan_id,gps_required').eq('cabang_id', cid).order('user_id')
     setList(data || [])
   }
   useEffect(() => { load(); setEditId(''); setF(EMPTY) }, [cid])
@@ -35,6 +39,7 @@ function Frontliner() {
     setErr(e); if (!e) { setF(EMPTY); setEditId(''); load() }
   }
   function edit(x: any) { setEditId(x.id); setF({ role: x.role, user_id: x.user_id, nama: x.nama, password: '', atasan_id: x.atasan_id || '' }); setErr('') }
+  async function setGps(id: string, v: boolean) { setErr(await api('PATCH', { id, gps_required: v })); load() }
   async function remove(id: string) {
     if (!confirm('Hapus akun ini?')) return
     setErr(await api('DELETE', { id })); load()
@@ -65,9 +70,12 @@ function Frontliner() {
         {err && <p className="err">{err}</p>}
       </div>
       <div className="scroll"><table>
-        <thead><tr><th>User ID</th><th>Nama</th><th>Role</th><th>Atasan</th><th /></tr></thead>
+        <thead><tr><th>User ID</th><th>Nama</th><th>Role</th><th>Atasan</th><th>GPS wajib</th><th /></tr></thead>
         <tbody>{list.map(x => <tr key={x.id}><td>{x.user_id}</td><td>{x.nama}</td><td>{LABEL[x.role] || x.role.toUpperCase()}</td>
           <td>{x.atasan_id ? nama(x.atasan_id) : '-'}</td>
+          <td>{x.role !== 'frontliner' ? '-' : role === 'mdm'
+            ? <label className="switch" title="Matikan untuk mengecualikan frontliner ini dari GPS wajib dan batas 50 m"><input type="checkbox" checked={x.gps_required !== false} onChange={e => setGps(x.id, e.target.checked)} /><span /></label>
+            : (x.gps_required === false ? 'Dikecualikan' : 'Wajib')}</td>
           <td>{LABEL[x.role] && <><button className="ghost" onClick={() => edit(x)}>Edit</button> <button className="ghost danger" onClick={() => remove(x.id)}>Hapus</button></>}</td></tr>)}</tbody>
       </table></div>
     </>}
