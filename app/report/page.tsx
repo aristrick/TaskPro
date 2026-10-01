@@ -70,8 +70,8 @@ function Report() {
           <select value={sel} onChange={e => setSel(e.target.value)}><option value="">Semua frontliner</option>{fl.filter(x => !cab || x.cabang_id === cab).map(x => <option key={x.id} value={x.id}>{x.user_id} · {x.nama}</option>)}</select></label>
       </div>
       <div className="row" style={{ margin: 0 }}>
-        <button disabled={busy} onClick={() => unduh('kunjungan')}><Icon name="download" size={18} /> Download Kunjungan (Check-in)</button>
-        <button disabled={busy} onClick={() => unduh('selling')}><Icon name="download" size={18} /> Download Selling (Penjualan)</button></div>
+        <button disabled={busy} aria-busy={busy} onClick={() => unduh('kunjungan')}><Icon name="download" size={18} /> Download Kunjungan (Check-in)</button>
+        <button disabled={busy} aria-busy={busy} onClick={() => unduh('selling')}><Icon name="download" size={18} /> Download Selling (Penjualan)</button></div>
       {msg && <p className={msg.startsWith('Selesai') || msg.endsWith('…') ? 'muted' : 'err'} role="status">{msg}</p>}
     </div>
     <p className="muted">Kolom mengikuti contoh file CHECKIN dan SELLING. Waktu memakai zona WIB. Rentang tanggal wajib. Cabang dan frontliner yang dikosongkan berarti semua. Kolom Project berisi nama dari halaman Project.</p>

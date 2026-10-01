@@ -1,5 +1,6 @@
 'use client'
 import { useEffect, useState } from 'react'
+import { SkelRows } from '../../components/Loaders'
 import Link from 'next/link'
 import Shell from '../../components/Shell'
 import { supabase } from '../../lib/supabase'
@@ -14,7 +15,7 @@ function Outlet() {
   const [cabang, setCabang] = useState<any[]>([])
   const [kmd, setKmd] = useState(''); const [kmds, setKmds] = useState<string[]>([])
   const [cid, setCid] = useState(''); const [q, setQ] = useState(''); const [rayon, setRayon] = useState(''); const [page, setPage] = useState(0)
-  const [rows, setRows] = useState<any[]>([]); const [total, setTotal] = useState(0)
+  const [rows, setRows] = useState<any[]>([]); const [total, setTotal] = useState(0); const [loading, setLoading] = useState(true)
   const [ed, setEd] = useState<any>(null); const [err, setErr] = useState(''); const [tanpa, setTanpa] = useState(false)
   useEffect(() => { supabase.rpc('kode_md_list').then(({ data }) => setKmds((data as string[]) || [])) }, [])
   useEffect(() => { supabase.from('cabang').select('id,kode,nama').order('kode').then(({ data }) => setCabang(data || [])) }, [])
@@ -28,8 +29,9 @@ function Outlet() {
     return s
   }
   async function load() {
+    setLoading(true)
     const { data, count } = await filt(supabase.from('outlets').select('*', { count: 'exact' }).order('code').range(page * PAGE, page * PAGE + PAGE - 1))
-    setRows(data || []); setTotal(count || 0)
+    setRows(data || []); setTotal(count || 0); setLoading(false)
   }
   async function unduh() {
     try {
@@ -57,7 +59,7 @@ function Outlet() {
       : la !== null && (isNaN(la) || isNaN(lo!) || Math.abs(la) > 90 || Math.abs(lo!) > 180) ? 'Lat/long tidak valid' : ''
     if (why) return setErr(why)
     const { error } = await supabase.from('outlets').update({ name: ed.name.trim(), address: ed.address.trim(), lat: la, long: lo, rayon: +ed.rayon,
-      kode_md: ed.kode_md.trim(), city_name: ed.city_name || null, district: ed.district || null, village: ed.village || null, category: ed.category || null, account: ed.account || null, profile_outlet: ed.profile_outlet || null, status: ed.status }).eq('id', ed.id)
+      kode_md: ed.kode_md.trim(), province_name: ed.province_name || null, city_name: ed.city_name || null, district: ed.district || null, village: ed.village || null, category: ed.category || null, account: ed.account || null, profile_outlet: ed.profile_outlet || null, status: ed.status }).eq('id', ed.id)
     setErr(error ? error.message : ''); if (!error) { setEd(null); load() }
   }
   async function hapus(o: any) {
@@ -84,7 +86,7 @@ function Outlet() {
     {ed && <div className="card">
       <b>Edit {ed.code}</b>{(ed.lat == null || ed.lat === '') && <span className="nolat-badge" style={{ marginLeft: 8 }}><Icon name="alert" size={14} /> Belum ada lokasi</span>}
       <div className="row" style={{ marginTop: 8 }}>{f('name', 'Nama')}{f('address', 'Alamat')}{f('lat', 'Latitude')}{f('long', 'Longitude')}{f('rayon', 'Rayon (1–24)')}{f('kode_md', 'KODE MD')}
-        {f('city_name', 'Kota')}{f('district', 'Kecamatan')}{f('village', 'Kelurahan')}{f('category', 'Category')}{f('account', 'Account')}{f('profile_outlet', 'Profile outlet')}
+        {f('province_name', 'Provinsi')}{f('city_name', 'Kota')}{f('district', 'Kecamatan')}{f('village', 'Kelurahan')}{f('category', 'Category')}{f('account', 'Account')}{f('profile_outlet', 'Profile outlet')}
         <select value={ed.status} onChange={e => setEd({ ...ed, status: e.target.value })}><option>AKTIF</option><option>INAKTIF</option></select></div>
       {err && <p className="err">{err}</p>}
       <div className="row"><button onClick={save}>Simpan</button><button className="ghost" onClick={() => { setEd(null); setErr('') }}>Batal</button><div className="grow" /><button className="ghost danger" onClick={() => hapus(ed)}><Icon name="trash" size={16} /> Hapus outlet</button></div>
@@ -92,7 +94,7 @@ function Outlet() {
     <p className="muted">{total} outlet · halaman {page + 1} dari {Math.max(1, Math.ceil(total / PAGE))}</p>
     <div className="scroll"><table>
       <thead><tr><th>Kode</th><th>Nama</th><th>Alamat</th><th>Rayon</th><th>KODE MD</th><th>Lat, Long</th><th>Status</th><th /></tr></thead>
-      <tbody>{rows.map(r => <tr key={r.id} className={r.lat == null || r.long == null ? 'nolat-tr' : ''}><td>{r.code}</td><td>{r.name}</td><td>{r.address}</td><td>{r.rayon ? 'R' + String(r.rayon).padStart(2, '0') : '-'}</td>
+      <tbody>{loading ? <tr><td colSpan={9}><SkelRows n={5} /></td></tr> : rows.map(r => <tr key={r.id} className={r.lat == null || r.long == null ? 'nolat-tr' : ''}><td>{r.code}</td><td>{r.name}</td><td>{r.address}</td><td>{r.rayon ? 'R' + String(r.rayon).padStart(2, '0') : '-'}</td>
         <td>{r.kode_md || '-'}</td><td>{r.lat == null || r.long == null ? <span className="nolat-badge"><Icon name="alert" size={14} /> Belum ada lokasi</span> : `${r.lat}, ${r.long}`}</td><td>{r.status}</td>
         <td style={{ whiteSpace: 'nowrap' }}><button className="ghost" onClick={() => { setEd({ ...r }); setErr('') }}>Edit</button> <button className="ghost danger" aria-label={`Hapus ${r.name}`} onClick={() => hapus(r)}><Icon name="trash" size={16} /> Hapus</button></td></tr>)}</tbody>
     </table></div>

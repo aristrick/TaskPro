@@ -35,11 +35,11 @@ function Home() {
   return (<>
     <h2>Home</h2>
     <div className="kpis">
-      <div className="kpi"><span className="label">Penjualan hari ini</span><b>{rk ? rp(hari?.value || 0) : '…'}</b>
+      <div className="kpi"><span className="label">Penjualan hari ini</span><b>{rk ? rp(hari?.value || 0) : <span className="skel kpiskel" />}</b>
         {hari && avg > 0 && <small className="muted"><Icon name={hari.value >= avg ? 'up' : 'down'} size={14} /> {Math.abs(Math.round((hari.value / avg - 1) * 100))}% vs rata-rata harian</small>}</div>
-      <div className="kpi"><span className="label">OC hari ini</span><b>{rk ? hari?.oc || 0 : '…'}</b></div>
-      <div className="kpi"><span className="label">Penjualan bulan ini</span><b>{rk ? rp(bulan) : '…'}</b></div>
-      <div className="kpi"><span className="label">OC bulan ini</span><b>{rk ? ocB : '…'}</b></div>
+      <div className="kpi"><span className="label">OC hari ini</span><b>{rk ? hari?.oc || 0 : <span className="skel kpiskel" />}</b></div>
+      <div className="kpi"><span className="label">Penjualan bulan ini</span><b>{rk ? rp(bulan) : <span className="skel kpiskel" />}</b></div>
+      <div className="kpi"><span className="label">OC bulan ini</span><b>{rk ? ocB : <span className="skel kpiskel" />}</b></div>
     </div>
     <div className="card"><span className="label">Produk fokus bulan ini</span>
       {Object.keys(fokus).length === 0 ? <p className="muted" style={{ margin: '8px 0 0' }}>Belum ada penjualan produk fokus. Tandai produk fokus di halaman Produk.</p>

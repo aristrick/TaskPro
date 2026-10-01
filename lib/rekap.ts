@@ -5,7 +5,7 @@ export const hari = (d: string | Date) => new Date(d).toLocaleDateString('en-US'
 export const dt = (d: string | Date) => `${day(d)} ${jam(d)}`
 export const dur = (a: string, b: string | null) => { if (!b) return ''; const s = Math.max(0, Math.round((+new Date(b) - +new Date(a)) / 1000)); return `${Math.floor(s / 3600)}:${Math.floor((s % 3600) / 60)}:${s % 60}` }
 export const rp = (n: number) => 'Rp ' + Math.round(n).toLocaleString('id-ID')
-export const VSEL = 'id,checkin_at,outlet_id,outlets(name),sales(qty,value,products(product,is_focus))'
+export const VSEL = 'id,checkin_at,outlet_id,outlets(name),sales(qty,value,is_focus,products(product))'
 
 export async function fetchAll(make: (from: number, to: number) => PromiseLike<{ data: any[] | null; error: any }>) {
   let all: any[] = []
@@ -22,7 +22,7 @@ export function rekap(visits: any[]): Record<string, DayRekap> {
     const d = day(v.checkin_at); const r = (out[d] ||= { value: 0, oc: 0, visits: 0, prod: {}, outlets: [] })
     r.visits++
     for (const s of v.sales || []) {
-      const p = s.products?.product || '-'; const q = (r.prod[p] ||= { qty: 0, value: 0, focus: !!s.products?.is_focus, ec: 0 })
+      const p = s.products?.product || '-'; const q = (r.prod[p] ||= { qty: 0, value: 0, focus: !!s.is_focus, ec: 0 })
       q.qty += s.qty; q.value += Number(s.value); r.value += Number(s.value)
       ;(oc[d] ||= new Set()).add(v.outlet_id); ;((ec[d] ||= {})[p] ||= new Set()).add(v.outlet_id)
       const o = ((ol[d] ||= {})[v.outlet_id] ||= { name: v.outlets?.name || '-', value: 0 }); o.value += Number(s.value)

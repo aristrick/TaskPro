@@ -8,6 +8,7 @@ import { useDialog } from '../../components/Dialog'
 import { rekap, day, rp, VSEL } from '../../lib/rekap'
 import OutletForm from '../../components/OutletForm'
 import StokForm from '../../components/StokForm'
+import { PageLoader, SkelRows } from '../../components/Loaders'
 import Icon from '../../components/Icon'
 
 const R = 6371000, rad = (x: number) => (x * Math.PI) / 180
@@ -53,6 +54,11 @@ export default function Frontliner() {
   const [pf, setPf] = useState<'all' | 'focus' | 'sel'>('all')
   const [confirmOut, setConfirmOut] = useState(false)
   const [loadErr, setLoadErr] = useState('')
+  const [focusIds, setFocusIds] = useState<Set<string>>(new Set())   // produk fokus project frontliner (satu project saja)
+  const [rowsLoading, setRowsLoading] = useState(true)
+  const [prodReady, setProdReady] = useState(false)
+  const [busyId, setBusyId] = useState<any>(null)
+  const [savedId, setSavedId] = useState<any>(null)
   // Stok pembawaan hari ini: penjualan tidak boleh melebihi stok yang dibawa (dijaga juga di database)
   const [stokOpen, setStokOpen] = useState(false)
   const [stok, setStok] = useState<Record<string, { dibawa: number; terjual: number }>>({})
@@ -76,7 +82,7 @@ export default function Frontliner() {
   const closeMenu = () => { setClosingMenu(true); setTimeout(() => { setMenu(false); setClosingMenu(false) }, 200) }
 
   const loadVisit = async (uid: string, a = '') => {
-    const { data } = await supabase.from('visits').select('id,outlet_id,checkin_at,outlets(name,address,lat,long)').eq('frontliner_id', uid).is('checkout_at', null).maybeSingle()
+    const { data } = await supabase.from('visits').select('id,outlet_id,checkin_at,project_id,outlets(name,address,lat,long)').eq('frontliner_id', uid).is('checkout_at', null).maybeSingle()
     setAnim(a); setVisit(data)
   }
   function getPos() {
@@ -86,7 +92,7 @@ export default function Frontliner() {
       p => { setPos({ lat: p.coords.latitude, lng: p.coords.longitude }); setGps('ok') },
       () => setGps('denied'), { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 })
   }
-  const loadRows = () => { if (me) supabase.from('outlets').select('*').eq('kode_md', me.user_id).eq('rayon', rayon).eq('status', 'AKTIF').limit(1000).then(({ data }) => setRows(data || [])) }
+  const loadRows = (keep?: boolean) => { if (me) { if (keep !== true) setRowsLoading(true); supabase.from('outlets').select('*').eq('kode_md', me.user_id).eq('rayon', rayon).eq('status', 'AKTIF').limit(1000).then(({ data }) => { setRows(data || []); setRowsLoading(false) }) } }
 
   useEffect(() => {
     loadMe().then(({ me: p, error }) => {
@@ -110,7 +116,8 @@ export default function Frontliner() {
   }, [me, visit])
   useEffect(() => {
     if (!visit) return
-    supabase.from('products').select('*').eq('active', true).order('is_focus', { ascending: false }).order('product').then(({ data }) => setProducts(data || []))
+    setProdReady(false)
+    supabase.from('products').select('*').eq('active', true).order('product').then(({ data }) => { setProducts(data || []); setProdReady(true) })
     supabase.from('visits').select('sales(product_id,qty)').eq('outlet_id', visit.outlet_id).eq('frontliner_id', me.id).not('checkout_at', 'is', null)
       .order('checkin_at', { ascending: false }).limit(1).then(({ data }) => setLast(Object.fromEntries(((data?.[0] as any)?.sales || []).map((x: any) => [x.product_id, x.qty]))))
   }, [visit])
@@ -120,6 +127,19 @@ export default function Frontliner() {
       .then(({ data }) => setRk(rekap(data || [])))
   }, [tab, me])
 
+  // Produk fokus mengikuti project frontliner: saat kunjungan berjalan memakai project yang tercatat saat check-in
+  useEffect(() => {
+    if (!me) return
+    let off = false
+    ;(async () => {
+      let pid = visit?.project_id
+      if (!visit) { const { data } = await supabase.from('profiles').select('project_id').eq('id', me.id).maybeSingle(); pid = data?.project_id }
+      if (!pid) { if (!off) setFocusIds(new Set()); return }
+      const { data } = await supabase.from('project_focus').select('product_id').eq('project_id', pid)
+      if (!off) setFocusIds(new Set((data || []).map((x: any) => x.product_id)))
+    })()
+    return () => { off = true }
+  }, [me?.id, visit?.id])
   // Mode Edit Outlet: warna status bar ikut merah, dan mode otomatis berakhir jika pindah tab
   useEffect(() => { document.querySelector('meta[name="theme-color"]')?.setAttribute('content', editMode && tab === 'sell' ? '#B3261E' : '#0B1F4B') }, [editMode, tab])
   useEffect(() => { if (tab !== 'sell') setEditMode(false) }, [tab])
@@ -162,13 +182,13 @@ export default function Frontliner() {
   }
   async function masuk(r: any) {
     if (!(await dlg.confirm({ title: 'Check-in di outlet ini?', icon: 'pin', okText: 'Check-in', message: <>Mulai kunjungan di <b>{r.name}</b>.</> }))) return
-    setBusy(true); setErr('')
+    setBusy(true); setBusyId(r.id); setErr('')
     try {
       const p = await geo(); if (p) setPos({ lat: p.coords.latitude, lng: p.coords.longitude })
       const { error } = await supabase.rpc('checkin', { p_outlet: r.id, ...payload(p) }); if (error) throw error
       setQty({}); setPq(''); setPf('all'); await loadVisit(me.id, 'fwd'); buzz()
     } catch (e: any) { if (!jauh(e, r.name, r.lat, r.long)) setErr(e.message || 'Gagal membaca lokasi') }
-    setBusy(false)
+    setBusy(false); setBusyId(null)
   }
   async function keluar() {
     setBusy(true); setErr('')
@@ -186,7 +206,7 @@ export default function Frontliner() {
   const pcs = products.reduce((a, x) => a + (qty[x.id] || 0), 0)
 
   if (loadErr) return <div className="gate"><h2>Gagal memuat akun</h2><p className="muted">{loadErr}</p><button onClick={() => location.reload()}>Coba lagi</button></div>
-  if (!me) return <p className="muted" style={{ padding: 24 }}>Memuat…</p>
+  if (!me) return <PageLoader text="Memuat…" />
   if (gps !== 'ok' && me.gps_required !== false) return (
     <div className="gate">
       <h2>Aktifkan Lokasi (GPS)</h2>
@@ -203,22 +223,22 @@ export default function Frontliner() {
     <div className="dbtns"><button className="ghost" onClick={() => setFar(null)}>Cancel</button>
       {far.lat != null && <a className="btnlink" target="_blank" onClick={() => setFar(null)} href={`https://www.google.com/maps/dir/?api=1&destination=${far.lat},${far.long}`}><Icon name="nav" size={18} /> Menuju Outlet</a>}</div></div></div>
 
-  const stokModal = stokOpen && <StokForm onClose={() => setStokOpen(false)} onSaved={() => { setStokTick(t => t + 1); say('Stok tersimpan') }} />
+  const stokModal = stokOpen && <StokForm focusIds={focusIds} onClose={() => setStokOpen(false)} onSaved={() => { setStokTick(t => t + 1); say('Stok tersimpan') }} />
 
   // ---------- Layar input penjualan ----------
   const ch = (id: string, v: number) => { buzz(8); setQty(q => ({ ...q, [id]: Math.max(0, Math.min(9999, sisaOf(id), Math.round(v) || 0)) })) }
   const totalSisa = products.reduce((a, x) => a + sisaOf(x.id) * (enforce ? 1 : 0), 0)
   const noStock = enforce && stokReady && products.length > 0 && totalSisa === 0
   const inTime = visit?.checkin_at ? new Date(visit.checkin_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jakarta' }) : ''
-  const nFocus = products.filter(x => x.is_focus).length
+  const nFocus = products.filter(x => focusIds.has(x.id)).length
   const shown = products.filter(x => (!pq.trim() || (x.product + ' ' + (x.brand || '')).toLowerCase().includes(pq.trim().toLowerCase()))
-    && (pf === 'all' || (pf === 'focus' ? x.is_focus : qty[x.id] > 0)))
-  const focusRows = shown.filter(x => x.is_focus), otherRows = shown.filter(x => !x.is_focus)
+    && (pf === 'all' || (pf === 'focus' ? focusIds.has(x.id) : qty[x.id] > 0)))
+  const focusRows = shown.filter(x => focusIds.has(x.id)), otherRows = shown.filter(x => !focusIds.has(x.id))
   const prodRow = (x: any) => {
     const n = qty[x.id] || 0, price = Number(x.price), s = sisaOf(x.id), lim = enforce && stokReady
     return (
       <div key={x.id} className={`prow ${n > 0 ? 'on' : ''}`} onClick={() => n === 0 && (!lim || s > 0) && ch(x.id, 1)}>
-        <div><div className="pname2">{x.product}{x.is_focus && <span className="badge">FOKUS</span>}</div>
+        <div><div className="pname2">{x.product}{focusIds.has(x.id) && <span className="badge">FOKUS</span>}</div>
           <div className="pmeta">{[x.brand, rp(price)].filter(Boolean).join(' · ')}{lim && <span className={`stk ${s === 0 ? 'zero' : s <= 5 ? 'low' : ''}`}> · Sisa {s}</span>}</div></div>
         {n === 0
           ? <button className="addbtn" disabled={lim && s === 0} aria-label={`Tambah ${x.product}`} onClick={e => { e.stopPropagation(); ch(x.id, 1) }}><Icon name="plus" size={20} /></button>
@@ -255,7 +275,8 @@ export default function Frontliner() {
               <button key={k} role="tab" aria-selected={pf === k} className={pf === k ? 'on' : ''} onClick={() => setPf(k)}>{t}</button>)}</div>
           {Object.keys(last).length > 0 && <button className="ghost small" onClick={() => setQty(last)}><Icon name="refresh" size={16} /> Isi seperti kunjungan terakhir</button>}
         </div>
-        {shown.length === 0 && <div className="empty"><b>{pf === 'sel' && !pq ? 'Belum ada produk dipilih' : 'Produk tidak ditemukan'}</b>
+        {!prodReady && <SkelRows n={6} />}
+        {prodReady && shown.length === 0 && <div className="empty"><b>{pf === 'sel' && !pq ? 'Belum ada produk dipilih' : 'Produk tidak ditemukan'}</b>
           <p className="muted">{pf === 'sel' && !pq ? 'Ketuk tombol ＋ pada produk untuk menambahkannya.' : 'Coba kata kunci lain atau pilih tab Semua.'}</p></div>}
         {focusRows.length > 0 && <><span className="label sec">Produk fokus</span>{focusRows.map(prodRow)}</>}
         {otherRows.length > 0 && <>{focusRows.length > 0 && <span className="label sec">Produk lain</span>}{otherRows.map(prodRow)}</>}
@@ -263,7 +284,7 @@ export default function Frontliner() {
       </div>
       <div className="stickybar sumbar">
         <div className="sumtxt">{items ? <><span className="muted">{items} produk · {pcs} pcs</span><b>{rp(total)}</b></> : <span className="muted">Belum ada penjualan</span>}</div>
-        <button disabled={busy} onClick={() => setConfirmOut(true)}>{busy ? 'Memproses…' : 'Check-out'}</button>
+        <button disabled={busy} aria-busy={busy} onClick={() => setConfirmOut(true)}>{busy ? 'Memproses…' : 'Check-out'}</button>
       </div>
     </div>)
 
@@ -287,7 +308,7 @@ export default function Frontliner() {
       {farDialog}
       {stokModal}
       {toast && <div className="toast" role="status"><Icon name="check" size={18} /> {toast}</div>}
-      {form && <OutletForm me={me} rayon={rayon} pos={pos} outlet={form === 'new' ? null : form} onClose={() => setForm(null)} onSaved={() => { setForm(null); setEditMode(false); loadRows(); say('Outlet tersimpan') }}
+      {form && <OutletForm me={me} rayon={rayon} pos={pos} outlet={form === 'new' ? null : form} onClose={() => setForm(null)} onSaved={() => { const id = form !== 'new' ? form?.id : null; setForm(null); loadRows(true); say('Outlet tersimpan'); if (id) { setSavedId(id); setTimeout(() => setSavedId(null), 2000) } }}
         onDeleted={(r: string) => { setForm(null); setEditMode(false); loadRows(); say(r === 'deleted' ? 'Outlet dihapus' : 'Outlet dinonaktifkan') }} />}
       {menu && <div className={`drawer ${closingMenu ? 'out' : ''}`} onClick={closeMenu}><div onClick={e => e.stopPropagation()}>
         <h3>Menu</h3>
@@ -313,15 +334,15 @@ export default function Frontliner() {
           <div className="hint">{editMode ? 'Ketuk outlet yang ingin diubah. Check-in dinonaktifkan sampai Anda menekan Selesai.' : `${done} dari ${rows.length} outlet sudah dikunjungi hari ini`}</div></>}
       </div>
       {err && tab === 'sell' && <p className="err" role="alert" style={{ padding: '8px 16px', margin: 0 }}>{err}</p>}
-      {tab === 'sell' && (list.length === 0 ? <div className="empty"><b>Belum ada outlet di rayon R{String(rayon).padStart(2, '0')}</b><p className="muted">Pilih rayon lain, atau tambah outlet baru dengan tombol + di kanan atas.</p></div>
-        : list.map((r, i) => <div className={`item ${r.lat == null ? 'nolat-row' : ''}`} style={{ ['--i' as any]: Math.min(i, 10) }} key={r.id} onClick={() => !busy && (editMode ? setForm(r) : masuk(r))}>
-          <div className={`dist ${r.lat == null ? 'nolat' : r.d != null && r.d <= 50 ? 'near' : ''}`} title={r.lat == null ? 'Lokasi outlet belum ada' : undefined}>{r.lat == null ? <Icon name="alert" size={24} /> : r.d == null ? '?' : fmt(r.d)}</div>
+      {tab === 'sell' && (rowsLoading ? <SkelRows n={6} /> : list.length === 0 ? <div className="empty"><b>Belum ada outlet di rayon R{String(rayon).padStart(2, '0')}</b><p className="muted">Pilih rayon lain, atau tambah outlet baru dengan tombol + di kanan atas.</p></div>
+        : list.map((r, i) => <div className={`item ${r.lat == null ? 'nolat-row' : ''} ${savedId === r.id ? 'flash' : ''}`} style={{ ['--i' as any]: Math.min(i, 10) }} key={r.id} onClick={() => !busy && (editMode ? setForm(r) : masuk(r))}>
+          <div className={`dist ${r.lat == null ? 'nolat' : r.d != null && r.d <= 50 ? 'near' : ''}`} title={r.lat == null ? 'Lokasi outlet belum ada' : undefined}>{busyId === r.id ? <span className="spinner" /> : r.lat == null ? <Icon name="alert" size={24} /> : r.d == null ? '?' : fmt(r.d)}</div>
           <div className="grow"><b>{r.name}</b>{visited.has(r.id) && <span className="badge ok"><Icon name="check" size={12} /> SUDAH</span>}
             <div className="muted" style={{ fontSize: 13 }}>{r.address}</div>
             {r.lat == null && <div className="nolat-msg"><Icon name="alert" size={14} /> Lokasi outlet belum ada</div>}</div>
           {r.lat != null && <a className="go" aria-label="Menuju lokasi" target="_blank" onClick={e => e.stopPropagation()} href={`https://www.google.com/maps/dir/?api=1&destination=${r.lat},${r.long}`}><Icon name="nav" size={20} /></a>}
         </div>))}
-      {tab === 'rekap' && (!rk ? <p className="muted" style={{ padding: 16 }}>Memuat…</p> : dd ? (() => {
+      {tab === 'rekap' && (!rk ? <SkelRows n={5} /> : dd ? (() => {
         const prods = Object.entries(dd.prod).map(([n, p]: any) => ({ n, ...p })).sort((a: any, b: any) => b.value - a.value)
         const fokus = prods.filter((p: any) => p.focus), pcsHari = prods.reduce((a: number, p: any) => a + p.qty, 0)
         const pct = avg > 0 && dd.value > 0 ? Math.round((dd.value / avg - 1) * 100) : null

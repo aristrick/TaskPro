@@ -1,5 +1,6 @@
 'use client'
 import { useEffect, useState } from 'react'
+import { PageLoader } from './Loaders'
 import { useRouter, usePathname } from 'next/navigation'
 import Link from 'next/link'
 import { loadMe, cachedMe } from '../lib/auth'
@@ -44,7 +45,7 @@ export default function Shell({ roles, children }: { roles: string[]; children: 
 
   if (fail) return <div className="gate"><h2>Gagal memuat akun</h2><p className="muted">{fail}</p>
     <button onClick={() => setTries(t => t + 1)}>Coba lagi</button><button className="ghost" onClick={keluar}><Icon name="logout" size={18} /> Log out</button></div>
-  if (!me) return <p className="muted" style={{ padding: 24 }}>Memuat…</p>
+  if (!me) return <PageLoader text="Memuat TaskPro…" />
   if (!roles.includes(me.role)) return <p className="muted" style={{ padding: 24 }}>Halaman ini tidak tersedia untuk role {me.role}.</p>
   const on = (h: string) => (h === '/' ? path === '/' : path.startsWith(h) || (h === '/outlet' && path === '/import'))
   const link = ([h, t, , ic]: Item) => <Link key={h} href={h} className={on(h) ? 'active' : ''} aria-current={on(h) ? 'page' : undefined}><Icon name={ic} size={20} />{t}</Link>

@@ -37,14 +37,13 @@ function Produk() {
         {editId && <button className="ghost" onClick={() => { setEditId(''); setF(EMPTY); setErr('') }}>Batal</button>}</div>
       {err && <p className="err" role="alert" style={{ marginBottom: 0 }}>{err}</p>}</div>
     <div className="scroll"><table>
-      <thead><tr><th>Produk</th><th>SKU</th><th>Brand</th><th>Kategori</th><th>Harga</th><th>Fokus</th><th>Aktif</th><th /></tr></thead>
+      <thead><tr><th>Produk</th><th>SKU</th><th>Brand</th><th>Kategori</th><th>Harga</th><th>Aktif</th><th /></tr></thead>
       <tbody>{rows.map(r => <tr key={r.id}><td>{r.product}</td><td>{r.sku_code}</td><td>{r.brand}</td><td>{r.category_product}</td>
         <td>{Number(r.price).toLocaleString('id-ID')}</td>
-        <td><input type="checkbox" checked={r.is_focus} onChange={e => upd(r.id, { is_focus: e.target.checked })} /></td>
         <td><input type="checkbox" checked={r.active} onChange={e => upd(r.id, { active: e.target.checked })} /></td>
         <td style={{ whiteSpace: 'nowrap' }}><button className="ghost" onClick={() => edit(r)}><Icon name="edit" size={16} /> Edit</button> <button className="ghost danger" onClick={() => hapus(r)}><Icon name="trash" size={16} /> Hapus</button></td></tr>)}</tbody>
     </table></div>
-    <p className="muted">Harga yang diubah hanya berlaku untuk penjualan berikutnya. Produk yang sudah pernah terjual tidak bisa dihapus; nonaktifkan agar riwayat tetap utuh.</p>
+    <p className="muted">Harga yang diubah hanya berlaku untuk penjualan berikutnya. Produk fokus diatur per project di halaman Project. Produk yang sudah pernah terjual tidak bisa dihapus; nonaktifkan agar riwayat tetap utuh.</p>
   </>)
 }
 export default function Page() { return <Shell roles={['mds', 'mdm', 'rmdm']}><Produk /></Shell> }

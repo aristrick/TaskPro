@@ -1,3 +1,4 @@
 'use client'
 import DialogProvider from './Dialog'
-export default function Providers({ children }: { children: React.ReactNode }) { return <DialogProvider>{children}</DialogProvider> }
+import NetBar from './NetBar'
+export default function Providers({ children }: { children: React.ReactNode }) { return <DialogProvider><NetBar />{children}</DialogProvider> }

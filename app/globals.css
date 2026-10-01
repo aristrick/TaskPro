@@ -284,3 +284,38 @@ button.danger-fill{background:var(--danger)} button.danger-fill:hover:not(:disab
 .ph-head.editing .icon{background:rgba(255,255,255,.18)}
 .donebtn{background:#fff;color:#B3261E;min-height:44px;padding:0 18px;font-weight:700}
 .donebtn:hover:not(:disabled){background:#FDECEA}
+
+/* ===== Animasi loading ===== */
+.spinner{display:inline-block;width:20px;height:20px;border:2.5px solid var(--navy-100);border-top-color:var(--navy);border-radius:50%;animation:spin .75s linear infinite;flex:none}
+.spinner.lg{width:38px;height:38px;border-width:3.5px}
+.pageload{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;min-height:55vh;color:var(--muted);animation:fade .3s}
+.skel{background:linear-gradient(90deg,#EEF1F7 25%,#F8FAFD 37%,#EEF1F7 63%);background-size:400% 100%;animation:shimmer 1.3s ease infinite;border-radius:10px}
+@keyframes shimmer{0%{background-position:100% 50%}100%{background-position:0 50%}}
+.skrow{display:flex;gap:12px;align-items:center;padding:14px 16px;border-bottom:1px solid var(--line);animation:fade .3s both}
+.kpiskel{display:inline-block;width:96px;height:24px;vertical-align:middle}
+.netbar{position:fixed;top:0;left:0;right:0;height:3px;z-index:100;overflow:hidden;pointer-events:none;opacity:0;transition:opacity .25s}
+.netbar.on{opacity:1}
+.netbar::before{content:"";position:absolute;top:0;bottom:0;left:-40%;width:40%;background:linear-gradient(90deg,transparent,#7FB0FF,transparent);animation:netslide 1s linear infinite}
+@keyframes netslide{to{left:100%}}
+button[aria-busy="true"]{pointer-events:none}
+button[aria-busy="true"]::before{content:"";width:16px;height:16px;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;animation:spin .7s linear infinite;flex:none}
+.dist .spinner{width:24px;height:24px}
+
+/* Tombol lokasi di formulir outlet (kartu aksi dengan ikon + penjelasan) */
+.tiles{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}
+.tile{display:flex;flex-direction:column;align-items:flex-start;justify-content:flex-start;gap:4px;padding:14px;min-height:108px;border-radius:18px;background:#fff;color:var(--navy);border:1.5px solid var(--line);text-align:left;font-weight:600;box-shadow:var(--shadow)}
+.tile b{font-size:15px;line-height:1.25} .tile small{font-size:12px;font-weight:500;color:var(--muted);line-height:1.3}
+.tile .tico{width:40px;height:40px;border-radius:12px;background:var(--navy-100);display:flex;align-items:center;justify-content:center;margin-bottom:4px}
+.tile:hover:not(:disabled){background:#FAFBFE}
+.tile.primary{background:var(--navy);color:#fff;border-color:var(--navy)} .tile.primary small{color:#C9D5EE} .tile.primary .tico{background:rgba(255,255,255,.16)}
+.tile.primary:hover:not(:disabled){background:var(--navy-700)}
+.tile.primary .spinner{border-color:rgba(255,255,255,.3);border-top-color:#fff}
+.item.flash{background:#E3F5EC;transition:background .4s}
+
+/* Halaman login bernuansa biru */
+.login-bg{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;
+  background:radial-gradient(1100px 560px at 85% -10%,#2A5AA8 0%,transparent 60%),radial-gradient(900px 520px at -10% 110%,#1C3F7C 0%,transparent 55%),linear-gradient(160deg,#0B1F4B 0%,#12295C 55%,#16346E 100%)}
+.login-bg .login{margin:0;width:100%;max-width:380px;padding:32px 24px;gap:14px;border:0;box-shadow:0 24px 60px rgba(4,12,35,.45)}
+.login .fld{margin:0}
+.logo{width:60px;height:60px;border-radius:18px;margin:0 auto 2px;background:linear-gradient(135deg,#2A5AA8,#0B1F4B);color:#fff;display:flex;align-items:center;justify-content:center;box-shadow:0 8px 20px rgba(11,31,75,.35)}
+.login button{background:linear-gradient(135deg,#1F4C93,#0B1F4B)}

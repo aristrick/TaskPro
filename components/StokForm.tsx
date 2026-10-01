@@ -1,5 +1,6 @@
 'use client'
 import { useEffect, useState } from 'react'
+import { SkelRows } from './Loaders'
 import { supabase } from '../lib/supabase'
 import { useDialog } from './Dialog'
 import Icon from './Icon'
@@ -7,7 +8,7 @@ import Icon from './Icon'
 // Stok pembawaan hari ini (WIB). "Tambahkan" bersifat kumulatif (boleh isi ulang siang hari).
 // "Koreksi" mengganti total satu produk, tidak boleh di bawah yang sudah terjual. Aturan dijaga di database.
 type St = Record<string, { dibawa: number; terjual: number }>
-export default function StokForm({ onClose, onSaved }: { onClose: () => void; onSaved: () => void }) {
+export default function StokForm({ onClose, onSaved, focusIds }: { onClose: () => void; onSaved: () => void; focusIds: Set<string> }) {
   const dlg = useDialog()
   const [products, setProducts] = useState<any[]>([])
   const [st, setSt] = useState<St>({})
@@ -17,10 +18,10 @@ export default function StokForm({ onClose, onSaved }: { onClose: () => void; on
 
   async function load() {
     const [{ data: p }, { data: s, error }] = await Promise.all([
-      supabase.from('products').select('*').eq('active', true).order('is_focus', { ascending: false }).order('product'),
+      supabase.from('products').select('*').eq('active', true).order('product'),
       supabase.rpc('stok_hari_ini')])
     if (error) setErr('Fitur stok belum aktif di server (jalankan 09_migration.sql).')
-    setProducts(p || []); setSt(Object.fromEntries((s || []).map((x: any) => [x.product_id, { dibawa: x.dibawa, terjual: x.terjual }]))); setReady(true)
+    setProducts((p || []).sort((a: any, b: any) => +focusIds.has(b.id) - +focusIds.has(a.id))); setSt(Object.fromEntries((s || []).map((x: any) => [x.product_id, { dibawa: x.dibawa, terjual: x.terjual }]))); setReady(true)
   }
   useEffect(() => { load() }, [])
   const close = () => { setOut(true); setTimeout(onClose, 220) }
@@ -55,12 +56,12 @@ export default function StokForm({ onClose, onSaved }: { onClose: () => void; on
       <div className="stkbar"><div><b>{tot.d}</b><span>Dibawa</span></div><div><b>{tot.t}</b><span>Terjual</span></div><div><b>{tot.d - tot.t}</b><span>Sisa</span></div></div>
       <div className="searchbox"><Icon name="search" size={18} /><input placeholder="Cari produk…" aria-label="Cari produk" value={q} onChange={e => setQ(e.target.value)} /></div>
       <span className="label sec">Ketuk ＋ pada produk yang Anda bawa</span>
-      {!ready && <p className="muted">Memuat…</p>}
+      {!ready && <SkelRows n={4} />}
       {shown.map(x => {
         const s = st[x.id], n = add[x.id] || 0
         return (
           <div key={x.id} className={`prow ${n > 0 ? 'on' : ''}`} onClick={() => n === 0 && setN(x.id, 1)}>
-            <div><div className="pname2">{x.product}{x.is_focus && <span className="badge">FOKUS</span>}</div>
+            <div><div className="pname2">{x.product}{focusIds.has(x.id) && <span className="badge">FOKUS</span>}</div>
               <div className="pmeta">{s ? `Dibawa ${s.dibawa} · Terjual ${s.terjual} · Sisa ${s.dibawa - s.terjual}` : 'Belum ada stok hari ini'}</div>
               {s && s.dibawa > 0 && <button className="linkbtn" onClick={e => { e.stopPropagation(); koreksi(x) }}>Koreksi total</button>}</div>
             {n === 0
@@ -74,7 +75,7 @@ export default function StokForm({ onClose, onSaved }: { onClose: () => void; on
           </div>)
       })}
       {err && <p className="err" role="alert">{err}</p>}
-      <div className="stickybar"><button disabled={busy || !items.length} style={{ width: '100%' }} onClick={simpan}>
+      <div className="stickybar"><button disabled={busy || !items.length} aria-busy={busy} style={{ width: '100%' }} onClick={simpan}>
         {busy ? 'Menyimpan…' : items.length ? `Tambahkan ${pcsAdd} pcs ke stok` : 'Pilih produk yang dibawa'}</button></div>
     </div></div>)
 }
