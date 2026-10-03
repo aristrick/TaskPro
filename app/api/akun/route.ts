@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { caller as who, fail, handler, Ctx } from '../../../lib/server'
+import { caller as who, fail, handler, audit, Ctx } from '../../../lib/server'
 
 const ROLES = ['tl', 'kormot', 'frontliner']
 // MDM: semua cabang. MDS/RMDM: hanya cabang yang dipegang/dicovernya.
@@ -30,6 +30,7 @@ export const POST = handler(async req => {
   const { error: e2 } = await c.db.from('profiles').insert({
     id: data.user.id, user_id: uid, nama, role, cabang_id, atasan_id: role === 'frontliner' ? atasan_id : null })
   if (e2) { await c.db.auth.admin.deleteUser(data.user.id); return fail(e2.message) }
+  await audit(c, 'BUAT_AKUN', 'profiles', uid, { role, cabang_id, atasan_id: role === 'frontliner' ? atasan_id : null })
   return NextResponse.json({ ok: true })
 })
 
@@ -37,7 +38,7 @@ export const POST = handler(async req => {
 export const PATCH = handler(async req => {
   const c = await who(req); if (!c) return fail('Tidak diizinkan', 403)
   const { id, nama, password, atasan_id, gps_required } = await req.json()
-  const { data: t } = await c.db.from('profiles').select('role,cabang_id').eq('id', id).single()
+  const { data: t } = await c.db.from('profiles').select('role,cabang_id,user_id').eq('id', id).single()
   if (!t || !ROLES.includes(t.role)) return fail('Akun tidak ditemukan')
   if (!(await bolehCabang(c, t.cabang_id))) return fail('Cabang ini bukan wewenang Anda', 403)
   const upd: any = {}
@@ -56,17 +57,24 @@ export const PATCH = handler(async req => {
     if (String(password).length < 6) return fail('Password minimal 6 karakter')
     const { error } = await c.db.auth.admin.updateUserById(id, { password }); if (error) return fail(error.message)
   }
+  await audit(c, typeof gps_required === 'boolean' ? 'UBAH_GPS' : password ? 'RESET_PASSWORD' : 'UBAH_AKUN', 'profiles', t.user_id, { ...upd, reset_password: !!password })
   return NextResponse.json({ ok: true })
 })
 
 export const DELETE = handler(async req => {
   const c = await who(req); if (!c) return fail('Tidak diizinkan', 403)
   const { id } = await req.json()
-  const { data: t } = await c.db.from('profiles').select('role,cabang_id').eq('id', id).single()
+  const { data: t } = await c.db.from('profiles').select('role,cabang_id,user_id').eq('id', id).single()
   if (!t || !ROLES.includes(t.role)) return fail('Akun tidak ditemukan')
   if (!(await bolehCabang(c, t.cabang_id))) return fail('Cabang ini bukan wewenang Anda', 403)
   const { count } = await c.db.from('profiles').select('id', { count: 'exact', head: true }).eq('atasan_id', id)
   if (count) return fail(`Masih punya ${count} frontliner. Pindahkan atau hapus mereka dulu.`)
+  if (t.role === 'frontliner') {   // outlet tidak boleh menjadi yatim: Kode MD di outlet bukan relasi ke akun
+    const { count: no } = await c.db.from('outlets').select('id', { count: 'exact', head: true }).eq('kode_md', t.user_id)
+    if (no) return fail(`Masih punya ${no} outlet (Kode MD ${t.user_id}). Pindahkan dulu lewat halaman Outlet > Pindahkan outlet.`)
+  }
   const { error } = await c.db.auth.admin.deleteUser(id)
-  return error ? fail(error.message) : NextResponse.json({ ok: true })
+  if (error) return fail(error.message)
+  await audit(c, 'HAPUS_AKUN', 'profiles', t.user_id, { role: t.role, cabang_id: t.cabang_id })
+  return NextResponse.json({ ok: true })
 })

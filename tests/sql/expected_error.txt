@@ -1,0 +1,27 @@
+Alasan koreksi wajib diisi.
+Anda tidak berwenang atas cabang ini.
+Anda tidak berwenang atas cabang ini.
+Anda tidak berwenang atas cabang ini.
+Anda tidak berwenang atas cabang ini.
+Frontliner harus dari cabang yang sama dengan project.
+Hanya MDM.
+Hanya frontliner yang mengisi stok pembawaan.
+Kode MD tujuan harus akun frontliner yang terdaftar.
+Stok PN tidak cukup. Sisa N pcs, diminta N pcs.
+Stok PN tidak cukup. Sisa N pcs, diminta N pcs.
+Stok PN tidak cukup. Sisa N pcs, diminta N pcs.
+Stok tidak boleh kurang dari yang sudah terjual (N pcs).
+Stok tidak boleh kurang dari yang sudah terjual (N pcs).
+new row for relation "cabang" violates check constraint "cabang_tz_check"
+new row violates row-level security policy for table "carry_stock"
+new row violates row-level security policy for table "geocode_cache"
+new row violates row-level security policy for table "project_focus"
+new row violates row-level security policy for table "project_focus"
+new row violates row-level security policy for table "projects"
+permission denied for function audit_prune
+permission denied for function cek_radius
+permission denied for function cek_radius
+permission denied for function checkin
+permission denied for function project_set_member
+permission denied for function rekap_harian
+update or delete on table "projects" violates foreign key constraint "visits_project_id_fkey" on table "visits"

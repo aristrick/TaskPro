@@ -28,3 +28,21 @@ Draf penjualan tersimpan otomatis di perangkat selama kunjungan berjalan, sehing
 
 ## Menguji SQL
 `pip install pgserver` lalu `python tests/sql/run.py` (Postgres tertanam, tidak menyentuh Supabase Anda).
+
+## Migrasi 12 dan seterusnya (jalankan `12_migration.sql` sekali)
+Indeks, zona waktu per cabang (WIB/WITA/WIT), bukti lokasi check-in dan penanda kunjungan mencurigakan, jejak audit, pindah outlet massal,
+stok oleh MDS dan laporan stok, rekap harian di SQL, log error, cache alamat, dan pemantau kapasitas. Halaman baru: **Stok**, **Pantau**;
+**Project** dan **Cabang** (zona waktu) diperluas; **Outlet** punya "Pindahkan outlet".
+
+## Variabel lingkungan tambahan (Vercel)
+- `GEOCODE_CONTACT`: email/URL Anda, dikirim sebagai identitas ke layanan alamat gratis.
+- `NEXT_PUBLIC_SITE_URL`: alamat situs (opsional).
+- `NEXT_PUBLIC_DB_LIMIT_MB`: batas penyimpanan untuk kartu kapasitas (bawaan 500; ubah jika paket naik).
+
+## Tes, CI, dan backup
+- `npm run typecheck` (mode strict), `npm test` (tes unit), `npm run test:sql` (tes aturan database; butuh `pip install pgserver`).
+- `.github/workflows/ci.yml` menjalankan semuanya tiap push. `.github/workflows/backup.yml` membuat backup harian: lihat `docs/PEMULIHAN.md`.
+- Paket gratis Supabase: lihat `docs/PAKET-GRATIS.md`.
+
+## Pasang di layar HP
+Buka situs lewat HTTPS di Chrome Android: menu ⋮ > *Tambahkan ke layar utama*. Di iPhone: Safari > Bagikan > *Tambah ke Layar Utama*.

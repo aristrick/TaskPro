@@ -1,3 +1,15 @@
 node_modules
 .next
-.env.local
+out
+.vercel
+# Rahasia: jangan pernah di-commit
+.env
+.env.*
+!.env.example
+*.local
+# Bawaan Next/TypeScript
+next-env.d.ts
+*.tsbuildinfo
+*.log
+# Hasil uji lokal
+tests/sql/*.out

@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { caller, fail, handler, Ctx } from '../../../lib/server'
+import { caller, fail, handler, audit, Ctx } from '../../../lib/server'
 
 // MDM/RMDM boleh membuat/menghapus MDS. Hanya MDM yang boleh membuat/menghapus RMDM dan mengatur cakupan RMDM.
 // Aturan: 1 MDS = 1 cabang (wajib saat dibuat). 1 RMDM = banyak cabang.
@@ -39,6 +39,7 @@ export const POST = handler(async req => {
     const { data: got, error: e3 } = await c.db.from('cabang').update({ mds_id: data.user.id }).eq('id', cabang_id).is('mds_id', null).select('id')
     if (e3 || !got?.length) { await rollback(); return fail(e3?.message || 'Cabang baru saja diambil MDS lain. Pilih cabang lain.') }
   }
+  await audit(c, 'BUAT_AKUN', 'profiles', uid, { role, cabang_id: role === 'mds' ? cabang_id : null })
   return NextResponse.json({ ok: true })
 })
 
@@ -46,7 +47,7 @@ export const POST = handler(async req => {
 export const PATCH = handler(async req => {
   const c = await guard(req); if (!c) return fail('Tidak diizinkan', 403)
   const { id, op, cabang_id } = await req.json()
-  const { data: t } = await c.db.from('profiles').select('role').eq('id', id).maybeSingle()
+  const { data: t } = await c.db.from('profiles').select('role,user_id').eq('id', id).maybeSingle()
   if (!t) return fail('Akun tidak ditemukan')
 
   if (op === 'mds_cabang') {
@@ -67,6 +68,7 @@ export const PATCH = handler(async req => {
         return fail(error?.message || 'Cabang baru saja diambil MDS lain')
       }
     }
+    await audit(c, 'UBAH_CABANG_MDS', 'cabang', t.user_id, { cabang_id: cabang_id || null })
     return NextResponse.json({ ok: true })
   }
 
@@ -80,6 +82,7 @@ export const PATCH = handler(async req => {
       const { error } = await c.db.from('cabang').update({ rmdm_id: null }).eq('id', cabang_id).eq('rmdm_id', id)
       if (error) return fail(error.message)
     }
+    await audit(c, op === 'rmdm_add' ? 'RMDM_TAMBAH_CABANG' : 'RMDM_LEPAS_CABANG', 'cabang', t.user_id, { cabang_id })
     return NextResponse.json({ ok: true })
   }
   return fail('Operasi tidak dikenal')
@@ -88,7 +91,7 @@ export const PATCH = handler(async req => {
 export const DELETE = handler(async req => {
   const c = await guard(req); if (!c) return fail('Tidak diizinkan', 403)
   const { id } = await req.json()
-  const { data: t } = await c.db.from('profiles').select('role').eq('id', id).maybeSingle()
+  const { data: t } = await c.db.from('profiles').select('role,user_id').eq('id', id).maybeSingle()
   if (!t || !['mds', 'rmdm'].includes(t.role)) return fail('Bukan akun MDS/RMDM')
   if (t.role === 'rmdm' && c.role !== 'mdm') return fail('Hanya MDM yang boleh menghapus RMDM', 403)
   if (t.role === 'mds' && c.role === 'rmdm') {
@@ -96,5 +99,7 @@ export const DELETE = handler(async req => {
     if (cb && !(await cabangBoleh(c, cb.id))) return fail('MDS ini bukan wewenang Anda', 403)
   }
   const { error } = await c.db.auth.admin.deleteUser(id) // cabang.mds_id / rmdm_id otomatis kosong
-  return error ? fail(error.message) : NextResponse.json({ ok: true })
+  if (error) return fail(error.message)
+  await audit(c, 'HAPUS_AKUN', 'profiles', t.user_id, { role: t.role })
+  return NextResponse.json({ ok: true })
 })

@@ -12,6 +12,28 @@ function Produk() {
   const [f, setF] = useState<any>(EMPTY)
   const [editId, setEditId] = useState('')
   const [err, setErr] = useState('')
+  // Fokus bersifat per project: pilih project, lalu centang produk fokusnya
+  const [projs, setProjs] = useState<any[]>([])
+  const [cabs, setCabs] = useState<any[]>([])
+  const [pid, setPid] = useState('')
+  const [focus, setFocus] = useState<Set<string>>(new Set())
+  async function loadProjects() {
+    const [{ data: p }, { data: c }] = await Promise.all([supabase.from('projects').select('id,name,cabang_id').order('name'), supabase.from('cabang').select('id,kode').order('kode')])
+    setProjs(p || []); setCabs(c || []); setPid(x => x || p?.[0]?.id || '')
+  }
+  async function loadFocus() {
+    if (!pid) return setFocus(new Set())
+    const { data } = await supabase.from('project_focus').select('product_id').eq('project_id', pid)
+    setFocus(new Set((data || []).map((x: any) => x.product_id)))
+  }
+  useEffect(() => { loadProjects() }, [])
+  useEffect(() => { loadFocus() }, [pid])
+  async function toggleFokus(prod: string, on: boolean) {
+    const { error } = on ? await supabase.from('project_focus').insert({ project_id: pid, product_id: prod })
+      : await supabase.from('project_focus').delete().eq('project_id', pid).eq('product_id', prod)
+    setErr(error ? error.message : ''); loadFocus()
+  }
+  const kode = (cid: string) => cabs.find(c => c.id === cid)?.kode
   async function load() { const { data } = await supabase.from('products').select('*').order('product'); setRows(data || []) }
   useEffect(() => { load() }, [])
   async function simpan() {
@@ -36,14 +58,24 @@ function Produk() {
         <button onClick={simpan}>{editId ? 'Simpan perubahan' : 'Tambah'}</button>
         {editId && <button className="ghost" onClick={() => { setEditId(''); setF(EMPTY); setErr('') }}>Batal</button>}</div>
       {err && <p className="err" role="alert" style={{ marginBottom: 0 }}>{err}</p>}</div>
+    <div className="card">
+      <span className="label" style={{ marginBottom: 8 }}>Produk fokus</span>
+      {projs.length === 0 ? <p className="muted" style={{ margin: 0 }}>Belum ada project. Buat project di halaman Project, lalu pilih produk fokusnya di sini.</p> : <>
+        <div className="row" style={{ margin: 0 }}>
+          <select value={pid} onChange={e => setPid(e.target.value)} aria-label="Project untuk produk fokus">
+            {projs.map(p => <option key={p.id} value={p.id}>{kode(p.cabang_id)} · {p.name}</option>)}</select>
+          <span className="chip">{focus.size} produk fokus</span></div>
+        <p className="muted" style={{ margin: '8px 0 0', fontSize: 13 }}>Centang kolom <b>Fokus</b> pada tabel di bawah untuk project ini. Tiap project punya daftar fokus sendiri, dan frontliner mengikuti project-nya. Perubahan berlaku untuk penjualan berikutnya; riwayat tidak berubah.</p></>}
+    </div>
     <div className="scroll"><table>
-      <thead><tr><th>Produk</th><th>SKU</th><th>Brand</th><th>Kategori</th><th>Harga</th><th>Aktif</th><th /></tr></thead>
+      <thead><tr><th>Produk</th><th>SKU</th><th>Brand</th><th>Kategori</th><th>Harga</th><th>Fokus</th><th>Aktif</th><th /></tr></thead>
       <tbody>{rows.map(r => <tr key={r.id}><td>{r.product}</td><td>{r.sku_code}</td><td>{r.brand}</td><td>{r.category_product}</td>
         <td>{Number(r.price).toLocaleString('id-ID')}</td>
+        <td><input type="checkbox" aria-label={`Fokus ${r.product}`} disabled={!pid || (!r.active && !focus.has(r.id))} title={!pid ? 'Pilih project dulu' : !r.active && !focus.has(r.id) ? 'Produk nonaktif' : ''} checked={focus.has(r.id)} onChange={e => toggleFokus(r.id, e.target.checked)} /></td>
         <td><input type="checkbox" checked={r.active} onChange={e => upd(r.id, { active: e.target.checked })} /></td>
         <td style={{ whiteSpace: 'nowrap' }}><button className="ghost" onClick={() => edit(r)}><Icon name="edit" size={16} /> Edit</button> <button className="ghost danger" onClick={() => hapus(r)}><Icon name="trash" size={16} /> Hapus</button></td></tr>)}</tbody>
     </table></div>
-    <p className="muted">Harga yang diubah hanya berlaku untuk penjualan berikutnya. Produk fokus diatur per project di halaman Project. Produk yang sudah pernah terjual tidak bisa dihapus; nonaktifkan agar riwayat tetap utuh.</p>
+    <p className="muted">Harga yang diubah hanya berlaku untuk penjualan berikutnya. Produk fokus juga bisa diatur per project di halaman Project. Produk yang sudah pernah terjual tidak bisa dihapus; nonaktifkan agar riwayat tetap utuh.</p>
   </>)
 }
 export default function Page() { return <Shell roles={['mds', 'mdm', 'rmdm']}><Produk /></Shell> }

@@ -5,23 +5,16 @@ import { supabase } from '../../lib/supabase'
 import { loadMe } from '../../lib/auth'
 import { logout, keluarLokal, useHeartbeat } from '../../lib/sesi'
 import { useDialog } from '../../components/Dialog'
-import { rekap, day, rp, VSEL } from '../../lib/rekap'
+import { rekap, day, rp, VSEL, OFFSET, startOfDay } from '../../lib/rekap'
+import { friendly } from '../../lib/friendly'
 import OutletForm from '../../components/OutletForm'
 import StokForm from '../../components/StokForm'
+import RekapTab from '../../components/hp/RekapTab'
+import ProfileTab from '../../components/hp/ProfileTab'
 import { PageLoader, SkelRows } from '../../components/Loaders'
 import Icon from '../../components/Icon'
 
-const R = 6371000, rad = (x: number) => (x * Math.PI) / 180
-const meters = (a: number, b: number, c: number, d: number) => {
-  const h = Math.sin(rad(c - a) / 2) ** 2 + Math.cos(rad(a)) * Math.cos(rad(c)) * Math.sin(rad(d - b) / 2) ** 2
-  return 2 * R * Math.asin(Math.sqrt(h))
-}
-const fresh = () => new Promise<GeolocationPosition>((ok, no) => navigator.geolocation.getCurrentPosition(ok, no, { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }))
-const payload = (p: GeolocationPosition | null) => (p ? { p_lat: p.coords.latitude, p_lng: p.coords.longitude, p_acc: p.coords.accuracy } : { p_lat: null, p_lng: null, p_acc: null })
-const fmt = (m: number) => (m < 1000 ? `${Math.round(m)} m` : `${(m / 1000).toFixed(1)} km`)
-const QUICK = [1, 2, 5, 10]
-const buzz = (ms = 14) => { try { navigator.vibrate?.(ms) } catch {} }
-const todayStart = () => `${day(new Date())}T00:00:00+07:00`
+import { meters, fresh, payload, fmt, buzz } from '../../lib/hp'
 
 export default function Frontliner() {
   const router = useRouter(), dlg = useDialog()
@@ -58,6 +51,7 @@ export default function Frontliner() {
   const [rowsLoading, setRowsLoading] = useState(true)
   const [prodReady, setProdReady] = useState(false)
   const [busyId, setBusyId] = useState<any>(null)
+  const [tz, setTz] = useState('Asia/Jakarta')   // zona waktu cabang frontliner (WIB/WITA/WIT)
   const [savedId, setSavedId] = useState<any>(null)
   // Stok pembawaan hari ini: penjualan tidak boleh melebihi stok yang dibawa (dijaga juga di database)
   const [stokOpen, setStokOpen] = useState(false)
@@ -111,9 +105,9 @@ export default function Frontliner() {
   }, [router])
   useEffect(loadRows, [me, rayon])
   useEffect(() => {
-    if (me) supabase.from('visits').select('outlet_id').eq('frontliner_id', me.id).gte('checkin_at', todayStart())
+    if (me) supabase.from('visits').select('outlet_id').eq('frontliner_id', me.id).gte('checkin_at', startOfDay(tz))
       .then(({ data }) => setVisited(new Set((data || []).map((x: any) => x.outlet_id))))
-  }, [me, visit])
+  }, [me, visit, tz])
   useEffect(() => {
     if (!visit) return
     setProdReady(false)
@@ -123,9 +117,9 @@ export default function Frontliner() {
   }, [visit])
   useEffect(() => {
     if (tab !== 'rekap' || !me) return
-    supabase.from('visits').select(VSEL).eq('frontliner_id', me.id).gte('checkin_at', `${day(new Date(Date.now() - 35 * 864e5))}T00:00:00+07:00`).limit(2000)
+    supabase.from('visits').select(VSEL).eq('frontliner_id', me.id).gte('checkin_at', startOfDay(tz, 35)).limit(2000)
       .then(({ data }) => setRk(rekap(data || [])))
-  }, [tab, me])
+  }, [tab, me, tz])
 
   // Produk fokus mengikuti project frontliner: saat kunjungan berjalan memakai project yang tercatat saat check-in
   useEffect(() => {
@@ -140,6 +134,7 @@ export default function Frontliner() {
     })()
     return () => { off = true }
   }, [me?.id, visit?.id])
+  useEffect(() => { if (me?.cabang_id) supabase.from('cabang').select('tz').eq('id', me.cabang_id).maybeSingle().then(({ data }) => { if (data?.tz) setTz(data.tz) }) }, [me?.id])
   // Mode Edit Outlet: warna status bar ikut merah, dan mode otomatis berakhir jika pindah tab
   useEffect(() => { document.querySelector('meta[name="theme-color"]')?.setAttribute('content', editMode && tab === 'sell' ? '#B3261E' : '#0B1F4B') }, [editMode, tab])
   useEffect(() => { if (tab !== 'sell') setEditMode(false) }, [tab])
@@ -187,7 +182,7 @@ export default function Frontliner() {
       const p = await geo(); if (p) setPos({ lat: p.coords.latitude, lng: p.coords.longitude })
       const { error } = await supabase.rpc('checkin', { p_outlet: r.id, ...payload(p) }); if (error) throw error
       setQty({}); setPq(''); setPf('all'); await loadVisit(me.id, 'fwd'); buzz()
-    } catch (e: any) { if (!jauh(e, r.name, r.lat, r.long)) setErr(e.message || 'Gagal membaca lokasi') }
+    } catch (e: any) { if (!jauh(e, r.name, r.lat, r.long)) setErr(friendly(e, 'Gagal membaca lokasi')) }
     setBusy(false); setBusyId(null)
   }
   async function keluar() {
@@ -198,7 +193,7 @@ export default function Frontliner() {
       const { error } = await supabase.rpc('checkout', { p_visit: visit.id }); if (error) throw error
       try { localStorage.removeItem(draftKey(visit.id)) } catch {}
       setAnim('back'); setVisit(null); setQty({}); say('Check-out berhasil')
-    } catch (e: any) { if (!jauh(e, visit.outlets?.name, visit.outlets?.lat, visit.outlets?.long)) setErr(e.message || 'Gagal membaca lokasi') }
+    } catch (e: any) { if (!jauh(e, visit.outlets?.name, visit.outlets?.lat, visit.outlets?.long)) setErr(friendly(e, 'Gagal membaca lokasi')) }
     setBusy(false)
   }
   const total = products.reduce((a, x) => a + (qty[x.id] || 0) * Number(x.price), 0)
@@ -229,7 +224,7 @@ export default function Frontliner() {
   const ch = (id: string, v: number) => { buzz(8); setQty(q => ({ ...q, [id]: Math.max(0, Math.min(9999, sisaOf(id), Math.round(v) || 0)) })) }
   const totalSisa = products.reduce((a, x) => a + sisaOf(x.id) * (enforce ? 1 : 0), 0)
   const noStock = enforce && stokReady && products.length > 0 && totalSisa === 0
-  const inTime = visit?.checkin_at ? new Date(visit.checkin_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jakarta' }) : ''
+  const inTime = visit?.checkin_at ? new Date(visit.checkin_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', timeZone: tz }) : ''
   const nFocus = products.filter(x => focusIds.has(x.id)).length
   const shown = products.filter(x => (!pq.trim() || (x.product + ' ' + (x.brand || '')).toLowerCase().includes(pq.trim().toLowerCase()))
     && (pf === 'all' || (pf === 'focus' ? focusIds.has(x.id) : qty[x.id] > 0)))
@@ -294,14 +289,7 @@ export default function Frontliner() {
     .sort((a, b) => (a.d ?? 1e12) - (b.d ?? 1e12))
   const done = rows.filter(r => visited.has(r.id)).length
   const stokSum = Object.values(stok).reduce((a, x) => (x.dibawa > 0 ? { n: a.n + 1, pcs: a.pcs + x.dibawa, sisa: a.sisa + x.dibawa - x.terjual } : a), { n: 0, pcs: 0, sisa: 0 })
-  const days = rk ? Object.keys(rk).sort().reverse() : []
-  const dd = sel && rk?.[sel]
-  const tgl = (d: string, o: Intl.DateTimeFormatOptions) => new Date(d + 'T00:00:00+07:00').toLocaleDateString('id-ID', { ...o, timeZone: 'Asia/Jakarta' })
-  const bulanDays = days.filter(x => x.startsWith(day(new Date()).slice(0, 7)))
-  const bulanVal = bulanDays.reduce((a, x) => a + rk[x].value, 0), bulanOc = bulanDays.reduce((a, x) => a + rk[x].oc, 0)
   const backRekap = () => { if (sel) { setSub('back'); setSel('') } else { setSub(''); setTab('sell') } }
-  const others = days.filter(x => x !== sel).map(x => rk[x].value).filter(v => v > 0)
-  const avg = others.length ? others.reduce((a, b) => a + b, 0) / others.length : 0
 
   return (
     <div className={`phone ${anim}`}>
@@ -342,53 +330,8 @@ export default function Frontliner() {
             {r.lat == null && <div className="nolat-msg"><Icon name="alert" size={14} /> Lokasi outlet belum ada</div>}</div>
           {r.lat != null && <a className="go" aria-label="Menuju lokasi" target="_blank" onClick={e => e.stopPropagation()} href={`https://www.google.com/maps/dir/?api=1&destination=${r.lat},${r.long}`}><Icon name="nav" size={20} /></a>}
         </div>))}
-      {tab === 'rekap' && (!rk ? <SkelRows n={5} /> : dd ? (() => {
-        const prods = Object.entries(dd.prod).map(([n, p]: any) => ({ n, ...p })).sort((a: any, b: any) => b.value - a.value)
-        const fokus = prods.filter((p: any) => p.focus), pcsHari = prods.reduce((a: number, p: any) => a + p.qty, 0)
-        const pct = avg > 0 && dd.value > 0 ? Math.round((dd.value / avg - 1) * 100) : null
-        return <div className={`rk ${sub}`}>
-          <section className="rk-hero">
-            <div className="rk-eyebrow">{tgl(sel, { weekday: 'long' })}</div>
-            <div className="rk-date">{tgl(sel, { day: 'numeric', month: 'long', year: 'numeric' })}</div>
-            <div className="rk-total num">{rp(dd.value)}</div>
-            <div className="rk-sub">Total penjualan</div>
-            {pct !== null && <div className={`rk-cmp ${pct >= 0 ? 'up' : 'down'}`}><Icon name={pct >= 0 ? 'up' : 'down'} size={16} />{Math.abs(pct)}% {pct >= 0 ? 'di atas' : 'di bawah'} rata-rata <span>({rp(avg)})</span></div>}
-          </section>
-          <div className="rk-stats">
-            <div className="rk-stat"><b>{dd.oc}</b><span>OC</span></div>
-            <div className="rk-stat"><b>{dd.visits}</b><span>Kunjungan</span></div>
-            <div className="rk-stat"><b>{pcsHari}</b><span>Pcs</span></div></div>
-          <section className="rk-card"><header><h4>Produk fokus</h4><small>EC = outlet yang membeli</small></header>
-            {fokus.length === 0 ? <p className="rk-empty">Belum ada penjualan produk fokus.</p>
-              : fokus.map((p: any) => <div className="rk-row" key={p.n}><div className="rk-name">{p.n}</div>
-                <div className="rk-pills"><span className="rk-pill">EC {p.ec}</span><span className="rk-pill">{p.qty} pcs</span></div></div>)}</section>
-          <section className="rk-card"><header><h4>Penjualan per produk</h4><small>{prods.length} produk</small></header>
-            {prods.length === 0 ? <p className="rk-empty">Belum ada penjualan.</p>
-              : prods.map((p: any) => <div className="rk-row" key={p.n}>
-                <div><div className="rk-name">{p.n}</div><div className="rk-meta">{p.qty} pcs</div></div><div className="rk-val">{rp(p.value)}</div>
-                <div className="rk-bar" aria-hidden="true"><i style={{ width: `${dd.value ? Math.max(3, (p.value / dd.value) * 100) : 0}%` }} /></div></div>)}</section>
-          <section className="rk-card"><header><h4>Outlet bertransaksi</h4><small>{dd.outlets.length} outlet</small></header>
-            {dd.outlets.length === 0 ? <p className="rk-empty">Belum ada outlet bertransaksi.</p>
-              : dd.outlets.map((o: any, i: number) => <div className="rk-row rank" key={i}><span className="rk-rank">{i + 1}</span><div className="rk-name">{o.name}</div><div className="rk-val">{rp(o.value)}</div></div>)}</section>
-        </div>
-      })() : days.length === 0 ? <div className="empty"><b>Belum ada kunjungan</b><p className="muted">Rekap muncul setelah Anda check-out di outlet pertama.</p></div>
-        : <div className={`rk ${sub}`}>
-            <section className="rk-hero"><div className="rk-eyebrow">Bulan ini</div><div className="rk-total num">{rp(bulanVal)}</div>
-              <div className="rk-sub">{bulanDays.length} hari kunjungan · {bulanOc} OC</div></section>
-            <div className="rk-list">{days.map(x => <div className="rk-day" role="button" tabIndex={0} key={x} onClick={() => { setSub('fwd'); setSel(x) }} onKeyDown={e => e.key === 'Enter' && (setSub('fwd'), setSel(x))}>
-              <div className="rk-dt"><b>{tgl(x, { day: 'numeric' })}</b><span>{tgl(x, { month: 'short' })}</span></div>
-              <div className="grow"><div className="rk-name">{tgl(x, { weekday: 'long' })}</div><div className="rk-meta">{rk[x].oc} OC · {rk[x].visits} kunjungan</div></div>
-              <div className="rk-val">{rp(rk[x].value)}</div><Icon name="chevron" size={18} /></div>)}</div>
-          </div>)}
-      {tab === 'profile' && <div className="profile fade">
-        <div className="avatar" aria-hidden="true"><svg viewBox="0 0 120 120"><circle cx="60" cy="46" r="20" /><path d="M20 108c2-24 18-36 40-36s38 12 40 36z" /></svg></div>
-        <h2 className="pname">{me.nama}</h2>
-        <p className="pid">{me.user_id}</p>
-        <button className="menurow" onClick={() => setStokOpen(true)}>
-          <span className="mi"><Icon name="box" /></span>
-          <span className="mt"><b>Tambahkan stok pembawaan</b><small>{stokSum.n ? `Hari ini: ${stokSum.n} produk · ${stokSum.pcs} pcs (sisa ${stokSum.sisa})` : 'Belum ada stok hari ini'}</small></span>
-          <Icon name="chevron" size={18} /></button>
-        <button className="logout" onClick={keluarAkun}>LOG OUT</button></div>}
+      {tab === 'rekap' && <RekapTab rk={rk} sel={sel} sub={sub} tz={tz} onPick={x => { setSub('fwd'); setSel(x) }} />}
+      {tab === 'profile' && <ProfileTab nama={me.nama} userId={me.user_id} stokSum={stokSum} onStok={() => setStokOpen(true)} onLogout={keluarAkun} />}
       <div className="tabbar">
         <button className={tab === 'profile' ? 'on' : ''} onClick={() => setTab('profile')}><span className="pill"><Icon name="user" /></span>Profile</button>
         <button className={tab === 'sell' ? 'on' : ''} onClick={() => setTab('sell')}><span className="pill"><Icon name="basket" /></span>Input</button>

@@ -1,6 +1,7 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { SkelRows } from '../../components/Loaders'
+import PindahOutlet from '../../components/PindahOutlet'
 import Link from 'next/link'
 import Shell from '../../components/Shell'
 import { supabase } from '../../lib/supabase'
@@ -13,6 +14,8 @@ const PAGE = 50
 function Outlet() {
   const dlg = useDialog()
   const [cabang, setCabang] = useState<any[]>([])
+  const [pindah, setPindah] = useState(false)
+  const refreshKmds = () => supabase.rpc('kode_md_list').then(({ data }) => setKmds((data as string[]) || []))
   const [kmd, setKmd] = useState(''); const [kmds, setKmds] = useState<string[]>([])
   const [cid, setCid] = useState(''); const [q, setQ] = useState(''); const [rayon, setRayon] = useState(''); const [page, setPage] = useState(0)
   const [rows, setRows] = useState<any[]>([]); const [total, setTotal] = useState(0); const [loading, setLoading] = useState(true)
@@ -69,7 +72,8 @@ function Outlet() {
   const f = (k: string, ph: string) => <input placeholder={ph} value={ed[k] ?? ''} onChange={e => setEd({ ...ed, [k]: e.target.value })} />
 
   return (<>
-    <div className="row"><h2 style={{ margin: 0 }}>Outlet</h2><div className="grow" /><button className="ghost" onClick={unduh}><Icon name="download" size={18} /> Download Excel</button><Link href="/import"><button>Import DMP</button></Link></div>
+    <div className="row"><h2 style={{ margin: 0 }}>Outlet</h2><div className="grow" /><button className="ghost" onClick={() => setPindah(p => !p)}><Icon name="store" size={18} /> Pindahkan outlet</button><button className="ghost" onClick={unduh}><Icon name="download" size={18} /> Download Excel</button><Link href="/import"><button>Import DMP</button></Link></div>
+    {pindah && <PindahOutlet kmds={kmds} onDone={() => { load(); refreshKmds() }} />}
     <div className="row">
       <select value={cid} onChange={e => { setCid(e.target.value); setPage(0) }}>
         <option value="">Semua cabang</option>{cabang.map(c => <option key={c.id} value={c.id}>{c.kode} {c.nama}</option>)}

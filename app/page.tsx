@@ -16,16 +16,27 @@ function Home() {
   const [radius, setRadius] = useState<boolean | null>(null)
   const [stok, setStok] = useState<boolean | null>(null)
   const [rk, setRk] = useState<any>(null)
+  const [usage, setUsage] = useState<any>(null)
   useEffect(() => {
     (async () => setN({ Cabang: await cnt('cabang'), Outlet: await cnt('outlets'), Frontliner: await cnt('profiles', 'frontliner') }))()
     loadMe().then(({ me }) => setRole(me?.role || ''))
     supabase.from('settings').select('value').eq('key', 'radius_enforced').single().then(({ data }) => setRadius(data ? data.value === true : true))
     supabase.from('settings').select('value').eq('key', 'stok_enforced').maybeSingle().then(({ data }) => setStok(data ? data.value === true : true))
-    const m = `${day(new Date()).slice(0, 8)}01T00:00:00+07:00`
-    fetchAll((a, b) => supabase.from('visits').select(VSEL).gte('checkin_at', m).order('checkin_at').range(a, b)).then(v => setRk(rekap(v))).catch(() => setRk({}))
+    // Rekap bulan ini dihitung di database (hanya hasil ringkas yang dikirim; hemat kuota egress paket gratis)
+    const h = day(new Date()), [y, mo] = h.split('-').map(Number)
+    const awal = `${h.slice(0, 8)}01T00:00:00+07:00`
+    const akhir = `${mo === 12 ? y + 1 : y}-${String(mo === 12 ? 1 : mo + 1).padStart(2, '0')}-01T00:00:00+07:00`
+    supabase.rpc('rekap_harian', { p_from: awal, p_to: akhir }).then(({ data, error }) => {
+      if (!error && data) return setRk(data)
+      // Cadangan jika migrasi 12 belum dijalankan: hitung di browser seperti sebelumnya
+      fetchAll((a, b) => supabase.from('visits').select(VSEL).gte('checkin_at', awal).order('checkin_at').range(a, b)).then(v => setRk(rekap(v))).catch(() => setRk({}))
+    })
   }, [])
+  useEffect(() => { if (role === 'mdm') supabase.rpc('db_usage').then(({ data }) => setUsage(data)) }, [role])
   async function toggle(v: boolean) { const { error } = await supabase.from('settings').update({ value: v }).eq('key', 'radius_enforced'); if (!error) setRadius(v) }
   async function toggleStok(v: boolean) { const { error } = await supabase.from('settings').update({ value: v }).eq('key', 'stok_enforced'); if (!error) setStok(v) }
+  const BATAS = Number(process.env.NEXT_PUBLIC_DB_LIMIT_MB || 500) * 1024 * 1024   // paket gratis Supabase: 500 MB (isi NEXT_PUBLIC_DB_LIMIT_MB jika paket naik)
+  const pakai = usage ? Number(usage.bytes) / BATAS : 0
   const days = rk ? Object.values(rk) as any[] : []
   const hari = rk?.[day(new Date())]
   const bulan = days.reduce((a, d) => a + d.value, 0), ocB = days.reduce((a, d) => a + d.oc, 0)
@@ -57,6 +68,14 @@ function Home() {
       {role === 'mdm' ? <label><input type="checkbox" checked={!!stok} onChange={e => toggleStok(e.target.checked)} /> Aktifkan batas stok pembawaan</label>
         : <p className="muted" style={{ margin: 0 }}>Hanya MDM yang bisa mengubah pengaturan ini.</p>}
     </div>
+    {role === 'mdm' && <div className="card">
+      <b>Penyimpanan database</b>
+      {!usage ? <p className="muted">…</p> : <>
+        <p className="muted" style={{ margin: '4px 0 8px' }}>{(Number(usage.bytes) / 1048576).toFixed(1)} MB dari {(BATAS / 1048576).toFixed(0)} MB ({(pakai * 100).toFixed(0)}%)</p>
+        <div className="meter" role="progressbar" aria-valuenow={Math.round(pakai * 100)} aria-valuemin={0} aria-valuemax={100}><i className={pakai >= .9 ? 'bad' : pakai >= .7 ? 'warn' : ''} style={{ width: `${Math.min(100, pakai * 100)}%` }} /></div>
+        {pakai >= .7 && <p className={pakai >= .9 ? 'err' : 'muted'} style={{ margin: '8px 0 0' }}>{pakai >= .9 ? 'Hampir penuh: database bisa menjadi hanya-baca. ' : 'Mulai terisi. '}Ekspor lalu hapus data lama, atau naikkan paket Supabase.</p>}
+        <div style={{ marginTop: 10 }}>{(usage.tabel || []).slice(0, 5).map((t: any) => <div className="line" key={t.nama}><span>{t.nama}</span><b>{(Number(t.bytes) / 1048576).toFixed(1)} MB</b></div>)}</div></>}
+    </div>}
   </>)
 }
 export default function Page() { return <Shell roles={['mds', 'mdm', 'rmdm', 'tl', 'kormot']}><Home /></Shell> }

@@ -1,0 +1,59 @@
+T0 kode outlet & Outlet ID: 0300-TMTB01-NNNNNNNNN / NNNNNNNNN | 0300-TMTB05-NNNNNNNNN / NNNNNNNNN
+T1 anon cek_radius:
+T2 anon checkin:
+T3 authenticated cek_radius langsung:
+T6 stok setelah tambah 10: 10 dibawa / 0 terjual
+T7 tambah lagi 2 (kumulatif, harus 12): 12
+T9 simpan ulang qty 4 di kunjungan yang sama (tidak dobel), total kunjungan-2: 4
+T10b penjualan kunjungan-2 setelah penolakan (harus tetap 4): 4
+T11 stok_hari_ini(exclude v2): 10 dibawa / 6 terjual
+T11b stok_hari_ini(): 10 dibawa / 10 terjual
+T12b dibawa setelah koreksi 13: 13
+T14 kunjungan-2 effective: true
+T15 F2 melihat carry_stock milik F1: 0
+T16 MDS melihat carry_stock cabangnya: 1
+T18 aturan stok dimatikan: jual 50 tanpa stok tersimpan = 50
+P1 MDS membuat project di cabangnya: berhasil
+P3 anggota F1: Taskforce Beverage Pulogadung Sep 2026
+P6 project tercatat pada kunjungan: true
+P7 project F1 setelah dikeluarkan: kosong
+P8 riwayat kunjungan tetap punya project: true
+P10 hapus project tanpa kunjungan, anggota terlepas: kosong
+P11 TL melihat project cabangnya: 1
+P12 MDS cabang lain melihat project 0300: 0
+F1 MDS menetapkan P1 sebagai fokus project PF: berhasil
+F2 frontliner di PF membaca fokus project-nya: 1
+F3 cap fokus penjualan (P1 harus true, P2 false): P1=true, P2=false
+F4 kunjungan baru (P1 false, P2 true): P1=false, P2=true
+F5 riwayat kunjungan lama tetap (P1 true, P2 false): P1=true, P2=false
+F6 frontliner tanpa project membaca fokus: 0
+V1 indeks baru ada (harus 4): 4
+V2 zona waktu 0400=Asia/Jayapura, 0300=Asia/Jakarta
+V4 akurasi 0: suspect=true | Akurasi GPS 0 (kemungkinan lokasi palsu)
+V5 lompatan jauh: suspect=true | Perpindahan 11875.4 km dalam 0 menit
+V6 jarak tercatat (harus 0 m): 0, akurasi 0
+V6b kunjungan wajar tidak ditandai (kunjungan c punya lompatan dari b, jadi true): true
+V7 MDS melihat kunjungan mencurigakan: 3
+V8 frontliner lain melihat kunjungan mencurigakan F1: 0
+V9 MDS membaca audit (harus 0): 0
+V10 MDM membaca audit: 4
+V11 perubahan outlet tercatat: Outlet A -> Outlet A2 oleh 0300-MDS01
+V12 pengaturan tercatat: radius_enforced false -> true
+V13 hitung outlet TMTB01 rayon 2 (harus 1): 1
+V14 pindah rayon 2: 1 outlet
+V15 Outlet C kini milik 0300-TMTB05, kode outlet tetap: true
+V16 Outlet D tidak ikut pindah (rayon 3): 0300-TMTB01
+V17 audit pindah satu ringkasan: 1
+V18 audit UPDATE outlet tidak membanjir (harus 2): 2
+V21 terjual P1 hari ini oleh F1: 13
+V24 laporan stok F1/P1 (dibawa/terjual): 100/13
+V26 MDS cabang lain melihat laporan stok F1 (harus 0): 0
+V28 audit koreksi stok: 13 -> 100 alasan: salah hitung pagi
+V29 koreksi admin tidak dobel di audit (harus 0 baris INSERT/UPDATE biasa): 0
+V30 rekap_harian cocok dengan jumlah langsung: true
+V31 rekap_harian berisi OC, kunjungan, produk: true
+V32 frontliner lain melihat rekap F1 (harus 0 kunjungan): 0
+V33 MDM membaca log error: 1
+V34 kapasitas database terbaca (MB>0): true, tabel teratas: 8
+V35 MDS membaca log error (harus 0): 0
+V39 audit_prune oleh pemilik database berjalan

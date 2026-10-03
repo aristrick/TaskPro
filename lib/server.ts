@@ -26,3 +26,12 @@ export type Ctx = NonNullable<Awaited<ReturnType<typeof caller>>>
 export const handler = (fn: (req: NextRequest) => Promise<NextResponse>) => async (req: NextRequest) => {
   try { return await fn(req) } catch (e: any) { return fail(e?.message || 'Kesalahan server', 500) }
 }
+
+// Catat tindakan admin yang dikerjakan lewat server (service role tidak membawa identitas pengguna, jadi pelaku dicatat eksplisit).
+// Kegagalan mencatat tidak boleh menggagalkan tindakan utamanya. Jangan pernah memasukkan password ke detail.
+export async function audit(c: Ctx, action: string, tabel: string, rowId: string, detail: Record<string, unknown> = {}) {
+  try {
+    const { data: me } = await c.db.from('profiles').select('user_id').eq('id', c.uid).maybeSingle()
+    await c.db.from('audit_log').insert({ actor: c.uid, actor_user_id: me?.user_id ?? null, action, tabel, row_id: rowId, detail })
+  } catch { /* abaikan */ }
+}

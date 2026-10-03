@@ -1,0 +1,34 @@
+name: Backup dan pemeliharaan database
+# Paket gratis Supabase tidak punya backup otomatis dan menjeda proyek yang tidak aktif seminggu.
+# Workflow ini setiap hari: (1) membersihkan data lama, yang sekaligus menjaga proyek tetap aktif, (2) membuat backup terenkripsi.
+# Panduan pengisian rahasia dan cara memulihkan: docs/PEMULIHAN.md
+on:
+  schedule: [{ cron: '0 18 * * *' }]      # 01:00 WIB
+  workflow_dispatch: {}
+permissions: { contents: read }
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+      PASS: ${{ secrets.BACKUP_PASSPHRASE }}
+      PGIMG: postgres:17          # samakan dengan versi Postgres proyek Supabase Anda (Settings > Infrastructure)
+    steps:
+      - name: Periksa rahasia
+        run: |
+          test -n "$DB_URL" || { echo "::error::SUPABASE_DB_URL belum diisi (lihat docs/PEMULIHAN.md)"; exit 1; }
+          test -n "$PASS"   || { echo "::error::BACKUP_PASSPHRASE belum diisi (lihat docs/PEMULIHAN.md)"; exit 1; }
+      - name: Bersihkan data lama (audit 180 hari, log error 30 hari, cache alamat 365 hari)
+        run: docker run --rm "$PGIMG" psql "$DB_URL" -v ON_ERROR_STOP=1 -c "select audit_prune(180);"
+      - name: Dump database
+        run: |
+          docker run --rm "$PGIMG" pg_dump "$DB_URL" --schema=public --no-owner --no-privileges -Fc > public.dump
+          docker run --rm "$PGIMG" pg_dump "$DB_URL" --data-only --no-owner --table=auth.users --table=auth.identities -Fc > auth.dump
+          ls -l public.dump auth.dump
+      - name: Enkripsi (berisi akun dan data lokasi)
+        run: |
+          tar cf backup.tar public.dump auth.dump
+          gpg --batch --yes --pinentry-mode loopback --passphrase "$PASS" --symmetric --cipher-algo AES256 -o "backup-$(date +%F).tar.gpg" backup.tar
+      - uses: actions/upload-artifact@v4
+        with: { name: backup-db, path: 'backup-*.tar.gpg', retention-days: 14 }

@@ -1,1 +1,26 @@
-{"name":"taskpro","private":true,"scripts":{"dev":"next dev","build":"next build","start":"next start"},"dependencies":{"@supabase/supabase-js":"^2.117.2","@types/node":"^26.6.3","@types/react":"^19.3.0","next":"^15.5.26","react":"^19.3.0","react-dom":"^19.3.0","xlsx":"^0.18.5"},"devDependencies":{"typescript":"^5.9.3"}}
+{
+  "name": "taskpro",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "typecheck": "tsc --noEmit",
+    "test": "tsx --tsconfig tests/tsconfig.json --test \"tests/unit/*.test.ts\"",
+    "test:sql": "python tests/sql/verify.py"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.117.2",
+    "@types/node": "^26.6.3",
+    "@types/react": "^19.3.0",
+    "next": "^15.5.26",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0",
+    "xlsx": "^0.18.5"
+  },
+  "devDependencies": {
+    "@types/react-dom": "^19.3.0",
+    "tsx": "^4.23.15",
+    "typescript": "^5.9.3"
+  }
+}

@@ -5,12 +5,13 @@ import { useDialog } from '../../components/Dialog'
 import { supabase } from '../../lib/supabase'
 import { loadMe } from '../../lib/auth'
 
+const ZONA: [string, string][] = [['Asia/Jakarta', 'WIB'], ['Asia/Makassar', 'WITA'], ['Asia/Jayapura', 'WIT']]
 function Cabang() {
   const dlg = useDialog()
   const [rows, setRows] = useState<any[]>([])
   const [ppl, setPpl] = useState<any[]>([])
   const [me, setMe] = useState<any>(null)
-  const [f, setF] = useState({ kode: '', nama: '', alamat: '' })
+  const [f, setF] = useState({ kode: '', nama: '', alamat: '', tz: 'Asia/Jakarta' })
   const [err, setErr] = useState('')
   async function load() {
     const { data } = await supabase.from('cabang').select('*').order('kode'); setRows(data || [])
@@ -21,7 +22,7 @@ function Cabang() {
   async function add() {
     if (!/^[0-9]{4}$/.test(f.kode) || !f.nama.trim() || !f.alamat.trim()) return setErr('Kode harus 4 digit, nama dan alamat wajib diisi')
     const { error } = await supabase.from('cabang').insert({ ...f, rmdm_id: me?.role === 'rmdm' ? me.id : null }) // RMDM otomatis mengcover cabang buatannya
-    setErr(error ? (error.code === '23505' ? 'Kode cabang sudah dipakai' : error.message) : ''); if (!error) { setF({ kode: '', nama: '', alamat: '' }); load() }
+    setErr(error ? (error.code === '23505' ? 'Kode cabang sudah dipakai' : error.message) : ''); if (!error) { setF({ kode: '', nama: '', alamat: '', tz: 'Asia/Jakarta' }); load() }
   }
   async function del(r: any) {
     if (!(await dlg.confirm({ title: 'Hapus cabang?', tone: 'danger', okText: 'Hapus', message: <><b>{r.kode} {r.nama}</b> akan dihapus permanen.</> }))) return
@@ -37,6 +38,12 @@ function Cabang() {
     if (error) await dlg.alert({ title: 'Gagal menyimpan', message: error.message, tone: 'danger', icon: 'close' })
     load()
   }
+  async function ubahTz(r: any, tz: string) {
+    if (!(await dlg.confirm({ title: `Ubah zona waktu ${r.kode}?`, message: 'Batas hari untuk stok, rekap, dan laporan cabang ini akan bergeser. Ubah hanya jika zona waktunya memang salah.', okText: 'Ubah' }))) return load()
+    const { error } = await supabase.from('cabang').update({ tz }).eq('id', r.id)
+    if (error) await dlg.alert({ title: 'Gagal mengubah zona waktu', message: error.message, tone: 'danger', icon: 'close' })
+    load()
+  }
   async function setRmdm(id: string, v: string) { await supabase.from('cabang').update({ rmdm_id: v || null }).eq('id', id); load() }
   return (<>
     <h2>Cabang</h2>
@@ -44,13 +51,15 @@ function Cabang() {
       <input placeholder="Kode (4 digit)" value={f.kode} maxLength={4} inputMode="numeric" onChange={e => setF({ ...f, kode: e.target.value })} />
       <input placeholder="Nama cabang" value={f.nama} onChange={e => setF({ ...f, nama: e.target.value })} />
       <input placeholder="Alamat" value={f.alamat} onChange={e => setF({ ...f, alamat: e.target.value })} />
+      <select value={f.tz} onChange={e => setF({ ...f, tz: e.target.value })} aria-label="Zona waktu">{ZONA.map(([v, t]) => <option key={v} value={v}>{t}</option>)}</select>
       <button onClick={add}>Tambah</button>
     </div>
     {err && <p className="err">{err}</p>}
     <div className="scroll"><table>
-      <thead><tr><th>Kode</th><th>Nama</th><th>Alamat</th><th>MDS</th><th>RMDM</th><th /></tr></thead>
+      <thead><tr><th>Kode</th><th>Nama</th><th>Alamat</th><th>Zona waktu</th><th>MDS</th><th>RMDM</th><th /></tr></thead>
       <tbody>{rows.map(r => <tr key={r.id}>
-        <td>{r.kode}</td><td>{r.nama}</td><td>{r.alamat}</td><td>{nm(r.mds_id)}</td>
+        <td>{r.kode}</td><td>{r.nama}</td><td>{r.alamat}</td>
+        <td><select value={r.tz || 'Asia/Jakarta'} aria-label={`Zona waktu ${r.kode}`} onChange={e => ubahTz(r, e.target.value)}>{ZONA.map(([v, t]) => <option key={v} value={v}>{t}</option>)}</select></td><td>{nm(r.mds_id)}</td>
         <td>{me?.role === 'mdm'
           ? <select value={r.rmdm_id || ''} onChange={e => setRmdm(r.id, e.target.value)}><option value="">-</option>{ppl.filter(x => x.role === 'rmdm').map(x => <option key={x.id} value={x.id}>{x.nama}</option>)}</select>
           : nm(r.rmdm_id)}</td>
