@@ -8,6 +8,7 @@ import { loadMe } from '../../lib/auth'
 import { api } from '../../lib/api'
 import { useAktif } from '../../lib/sesi'
 import { jam } from '../../lib/rekap'
+import AkunCard from '../../components/mds/AkunCard'
 
 const EMPTY = { role: 'mds', user_id: '', nama: '', password: '', cabang_id: '' }
 
@@ -19,6 +20,7 @@ function Mds() {
   const [err, setErr] = useState(''); const [busy, setBusy] = useState(false)
   const [role, setRole] = useState('')
   const [aktif, refreshAktif] = useAktif()
+  const [q, setQ] = useState(''); const [rf, setRf] = useState<'all' | 'rmdm' | 'mds' | 'mdm'>('all')
   async function load() {
     const { data: p } = await supabase.from('profiles').select('id,user_id,nama,role').in('role', ['mds', 'rmdm', 'mdm']).order('user_id')
     const { data: c } = await supabase.from('cabang').select('id,kode,nama,mds_id,rmdm_id').order('kode')
@@ -52,51 +54,51 @@ function Mds() {
   const status = (m: any) => aktif[m.id]
     ? <><span className="on-badge">Aktif</span><span className="off-badge">terakhir {jam(aktif[m.id]).slice(0, 5)}</span></>
     : <span className="off-badge">Tidak aktif</span>
-  const aksiSesi = (m: any) => aktif[m.id] && <button className="ghost danger" onClick={() => paksa(m)}><Icon name="logout" size={16} /> Logout paksa</button>
+
+  const cabangText = (m: any) => cabang.filter(c => (m.role === 'mds' ? c.mds_id : c.rmdm_id) === m.id).map(cb).join(' ')
+  const cocok = (m: any) => { const t = q.trim().toLowerCase(); return !t || `${m.nama} ${m.user_id} ${cabangText(m)}`.toLowerCase().includes(t) }
+  const jml = (r: string) => list.filter(m => m.role === r).length
+  const grup: [string, string][] = [['rmdm', 'RMDM'], ['mds', 'MDS'], ...(role === 'mdm' ? [['mdm', 'MDM'] as [string, string]] : [])]
+  const tampil = grup.filter(([k]) => rf === 'all' || rf === k).map(([k, nm]) => [k, nm, list.filter(m => m.role === k && cocok(m))] as const).filter(([, , it]) => it.length)
 
   return (<>
-    <h2>MDS &amp; RMDM</h2>
-    <div className="card">
-      <span className="label" style={{ marginBottom: 8 }}>Buat akun baru</span>
-      <div className="row" style={{ alignItems: 'flex-end', marginBottom: 0 }}>
-        <label className="fld-inline"><span className="label">Role</span>
-          <select value={f.role} onChange={e => setF({ ...f, role: e.target.value, cabang_id: '' })}><option value="mds">MDS (1 cabang)</option>{role === 'mdm' && <option value="rmdm">RMDM (banyak cabang)</option>}</select></label>
-        <label className="fld-inline"><span className="label">User ID</span><input placeholder="mis. 0300-MDS01" value={f.user_id} autoCapitalize="characters" onChange={e => setF({ ...f, user_id: e.target.value })} /></label>
-        <label className="fld-inline"><span className="label">Nama</span><input value={f.nama} onChange={e => setF({ ...f, nama: e.target.value })} /></label>
-        <label className="fld-inline"><span className="label">Password sementara</span><input value={f.password} placeholder="min. 6 karakter" onChange={e => setF({ ...f, password: e.target.value })} /></label>
-        {f.role === 'mds' && <label className="fld-inline"><span className="label">Cabang</span>
-          <select value={f.cabang_id} onChange={e => setF({ ...f, cabang_id: e.target.value })}><option value="">Pilih cabang…</option>{bebasMds.map(c => <option key={c.id} value={c.id}>{cb(c)}</option>)}</select></label>}
-        <button disabled={busy} onClick={create}>{busy ? 'Membuat…' : 'Buat akun'}</button>
-      </div>
-      {f.role === 'mds' && bebasMds.length === 0 && <p className="hint-box" style={{ margin: '12px 0 0' }}>Semua cabang yang bisa Anda kelola sudah punya MDS. Tambahkan cabang baru di menu Cabang, atau pindahkan MDS lama ke cabang lain.</p>}
-      {f.role === 'rmdm' && <p className="muted" style={{ margin: '12px 0 0', fontSize: 13 }}>Cabang yang dicover RMDM diatur setelah akun dibuat (boleh lebih dari satu).</p>}
-      {err && <p className="err" role="alert" style={{ margin: '12px 0 0' }}>{err}</p>}
+    <div className="pagehead">
+      <div><h2>MDS &amp; RMDM</h2><p className="muted">Kelola akun supervisor dan cabang yang mereka pegang.</p></div>
+      <div className="chips"><span className="chip">{jml('mds')} MDS</span><span className="chip">{jml('rmdm')} RMDM</span>{role === 'mdm' && <span className="chip">{jml('mdm')} MDM</span>}</div>
     </div>
 
-    {list.filter(m => m.role !== 'mdm').map(m => <div className="card" key={m.id}>
-      <div className="row"><b>{m.nama}</b><span className="chip">{m.role.toUpperCase()}</span><span className="muted">{m.user_id}</span>{status(m)}<div className="grow" />
-        {aksiSesi(m)}<button className="ghost danger" onClick={() => remove(m)}><Icon name="trash" size={16} /> Hapus</button></div>
-      {m.role === 'mds'
-        ? <div className="row" style={{ marginBottom: 0 }}>
-            {cabang.filter(c => c.mds_id === m.id).map(c => <span className="chip" key={c.id}>{cb(c)}</span>)}
-            {!cabang.some(c => c.mds_id === m.id) && <span className="err" style={{ fontSize: 13 }}>Belum punya cabang</span>}
-            <select value="" aria-label="Atur cabang MDS" onChange={e => e.target.value && op({ id: m.id, op: 'mds_cabang', cabang_id: e.target.value },
-              cabang.some(c => c.mds_id === m.id) ? { title: 'Pindahkan cabang MDS?', message: <><b>{m.nama}</b> hanya bisa memegang 1 cabang, jadi cabang lamanya akan dilepas.</> } : undefined)}>
-              <option value="">{cabang.some(c => c.mds_id === m.id) ? 'Pindah ke cabang…' : 'Pilih cabang…'}</option>{bebasMds.map(c => <option key={c.id} value={c.id}>{cb(c)}</option>)}</select>
-            {cabang.some(c => c.mds_id === m.id) && <button className="ghost" onClick={() => op({ id: m.id, op: 'mds_cabang', cabang_id: null }, { title: 'Lepas cabang dari MDS?', message: <>Cabang akan kosong sampai diberikan ke MDS lain.</> })}>Lepas cabang</button>}
-          </div>
-        : <div className="row" style={{ marginBottom: 0 }}>
-            {cabang.filter(c => c.rmdm_id === m.id).map(c => <span className="chip" key={c.id}>{cb(c)}{role === 'mdm' && <a role="button" aria-label={`Lepas ${c.kode}`} onClick={() => op({ id: m.id, op: 'rmdm_remove', cabang_id: c.id })}> ✕</a>}</span>)}
-            {role === 'mdm' ? <select value="" onChange={e => e.target.value && op({ id: m.id, op: 'rmdm_add', cabang_id: e.target.value })}>
-              <option value="">+ Tambah cabang yang dicover…</option>{bebasR.map(c => <option key={c.id} value={c.id}>{cb(c)}</option>)}</select>
-              : <span className="muted">Hanya MDM yang bisa mengatur cakupan RMDM.</span>}</div>}
-    </div>)}
+    <section className="card">
+      <div className="sech-in"><h3>Buat akun baru</h3>
+        <div className="seg segsm" role="tablist" aria-label="Role akun">
+          <button role="tab" aria-selected={f.role === 'mds'} className={f.role === 'mds' ? 'on' : ''} onClick={() => setF({ ...f, role: 'mds', cabang_id: '' })}>MDS · 1 cabang</button>
+          {role === 'mdm' && <button role="tab" aria-selected={f.role === 'rmdm'} className={f.role === 'rmdm' ? 'on' : ''} onClick={() => setF({ ...f, role: 'rmdm', cabang_id: '' })}>RMDM · banyak cabang</button>}
+        </div></div>
+      <div className="formgrid">
+        <label className="fld"><span className="label">User ID</span><input placeholder="mis. 0300-MDS01" value={f.user_id} autoCapitalize="characters" onChange={e => setF({ ...f, user_id: e.target.value })} /></label>
+        <label className="fld"><span className="label">Nama</span><input value={f.nama} onChange={e => setF({ ...f, nama: e.target.value })} /></label>
+        <label className="fld"><span className="label">Password sementara</span><input value={f.password} placeholder="min. 6 karakter" onChange={e => setF({ ...f, password: e.target.value })} /></label>
+        {f.role === 'mds' && <label className="fld"><span className="label">Cabang</span>
+          <select value={f.cabang_id} onChange={e => setF({ ...f, cabang_id: e.target.value })}><option value="">Pilih cabang…</option>{bebasMds.map(c => <option key={c.id} value={c.id}>{cb(c)}</option>)}</select></label>}
+      </div>
+      {f.role === 'mds' && bebasMds.length === 0 && <p className="hint-box" style={{ margin: '0 0 12px' }}>Semua cabang yang bisa Anda kelola sudah punya MDS. Tambahkan cabang baru di menu Cabang, atau pindahkan MDS lama ke cabang lain.</p>}
+      {f.role === 'rmdm' && <p className="muted" style={{ margin: '0 0 12px', fontSize: 13 }}>Cabang yang dicover RMDM diatur setelah akun dibuat (boleh lebih dari satu).</p>}
+      {err && <p className="err" role="alert" style={{ margin: '0 0 12px' }}>{err}</p>}
+      <div className="row" style={{ justifyContent: 'flex-end', margin: 0 }}><button disabled={busy} aria-busy={busy} onClick={create}><Icon name="plus" size={18} /> {busy ? 'Membuat…' : 'Buat akun'}</button></div>
+    </section>
 
-    {role === 'mdm' && list.some(m => m.role === 'mdm') && <>
-      <span className="label" style={{ margin: '20px 0 8px' }}>Akun MDM</span>
-      {list.filter(m => m.role === 'mdm').map(m => <div className="card" key={m.id}>
-        <div className="row" style={{ marginBottom: 0 }}><b>{m.nama}</b><span className="chip">MDM</span><span className="muted">{m.user_id}</span>{status(m)}<div className="grow" />{aksiSesi(m)}</div></div>)}
-    </>}
+    <div className="toolbar">
+      <label className="searchbox"><Icon name="search" size={18} /><input placeholder="Cari nama, User ID, atau cabang…" aria-label="Cari akun" value={q} onChange={e => setQ(e.target.value)} /></label>
+      <div className="seg segsm" role="tablist" aria-label="Filter role">
+        {([['all', 'Semua'], ['rmdm', 'RMDM'], ['mds', 'MDS'], ...(role === 'mdm' ? [['mdm', 'MDM']] : [])] as [string, string][]).map(([k, t]) =>
+          <button key={k} role="tab" aria-selected={rf === k} className={rf === k ? 'on' : ''} onClick={() => setRf(k as any)}>{t}</button>)}</div>
+    </div>
+
+    {tampil.length === 0 && <div className="card muted">Tidak ada akun yang cocok.</div>}
+    {tampil.map(([k, nm, items]) => <section key={k}>
+      <h3 className="sech">{nm} <span className="cnt">{items.length}</span></h3>
+      <div className="accgrid">{items.map(m => <AkunCard key={m.id} m={m} cabang={cabang} bebasMds={bebasMds} bebasR={bebasR} viewerRole={role} status={status(m)} bisaPaksa={!!aktif[m.id]}
+        onHapus={() => remove(m)} onPaksa={() => paksa(m)} onOp={op} />)}</div>
+    </section>)}
   </>)
 }
 export default function Page() { return <Shell roles={['mdm', 'rmdm']}><Mds /></Shell> }

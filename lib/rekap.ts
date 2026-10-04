@@ -39,3 +39,12 @@ export function rekap(visits: any[]): Record<string, DayRekap> {
   }
   return out
 }
+
+// Rupiah ringkas untuk grafik dan kartu: Rp 850 rb, Rp 1,2 jt, Rp 3,4 M
+export const rpk = (n: number) => {
+  const a = Math.abs(n), f = (x: number) => x.toFixed(1).replace('.', ',')
+  if (a >= 1e9) return `Rp ${f(n / 1e9)} M`
+  if (a >= 1e6) return `Rp ${f(n / 1e6)} jt`
+  if (a >= 1e3) return `Rp ${Math.round(n / 1e3)} rb`
+  return `Rp ${Math.round(n)}`
+}

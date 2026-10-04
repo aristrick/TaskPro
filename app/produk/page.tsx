@@ -1,5 +1,6 @@
 'use client'
 import { useEffect, useState } from 'react'
+import { Switch } from '../../components/Switch'
 import Shell from '../../components/Shell'
 import Icon from '../../components/Icon'
 import { supabase } from '../../lib/supabase'
@@ -65,14 +66,14 @@ function Produk() {
           <select value={pid} onChange={e => setPid(e.target.value)} aria-label="Project untuk produk fokus">
             {projs.map(p => <option key={p.id} value={p.id}>{kode(p.cabang_id)} · {p.name}</option>)}</select>
           <span className="chip">{focus.size} produk fokus</span></div>
-        <p className="muted" style={{ margin: '8px 0 0', fontSize: 13 }}>Centang kolom <b>Fokus</b> pada tabel di bawah untuk project ini. Tiap project punya daftar fokus sendiri, dan frontliner mengikuti project-nya. Perubahan berlaku untuk penjualan berikutnya; riwayat tidak berubah.</p></>}
+        <p className="muted" style={{ margin: '8px 0 0', fontSize: 13 }}>Nyalakan saklar di kolom <b>Fokus</b> pada tabel di bawah untuk project ini. Tiap project punya daftar fokus sendiri, dan frontliner mengikuti project-nya. Perubahan berlaku untuk penjualan berikutnya; riwayat tidak berubah.</p></>}
     </div>
     <div className="scroll"><table>
       <thead><tr><th>Produk</th><th>SKU</th><th>Brand</th><th>Kategori</th><th>Harga</th><th>Fokus</th><th>Aktif</th><th /></tr></thead>
       <tbody>{rows.map(r => <tr key={r.id}><td>{r.product}</td><td>{r.sku_code}</td><td>{r.brand}</td><td>{r.category_product}</td>
         <td>{Number(r.price).toLocaleString('id-ID')}</td>
-        <td><input type="checkbox" aria-label={`Fokus ${r.product}`} disabled={!pid || (!r.active && !focus.has(r.id))} title={!pid ? 'Pilih project dulu' : !r.active && !focus.has(r.id) ? 'Produk nonaktif' : ''} checked={focus.has(r.id)} onChange={e => toggleFokus(r.id, e.target.checked)} /></td>
-        <td><input type="checkbox" checked={r.active} onChange={e => upd(r.id, { active: e.target.checked })} /></td>
+        <td><Switch label={`Fokus ${r.product}`} disabled={!pid || (!r.active && !focus.has(r.id))} title={!pid ? 'Pilih project dulu' : !r.active && !focus.has(r.id) ? 'Produk nonaktif' : ''} checked={focus.has(r.id)} onChange={v => toggleFokus(r.id, v)} /></td>
+        <td><Switch label={`Aktif ${r.product}`} checked={r.active} onChange={v => upd(r.id, { active: v })} /></td>
         <td style={{ whiteSpace: 'nowrap' }}><button className="ghost" onClick={() => edit(r)}><Icon name="edit" size={16} /> Edit</button> <button className="ghost danger" onClick={() => hapus(r)}><Icon name="trash" size={16} /> Hapus</button></td></tr>)}</tbody>
     </table></div>
     <p className="muted">Harga yang diubah hanya berlaku untuk penjualan berikutnya. Produk fokus juga bisa diatur per project di halaman Project. Produk yang sudah pernah terjual tidak bisa dihapus; nonaktifkan agar riwayat tetap utuh.</p>
