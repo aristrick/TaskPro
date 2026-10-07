@@ -6,7 +6,7 @@ import os, re, subprocess, sys, difflib
 here = os.path.dirname(os.path.abspath(__file__))
 p = subprocess.run([sys.executable, os.path.join(here, 'run.py')], capture_output=True, text=True)
 out = p.stdout + '\n' + p.stderr
-hasil = [re.sub(r'\d{9}', 'NNNNNNNNN', l) for l in out.splitlines() if re.match(r'^(T\d+|P\d+|F\d+|V\d+)[ a-z]', l)]
+hasil = [re.sub(r'\d{9}', 'NNNNNNNNN', l) for l in out.splitlines() if re.match(r'^(T\d+|P\d+|F\d+|V\d+|H\d+|E\d+)[ a-z]', l)]
 errs = sorted(re.sub(r'\d+', 'N', m.strip()) for m in re.findall(r'ERROR:  (.*)', out))
 def baca(f): return [l.rstrip('\n') for l in open(os.path.join(here, f)) if l.strip()]
 gagal = False

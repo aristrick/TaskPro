@@ -46,3 +46,9 @@ stok oleh MDS dan laporan stok, rekap harian di SQL, log error, cache alamat, da
 
 ## Pasang di layar HP
 Buka situs lewat HTTPS di Chrome Android: menu ⋮ > *Tambahkan ke layar utama*. Di iPhone: Safari > Bagikan > *Tambah ke Layar Utama*.
+
+## Migrasi 13 (jalankan `13_migration.sql` sekali)
+- **Hapus paksa outlet frontliner** (khusus MDM): halaman Outlet > *Hapus paksa outlet*. Pilih frontliner dan rayon (kosong = semua). Ada mode aman (outlet yang pernah dikunjungi dilewati)
+  dan mode permanen (kunjungan dan penjualannya ikut terhapus), dikunci dengan mengetik Kode MD. Outlet yang dihapus diarsipkan 90 hari dan tercatat di audit.
+- **Edit penjualan** (khusus MDM): menu Edit Penjualan. Ubah waktu check-in/check-out dan baris penjualan (produk, pcs, harga). Wajib beralasan; nilai lama dan baru tercatat di Jejak Audit.
+- **Cetak struk**: lihat `docs/CETAK-STRUK.md`. Tidak butuh migrasi.

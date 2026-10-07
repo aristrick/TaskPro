@@ -57,3 +57,24 @@ V33 MDM membaca log error: 1
 V34 kapasitas database terbaca (MB>0): true, tabel teratas: 8
 V35 MDS membaca log error (harus 0): 0
 V39 audit_prune oleh pemilik database berjalan
+H0 outlet TMTB05 sebelum: 5
+H1 hitung rayon 5: {"outlet": 2, "berjalan": 0, "kunjungan": 1, "penjualan": 1, "dengan_riwayat": 1}
+H2 hitung semua rayon: 5
+H4 hapus rayon 5 tanpa riwayat: {"dilewati": 1, "outlet_dihapus": 1, "kunjungan_dihapus": 0}
+H5 E1 terhapus, E3 (punya riwayat) tetap: 0/1
+H6 arsip berisi E1: 1
+H8 hapus rayon 5 DENGAN riwayat: {"dilewati": 0, "outlet_dihapus": 1, "kunjungan_dihapus": 1}
+H9 E3, kunjungannya, dan penjualannya hilang: 0/0/0
+H10 outlet rayon lain tetap ada (E2): 1
+H11 hapus SEMUA outlet TMTB05 (tanpa pilih rayon): {"dilewati": 0, "outlet_dihapus": 3, "kunjungan_dihapus": 1}
+H14 MDM membaca arsip: 5
+H15 MDS membaca arsip (harus 0): 0
+H16 outlet TMTB05 sesudah: 0
+H17 outlet milik TMTB01 tidak tersentuh (harus >0): true
+H18 audit hapus massal: 3 catatan, terakhir 3 outlet / 1 kunjungan
+E1 baris penjualan setelah edit: P1 x1 @1000 =1000 fokus=false | P2 x5 @1500 =7500 fokus=true
+E2 tanggal bergeser 40 hari, check-out 9 menit setelah check-in: true, effective=true
+E3 audit EDIT_PENJUALAN: koreksi tanggal dan produk | lama 2 pcs -> baru 2 baris
+E4 rekap pada tanggal baru (harus 8500): 8500
+E10 penolakan tadi tidak mengubah data (penjualan tetap 2 baris): 2
+E12 semua baris dihapus: baris=0, effective=false

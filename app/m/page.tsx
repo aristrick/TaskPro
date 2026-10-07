@@ -10,6 +10,10 @@ import { friendly } from '../../lib/friendly'
 import OutletForm from '../../components/OutletForm'
 import StokForm from '../../components/StokForm'
 import RekapTab from '../../components/hp/RekapTab'
+import ReceiptDialog from '../../components/ReceiptDialog'
+import PrinterSettings from '../../components/PrinterSettings'
+import { muatPref, prefBawaan, simpanTerakhir, muatTerakhir, type Pref } from '../../lib/printer'
+import type { Struk } from '../../lib/escpos'
 import ProfileTab from '../../components/hp/ProfileTab'
 import { PageLoader, SkelRows } from '../../components/Loaders'
 import Icon from '../../components/Icon'
@@ -51,6 +55,10 @@ export default function Frontliner() {
   const [rowsLoading, setRowsLoading] = useState(true)
   const [prodReady, setProdReady] = useState(false)
   const [busyId, setBusyId] = useState<any>(null)
+  const [pref, setPref] = useState<Pref>(prefBawaan())          // pengaturan printer (tersimpan di perangkat)
+  const [struk, setStruk] = useState<Struk | null>(null)           // struk yang sedang ditawarkan untuk dicetak
+  const [terakhir, setTerakhir] = useState<Struk | null>(null)     // struk terakhir, untuk cetak ulang
+  const [prefOpen, setPrefOpen] = useState(false)
   const [tz, setTz] = useState('Asia/Jakarta')   // zona waktu cabang frontliner (WIB/WITA/WIT)
   const [savedId, setSavedId] = useState<any>(null)
   // Stok pembawaan hari ini: penjualan tidak boleh melebihi stok yang dibawa (dijaga juga di database)
@@ -134,6 +142,7 @@ export default function Frontliner() {
     })()
     return () => { off = true }
   }, [me?.id, visit?.id])
+  useEffect(() => { setPref(muatPref()); setTerakhir(muatTerakhir()) }, [])
   useEffect(() => { if (me?.cabang_id) supabase.from('cabang').select('tz').eq('id', me.cabang_id).maybeSingle().then(({ data }) => { if (data?.tz) setTz(data.tz) }) }, [me?.id])
   // Mode Edit Outlet: warna status bar ikut merah, dan mode otomatis berakhir jika pindah tab
   useEffect(() => { document.querySelector('meta[name="theme-color"]')?.setAttribute('content', editMode && tab === 'sell' ? '#B3261E' : '#0B1F4B') }, [editMode, tab])
@@ -186,12 +195,19 @@ export default function Frontliner() {
     setBusy(false); setBusyId(null)
   }
   async function keluar() {
+    // Struk disusun sekarang, selagi daftar produk dan jumlahnya masih ada (keadaan direset setelah check-out)
+    const rinci = products.filter(x => qty[x.id] > 0)
+    const baru: Struk | null = rinci.length ? { judul: pref.judul, footer: pref.footer, nomor: String(visit.id).slice(0, 8).toUpperCase(),
+      waktu: new Date().toLocaleString('id-ID', { timeZone: tz, day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }),
+      outlet: visit.outlets?.name || '', alamat: visit.outlets?.address || '', frontliner: me.nama, userId: me.user_id,
+      items: rinci.map(x => ({ nama: x.product, qty: qty[x.id], harga: Number(x.price) })), total: rinci.reduce((a, x) => a + qty[x.id] * Number(x.price), 0) } : null
     setBusy(true); setErr('')
     try {
       const items = products.filter(x => qty[x.id] > 0).map(x => ({ product_id: x.id, qty: qty[x.id] }))
       if (items.length) { const p = await geo(); const { error } = await supabase.rpc('save_sales', { p_visit: visit.id, p_items: items, ...payload(p) }); if (error) throw error }
       const { error } = await supabase.rpc('checkout', { p_visit: visit.id }); if (error) throw error
       try { localStorage.removeItem(draftKey(visit.id)) } catch {}
+      if (baru) { simpanTerakhir(baru); setTerakhir(baru); if (pref.tanya) setStruk(baru) }
       setAnim('back'); setVisit(null); setQty({}); say('Check-out berhasil')
     } catch (e: any) { if (!jauh(e, visit.outlets?.name, visit.outlets?.lat, visit.outlets?.long)) setErr(friendly(e, 'Gagal membaca lokasi')) }
     setBusy(false)
@@ -293,6 +309,8 @@ export default function Frontliner() {
 
   return (
     <div className={`phone ${anim}`}>
+      {struk && <ReceiptDialog struk={struk} pref={pref} onClose={() => setStruk(null)} onDone={() => { setStruk(null); say('Struk dicetak') }} onSettings={() => { setStruk(null); setPrefOpen(true) }} />}
+      {prefOpen && <PrinterSettings pref={pref} onChange={setPref} onClose={() => setPrefOpen(false)} onToast={say} />}
       {farDialog}
       {stokModal}
       {toast && <div className="toast" role="status"><Icon name="check" size={18} /> {toast}</div>}
@@ -331,7 +349,10 @@ export default function Frontliner() {
           {r.lat != null && <a className="go" aria-label="Menuju lokasi" target="_blank" onClick={e => e.stopPropagation()} href={`https://www.google.com/maps/dir/?api=1&destination=${r.lat},${r.long}`}><Icon name="nav" size={20} /></a>}
         </div>))}
       {tab === 'rekap' && <RekapTab rk={rk} sel={sel} sub={sub} tz={tz} onPick={x => { setSub('fwd'); setSel(x) }} />}
-      {tab === 'profile' && <ProfileTab nama={me.nama} userId={me.user_id} stokSum={stokSum} onStok={() => setStokOpen(true)} onLogout={keluarAkun} />}
+      {tab === 'profile' && <ProfileTab nama={me.nama} userId={me.user_id} stokSum={stokSum} onStok={() => setStokOpen(true)} onLogout={keluarAkun} onPrinter={() => setPrefOpen(true)}
+        onReprint={() => { const s = muatTerakhir(); if (s) setStruk(s) }}
+        printerInfo={`${pref.metode === 'bt' ? 'Bluetooth langsung' : pref.metode === 'rawbt' ? 'RawBT' : 'Dialog cetak sistem'} · ${pref.lebar === 32 ? '58' : '80'} mm`}
+        strukInfo={terakhir ? `${terakhir.outlet} · ${terakhir.waktu}` : null} />}
       <div className="tabbar">
         <button className={tab === 'profile' ? 'on' : ''} onClick={() => setTab('profile')}><span className="pill"><Icon name="user" /></span>Profile</button>
         <button className={tab === 'sell' ? 'on' : ''} onClick={() => setTab('sell')}><span className="pill"><Icon name="basket" /></span>Input</button>

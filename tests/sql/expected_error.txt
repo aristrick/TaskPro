@@ -1,17 +1,27 @@
+Ada N kunjungan yang masih berjalan di outlet ini. Minta frontliner check-out dulu.
 Alasan koreksi wajib diisi.
+Alasan perubahan wajib diisi.
 Anda tidak berwenang atas cabang ini.
 Anda tidak berwenang atas cabang ini.
 Anda tidak berwenang atas cabang ini.
 Anda tidak berwenang atas cabang ini.
 Frontliner harus dari cabang yang sama dengan project.
 Hanya MDM.
+Hanya MDM.
+Hanya MDM.
 Hanya frontliner yang mengisi stok pembawaan.
+Jumlah (pcs) harus lebih dari N.
 Kode MD tujuan harus akun frontliner yang terdaftar.
+Pilih frontliner (Kode MD).
+Produk PN muncul dua kali. Gabungkan jumlahnya.
 Stok PN tidak cukup. Sisa N pcs, diminta N pcs.
 Stok PN tidak cukup. Sisa N pcs, diminta N pcs.
 Stok PN tidak cukup. Sisa N pcs, diminta N pcs.
 Stok tidak boleh kurang dari yang sudah terjual (N pcs).
 Stok tidak boleh kurang dari yang sudah terjual (N pcs).
+Tidak ada outlet yang cocok.
+Waktu check-out tidak boleh sebelum check-in.
+Waktu tidak boleh di masa depan.
 new row for relation "cabang" violates check constraint "cabang_tz_check"
 new row violates row-level security policy for table "carry_stock"
 new row violates row-level security policy for table "geocode_cache"
@@ -22,6 +32,7 @@ permission denied for function audit_prune
 permission denied for function cek_radius
 permission denied for function cek_radius
 permission denied for function checkin
+permission denied for function kunjungan_edit
 permission denied for function project_set_member
 permission denied for function rekap_harian
 update or delete on table "projects" violates foreign key constraint "visits_project_id_fkey" on table "visits"

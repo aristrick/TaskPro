@@ -11,7 +11,7 @@ import Icon from './Icon'
 const ALL = ['mds', 'mdm', 'rmdm', 'tl', 'kormot'], ADM = ['mds', 'mdm', 'rmdm']
 type Item = [string, string, string[], string]
 const MAIN: Item[] = [['/', 'Home', ALL, 'home'], ['/frontliner', 'Frontliner', ADM, 'users'], ['/project', 'Project', ADM, 'folder'], ['/outlet', 'Outlet', ALL, 'store'], ['/stok', 'Stok', ALL, 'basket'], ['/report', 'Report', ALL, 'chart'], ['/produk', 'Produk', ADM, 'box'], ['/pantau', 'Pantau', ALL, 'alert']]
-const ADMIN: Item[] = [['/cabang', 'Cabang', ['mdm', 'rmdm'], 'building'], ['/mds', 'MDS & RMDM', ['mdm', 'rmdm'], 'shield']]
+const ADMIN: Item[] = [['/cabang', 'Cabang', ['mdm', 'rmdm'], 'building'], ['/mds', 'MDS & RMDM', ['mdm', 'rmdm'], 'shield'], ['/penjualan', 'Edit Penjualan', ['mdm'], 'edit']]
 
 export default function Shell({ roles, children }: { roles: string[]; children: React.ReactNode }) {
   const router = useRouter(), path = usePathname(), dlg = useDialog()
@@ -54,7 +54,7 @@ export default function Shell({ roles, children }: { roles: string[]; children: 
       <nav>
         <h1>TaskPro</h1>
         {MAIN.filter(x => x[2].includes(me.role)).map(link)}
-        {['mdm', 'rmdm'].includes(me.role) && <><small className="sep">Pengaturan</small>{ADMIN.map(link)}</>}
+        {['mdm', 'rmdm'].includes(me.role) && <><small className="sep">Pengaturan</small>{ADMIN.filter(x => x[2].includes(me.role)).map(link)}</>}
         <div className="grow" />
         <small>{me.nama}<br />{me.role.toUpperCase()}<span className="onl"><i />Aktif</span></small>
         <button onClick={keluar}><Icon name="logout" size={18} /> Log out</button>
