@@ -10,3 +10,7 @@ export const fmt = (m: number) => (m < 1000 ? `${Math.round(m)} m` : `${(m / 100
 export const QUICK = [1, 2, 5, 10]
 export const buzz = (ms = 14) => { try { navigator.vibrate?.(ms) } catch {} }
 
+
+// Sisa detik sebelum check-out boleh dilakukan (0 = boleh). menit = batas minimal dari check-in; 0 = tanpa batas.
+export const sisaDetik = (checkinIso: string, menit: number, now = Date.now()) => (menit > 0 ? Math.max(0, Math.ceil((new Date(checkinIso).getTime() + menit * 60000 - now) / 1000)) : 0)
+export const mmss = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`

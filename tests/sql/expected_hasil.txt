@@ -78,3 +78,9 @@ E3 audit EDIT_PENJUALAN: koreksi tanggal dan produk | lama 2 pcs -> baru 2 baris
 E4 rekap pada tanggal baru (harus 8500): 8500
 E10 penolakan tadi tidak mengubah data (penjualan tetap 2 baris): 2
 E12 semua baris dihapus: baris=0, effective=false
+K0 bawaan semua frontliner tanpa batas (harus 0): 0
+K3 kunjungan masih terbuka setelah penolakan: true
+K4 181 detik setelah check-in, check-out berhasil: true
+K5 frontliner tanpa batas langsung check-out: true
+K6 batas dimatikan, check-out langsung berhasil: true
+K9 nilai tetap 0 setelah penolakan: 0

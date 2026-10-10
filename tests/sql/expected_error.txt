@@ -5,6 +5,8 @@ Anda tidak berwenang atas cabang ini.
 Anda tidak berwenang atas cabang ini.
 Anda tidak berwenang atas cabang ini.
 Anda tidak berwenang atas cabang ini.
+Check-out baru bisa dilakukan N menit setelah check-in. Tunggu N detik lagi.
+Check-out baru bisa dilakukan N menit setelah check-in. Tunggu N detik lagi.
 Frontliner harus dari cabang yang sama dengan project.
 Hanya MDM.
 Hanya MDM.
@@ -23,6 +25,8 @@ Tidak ada outlet yang cocok.
 Waktu check-out tidak boleh sebelum check-in.
 Waktu tidak boleh di masa depan.
 new row for relation "cabang" violates check constraint "cabang_tz_check"
+new row for relation "profiles" violates check constraint "profiles_min_checkout_menit_check"
+new row for relation "profiles" violates check constraint "profiles_min_checkout_menit_check"
 new row violates row-level security policy for table "carry_stock"
 new row violates row-level security policy for table "geocode_cache"
 new row violates row-level security policy for table "project_focus"

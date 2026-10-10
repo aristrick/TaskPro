@@ -5,7 +5,7 @@
 3. `.env.example` → `.env.local`, isi 3 nilai (Project Settings → API). Jangan di-commit.
 4. `npm install` → `npm run dev`. Login `MDM01`.
 ## Database yang sudah berjalan
-Migrasi 11 (produk fokus per project): jalankan `11_migration.sql`. Migrasi 10 (Project): jalankan `10_migration.sql`. Jalankan hanya migrasi yang belum: `06_migration.sql`, `07_migration.sql`, lalu **`08_migration.sql`** (MDS 1 cabang + sesi perangkat/logout paksa; jika ada MDS yang memegang >1 cabang, hanya cabang berkode terkecil yang dipertahankan) (Outlet ID 9 angka acak untuk semua outlet). Opsional `06b_ubah_data_lama.sql`: ubah kode outlet hasil import lama ke format baru.
+Migrasi 14 (batas minimal check-out per frontliner): jalankan `14_migration.sql`. Migrasi 11 (produk fokus per project): jalankan `11_migration.sql`. Migrasi 10 (Project): jalankan `10_migration.sql`. Jalankan hanya migrasi yang belum: `06_migration.sql`, `07_migration.sql`, lalu **`08_migration.sql`** (MDS 1 cabang + sesi perangkat/logout paksa; jika ada MDS yang memegang >1 cabang, hanya cabang berkode terkecil yang dipertahankan) (Outlet ID 9 angka acak untuk semua outlet). Opsional `06b_ubah_data_lama.sql`: ubah kode outlet hasil import lama ke format baru.
 ## Urutan pemakaian
 MDM: Cabang → MDS & RMDM. MDS: Frontliner (TL/Kormot dulu, lalu Frontliner) → Outlet > Import DMP → Produk. Frontliner: buka di HP.
 ## Deploy (GitHub + Vercel)
@@ -52,3 +52,7 @@ Buka situs lewat HTTPS di Chrome Android: menu ⋮ > *Tambahkan ke layar utama*.
   dan mode permanen (kunjungan dan penjualannya ikut terhapus), dikunci dengan mengetik Kode MD. Outlet yang dihapus diarsipkan 90 hari dan tercatat di audit.
 - **Edit penjualan** (khusus MDM): menu Edit Penjualan. Ubah waktu check-in/check-out dan baris penjualan (produk, pcs, harga). Wajib beralasan; nilai lama dan baru tercatat di Jejak Audit.
 - **Cetak struk**: lihat `docs/CETAK-STRUK.md`. Tidak butuh migrasi.
+
+## Migrasi 14 (jalankan `14_migration.sql` sekali)
+**Batas minimal check-out per frontliner**: halaman Frontliner, kolom *Min. check-out* (menit). 0 = tanpa batas. Bisa diatur MDS, RMDM, dan MDM untuk cabang yang menjadi wewenangnya.
+Aturan dijaga di database. Di HP, tombol Check-out menampilkan hitung mundur sampai batas terlewati.

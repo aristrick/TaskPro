@@ -1,4 +1,5 @@
 'use client'
+import MenitInput from '../../components/MenitInput'
 import { useEffect, useState } from 'react'
 import Shell from '../../components/Shell'
 import Icon from '../../components/Icon'
@@ -31,7 +32,7 @@ function Frontliner() {
   }, [])
   async function load() {
     if (!cid) return setList([])
-    const { data } = await supabase.from('profiles').select('id,user_id,nama,role,atasan_id,gps_required').eq('cabang_id', cid).order('user_id')
+    const { data } = await supabase.from('profiles').select('id,user_id,nama,role,atasan_id,gps_required,min_checkout_menit').eq('cabang_id', cid).order('user_id')
     setList(data || [])
   }
   useEffect(() => { load(); setEditId(''); setF(EMPTY) }, [cid])
@@ -43,6 +44,7 @@ function Frontliner() {
     setErr(e); if (!e) { setF(EMPTY); setEditId(''); load() }
   }
   function edit(x: any) { setEditId(x.id); setF({ role: x.role, user_id: x.user_id, nama: x.nama, password: '', atasan_id: x.atasan_id || '' }); setErr('') }
+  async function setMenit(id: string, n: number) { const e = await api('PATCH', { id, min_checkout_menit: n }); setErr(e); await load(); return !e }
   async function setGps(id: string, v: boolean) { setErr(await api('PATCH', { id, gps_required: v })); load() }
   async function remove(x: any) {
     if (!(await dlg.confirm({ title: 'Hapus akun ini?', tone: 'danger', okText: 'Hapus', message: <><b>{x.nama}</b> ({x.user_id}) akan dihapus permanen.</> }))) return
@@ -78,12 +80,13 @@ function Frontliner() {
         {err && <p className="err">{err}</p>}
       </div>
       <div className="scroll"><table>
-        <thead><tr><th>User ID</th><th>Nama</th><th>Role</th><th>Atasan</th><th>GPS wajib</th><th>Status</th><th /></tr></thead>
+        <thead><tr><th>User ID</th><th>Nama</th><th>Role</th><th>Atasan</th><th>GPS wajib</th><th title="Jarak waktu minimal dari check-in sampai frontliner boleh check-out. 0 = tanpa batas.">Min. check-out</th><th>Status</th><th /></tr></thead>
         <tbody>{list.map(x => <tr key={x.id}><td>{x.user_id}</td><td>{x.nama}</td><td>{LABEL[x.role] || x.role.toUpperCase()}</td>
           <td>{x.atasan_id ? nama(x.atasan_id) : '-'}</td>
           <td>{x.role !== 'frontliner' ? '-' : role === 'mdm'
             ? <label className="switch" title="Matikan untuk mengecualikan frontliner ini dari GPS wajib dan batas 50 m"><input type="checkbox" checked={x.gps_required !== false} onChange={e => setGps(x.id, e.target.checked)} /><span /></label>
             : (x.gps_required === false ? 'Dikecualikan' : 'Wajib')}</td>
+          <td>{x.role === 'frontliner' ? <MenitInput value={x.min_checkout_menit ?? 0} onSave={n => setMenit(x.id, n)} /> : '-'}</td>
           <td>{aktif[x.id] ? <><span className="on-badge">Aktif</span><div className="off-badge">terakhir {jam(aktif[x.id]).slice(0, 5)}</div></> : <span className="off-badge">Tidak aktif</span>}</td>
           <td style={{ whiteSpace: 'nowrap' }}>{aktif[x.id] && <><button className="ghost danger" onClick={() => paksa(x)}><Icon name="logout" size={16} /> Logout paksa</button> </>}
             {LABEL[x.role] && <><button className="ghost" onClick={() => edit(x)}>Edit</button> <button className="ghost danger" onClick={() => remove(x)}>Hapus</button></>}</td></tr>)}</tbody>

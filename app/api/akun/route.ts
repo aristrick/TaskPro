@@ -37,7 +37,7 @@ export const POST = handler(async req => {
 // Edit: nama, atasan (frontliner), reset password, GPS. User ID tidak bisa diubah.
 export const PATCH = handler(async req => {
   const c = await who(req); if (!c) return fail('Tidak diizinkan', 403)
-  const { id, nama, password, atasan_id, gps_required } = await req.json()
+  const { id, nama, password, atasan_id, gps_required, min_checkout_menit } = await req.json()
   const { data: t } = await c.db.from('profiles').select('role,cabang_id,user_id').eq('id', id).single()
   if (!t || !ROLES.includes(t.role)) return fail('Akun tidak ditemukan')
   if (!(await bolehCabang(c, t.cabang_id))) return fail('Cabang ini bukan wewenang Anda', 403)
@@ -48,6 +48,12 @@ export const PATCH = handler(async req => {
     if (t.role !== 'frontliner') return fail('Pengaturan GPS hanya untuk frontliner')
     upd.gps_required = gps_required
   }
+  if (min_checkout_menit !== undefined) {   // jarak minimal check-in ke check-out; 0 = tanpa batas
+    const n = Number(min_checkout_menit)
+    if (!Number.isInteger(n) || n < 0 || n > 120) return fail('Batas check-out harus bilangan bulat 0 sampai 120 menit')
+    if (t.role !== 'frontliner') return fail('Batas check-out hanya untuk frontliner')
+    upd.min_checkout_menit = n
+  }
   if (t.role === 'frontliner' && atasan_id) {
     if (!(await atasanOk(c, atasan_id, t.cabang_id))) return fail('Atasan harus TL/Kormot di cabang yang sama')
     upd.atasan_id = atasan_id
@@ -57,7 +63,7 @@ export const PATCH = handler(async req => {
     if (String(password).length < 6) return fail('Password minimal 6 karakter')
     const { error } = await c.db.auth.admin.updateUserById(id, { password }); if (error) return fail(error.message)
   }
-  await audit(c, typeof gps_required === 'boolean' ? 'UBAH_GPS' : password ? 'RESET_PASSWORD' : 'UBAH_AKUN', 'profiles', t.user_id, { ...upd, reset_password: !!password })
+  await audit(c, typeof gps_required === 'boolean' ? 'UBAH_GPS' : min_checkout_menit !== undefined ? 'UBAH_BATAS_CHECKOUT' : password ? 'RESET_PASSWORD' : 'UBAH_AKUN', 'profiles', t.user_id, { ...upd, reset_password: !!password })
   return NextResponse.json({ ok: true })
 })
 

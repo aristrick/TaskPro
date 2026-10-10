@@ -18,7 +18,7 @@ import ProfileTab from '../../components/hp/ProfileTab'
 import { PageLoader, SkelRows } from '../../components/Loaders'
 import Icon from '../../components/Icon'
 
-import { meters, fresh, payload, fmt, buzz } from '../../lib/hp'
+import { meters, fresh, payload, fmt, buzz, sisaDetik, mmss } from '../../lib/hp'
 
 export default function Frontliner() {
   const router = useRouter(), dlg = useDialog()
@@ -59,6 +59,8 @@ export default function Frontliner() {
   const [struk, setStruk] = useState<Struk | null>(null)           // struk yang sedang ditawarkan untuk dicetak
   const [terakhir, setTerakhir] = useState<Struk | null>(null)     // struk terakhir, untuk cetak ulang
   const [prefOpen, setPrefOpen] = useState(false)
+  const [minCo, setMinCo] = useState(0)                           // batas minimal check-out (menit) yang diatur MDS/RMDM/MDM
+  const [, setTick] = useState(0)
   const [tz, setTz] = useState('Asia/Jakarta')   // zona waktu cabang frontliner (WIB/WITA/WIT)
   const [savedId, setSavedId] = useState<any>(null)
   // Stok pembawaan hari ini: penjualan tidak boleh melebihi stok yang dibawa (dijaga juga di database)
@@ -143,6 +145,12 @@ export default function Frontliner() {
     return () => { off = true }
   }, [me?.id, visit?.id])
   useEffect(() => { setPref(muatPref()); setTerakhir(muatTerakhir()) }, [])
+  // Batas check-out: ambil nilai terbaru saat kunjungan dimulai, lalu hitung mundur tiap detik. Server tetap menolak check-out yang terlalu cepat.
+  useEffect(() => {
+    if (visit && me) supabase.from('profiles').select('min_checkout_menit').eq('id', me.id).maybeSingle().then(({ data }) => setMinCo(Number(data?.min_checkout_menit) || 0))
+    else setMinCo(0)
+  }, [visit?.id])
+  useEffect(() => { if (!visit || !minCo) return; const t = setInterval(() => setTick(x => x + 1), 1000); return () => clearInterval(t) }, [visit?.id, minCo])
   useEffect(() => { if (me?.cabang_id) supabase.from('cabang').select('tz').eq('id', me.cabang_id).maybeSingle().then(({ data }) => { if (data?.tz) setTz(data.tz) }) }, [me?.id])
   // Mode Edit Outlet: warna status bar ikut merah, dan mode otomatis berakhir jika pindah tab
   useEffect(() => { document.querySelector('meta[name="theme-color"]')?.setAttribute('content', editMode && tab === 'sell' ? '#B3261E' : '#0B1F4B') }, [editMode, tab])
@@ -195,6 +203,7 @@ export default function Frontliner() {
     setBusy(false); setBusyId(null)
   }
   async function keluar() {
+    if (sisa > 0) { setErr(`Check-out baru bisa dilakukan ${minCo} menit setelah check-in. Tunggu ${mmss(sisa)} lagi.`); return }
     // Struk disusun sekarang, selagi daftar produk dan jumlahnya masih ada (keadaan direset setelah check-out)
     const rinci = products.filter(x => qty[x.id] > 0)
     const baru: Struk | null = rinci.length ? { judul: pref.judul, footer: pref.footer, nomor: String(visit.id).slice(0, 8).toUpperCase(),
@@ -213,6 +222,7 @@ export default function Frontliner() {
     setBusy(false)
   }
   const total = products.reduce((a, x) => a + (qty[x.id] || 0) * Number(x.price), 0)
+  const sisa = visit ? sisaDetik(visit.checkin_at, minCo) : 0
   const items = products.filter(x => qty[x.id] > 0).length
   const pcs = products.reduce((a, x) => a + (qty[x.id] || 0), 0)
 
@@ -294,8 +304,8 @@ export default function Frontliner() {
         {err && <p className="err" role="alert">{err}</p>}
       </div>
       <div className="stickybar sumbar">
-        <div className="sumtxt">{items ? <><span className="muted">{items} produk · {pcs} pcs</span><b>{rp(total)}</b></> : <span className="muted">Belum ada penjualan</span>}</div>
-        <button disabled={busy} aria-busy={busy} onClick={() => setConfirmOut(true)}>{busy ? 'Memproses…' : 'Check-out'}</button>
+        <div className="sumtxt">{items ? <><span className="muted">{items} produk · {pcs} pcs</span><b>{rp(total)}</b></> : <span className="muted">Belum ada penjualan</span>}{sisa > 0 && <span className="cdown"><Icon name="lock" size={12} /> Check-out tersedia dalam {mmss(sisa)} (batas {minCo} menit)</span>}</div>
+        <button disabled={busy || sisa > 0} aria-busy={busy} onClick={() => setConfirmOut(true)}>{busy ? 'Memproses…' : sisa > 0 ? `Check-out (${mmss(sisa)})` : 'Check-out'}</button>
       </div>
     </div>)
 
@@ -309,7 +319,7 @@ export default function Frontliner() {
 
   return (
     <div className={`phone ${anim}`}>
-      {struk && <ReceiptDialog struk={struk} pref={pref} onClose={() => setStruk(null)} onDone={() => { setStruk(null); say('Struk dicetak') }} onSettings={() => { setStruk(null); setPrefOpen(true) }} />}
+      {struk && !prefOpen && <ReceiptDialog struk={struk} pref={pref} onClose={() => setStruk(null)} onDone={() => { setStruk(null); say('Struk dicetak') }} onSettings={() => setPrefOpen(true)} />}
       {prefOpen && <PrinterSettings pref={pref} onChange={setPref} onClose={() => setPrefOpen(false)} onToast={say} />}
       {farDialog}
       {stokModal}
