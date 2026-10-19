@@ -39,4 +39,5 @@ permission denied for function checkin
 permission denied for function kunjungan_edit
 permission denied for function project_set_member
 permission denied for function rekap_harian
+permission denied for function rekap_saya
 update or delete on table "projects" violates foreign key constraint "visits_project_id_fkey" on table "visits"

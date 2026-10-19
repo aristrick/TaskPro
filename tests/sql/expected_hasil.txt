@@ -84,3 +84,10 @@ K4 181 detik setelah check-in, check-out berhasil: true
 K5 frontliner tanpa batas langsung check-out: true
 K6 batas dimatikan, check-out langsung berhasil: true
 K9 nilai tetap 0 setelah penolakan: 0
+R1 jumlah kunjungan di rekap_saya sama dengan data (selisih harus 0): 0
+R2 total nilai penjualan sama dengan data (selisih harus 0): 0
+R3 EC tiap produk tidak melebihi OC hari itu: true
+R4 daftar outlet per hari ada dan terurut (jumlah baris outlet > 0): true
+R5 batas waktu dihormati (data lebih tua dari batas tidak ikut): true
+R6 frontliner lain hanya melihat kunjungannya sendiri (selisih harus 0): 0
+R7 MDM tidak punya kunjungan sendiri, hasil kosong: true

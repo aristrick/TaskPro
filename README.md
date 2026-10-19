@@ -56,3 +56,7 @@ Buka situs lewat HTTPS di Chrome Android: menu ⋮ > *Tambahkan ke layar utama*.
 ## Migrasi 14 (jalankan `14_migration.sql` sekali)
 **Batas minimal check-out per frontliner**: halaman Frontliner, kolom *Min. check-out* (menit). 0 = tanpa batas. Bisa diatur MDS, RMDM, dan MDM untuk cabang yang menjadi wewenangnya.
 Aturan dijaga di database. Di HP, tombol Check-out menampilkan hitung mundur sampai batas terlewati.
+
+## Migrasi 15 (jalankan `15_migration.sql` sekali): performa untuk 45+ frontliner
+Kebijakan akses dibungkus agar dihitung sekali per query (Home, Report, Stok, dan daftar jauh lebih cepat) dan tab Rekap di HP mengirim data ±10x lebih kecil.
+Aplikasi tetap berjalan tanpa migrasi ini (otomatis memakai cara lama), hanya lebih lambat dan lebih boros kuota. Angka ukur: `docs/KAPASITAS.md`.

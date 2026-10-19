@@ -127,8 +127,11 @@ export default function Frontliner() {
   }, [visit])
   useEffect(() => {
     if (tab !== 'rekap' || !me) return
-    supabase.from('visits').select(VSEL).eq('frontliner_id', me.id).gte('checkin_at', startOfDay(tz, 35)).limit(2000)
-      .then(({ data }) => setRk(rekap(data || [])))
+    // Cara baru: ringkasan dihitung di database (puluhan KB). Cadangan jika migrasi 15 belum dijalankan: unduh baris kunjungan dan hitung di HP (ratusan KB).
+    supabase.rpc('rekap_saya', { p_from: startOfDay(tz, 35) }).then(({ data, error }) => {
+      if (!error && data) return setRk(data)
+      supabase.from('visits').select(VSEL).eq('frontliner_id', me.id).gte('checkin_at', startOfDay(tz, 35)).limit(2000).then(({ data: v }) => setRk(rekap(v || [])))
+    })
   }, [tab, me, tz])
 
   // Produk fokus mengikuti project frontliner: saat kunjungan berjalan memakai project yang tercatat saat check-in
