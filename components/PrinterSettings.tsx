@@ -58,6 +58,8 @@ export default function PrinterSettings({ pref, onChange, onClose, onToast }: { 
         <div className="fsec-t">Struk</div>
         <SettingRow icon="receipt" title="Tanya cetak setelah check-out" checked={pref.tanya} canEdit onChange={v => ubah({ tanya: v })}
           desc={pref.tanya ? 'Aktif: setelah check-out dengan penjualan, muncul pilihan Cetak atau Tidak cetak.' : 'Nonaktif: struk tidak ditawarkan. Struk terakhir tetap bisa dicetak dari Profile.'} />
+        {pref.metode !== 'system' && <SettingRow icon="printer" title="Balik urutan cetak" checked={pref.balik} canEdit onChange={v => ubah({ balik: v })}
+          desc={pref.balik ? 'Aktif: struk di kertas terbaca dari atas ke bawah: outlet, frontliner, produk, terima kasih.' : 'Nonaktif: matikan hanya jika hasil cetak di printer Anda sudah terbalik (terima kasih di atas).'} />}
         <label className="fld" style={{ marginTop: 12 }}><span className="label">Judul struk</span><input value={pref.judul} maxLength={32} onChange={e => ubah({ judul: e.target.value })} /></label>
         <label className="fld"><span className="label">Catatan bawah</span><input value={pref.footer} maxLength={48} onChange={e => ubah({ footer: e.target.value })} /></label>
       </section>

@@ -4,6 +4,8 @@ import Link from 'next/link'
 import Shell from '../components/Shell'
 import Icon from '../components/Icon'
 import { SettingRow } from '../components/Switch'
+import SalesTrend from '../components/SalesTrend'
+import FocusProducts from '../components/FocusProducts'
 import { useDialog } from '../components/Dialog'
 import { supabase } from '../lib/supabase'
 import { loadMe } from '../lib/auth'
@@ -74,12 +76,12 @@ function Home() {
   const avg = days.length > 1 ? bulan / days.length : 0
   const fokus: Record<string, { ec: number; qty: number }> = {}
   days.forEach(x => Object.entries(x.prod).forEach(([p, v]: any) => { if (v.focus) { const f = (fokus[p] ||= { ec: 0, qty: 0 }); f.ec += v.ec; f.qty += v.qty } }))
-  const fokusList = Object.entries(fokus).sort((a, b) => b[1].qty - a[1].qty), maxQ = fokusList[0]?.[1].qty || 1
+  const fokusList = Object.entries(fokus).sort((a, b) => b[1].qty - a[1].qty).map(([nama, x]) => ({ nama, ...x }))
   const seri = Array.from({ length: 7 }, (_, i) => {
     const t = new Date(Date.now() - (6 - i) * 864e5), k = day(t)
-    return { k, v: Number(tren?.[k]?.value || 0), today: i === 6, l: t.toLocaleDateString('id-ID', { weekday: 'short', timeZone: 'Asia/Jakarta' }) }
+    return { k, v: Number(tren?.[k]?.value || 0), today: i === 6, l: t.toLocaleDateString('id-ID', { weekday: 'short', timeZone: 'Asia/Jakarta' }),
+      tgl: t.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', timeZone: 'Asia/Jakarta' }), lengkap: t.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'Asia/Jakarta' }) }
   })
-  const maxV = Math.max(1, ...seri.map(x => x.v))
   const BATAS = Number(process.env.NEXT_PUBLIC_DB_LIMIT_MB || 500) * 1024 * 1024   // paket gratis Supabase: 500 MB (isi NEXT_PUBLIC_DB_LIMIT_MB jika paket naik)
   const pakai = usage ? Number(usage.bytes) / BATAS : 0
   const canSeeCabang = ['mdm', 'rmdm'].includes(role)
@@ -120,21 +122,15 @@ function Home() {
         </section>
 
         <section className="card o3">
-          <div className="sech-in"><h3>Penjualan 7 hari terakhir</h3><span className="muted">{rpk(seri.reduce((a, x) => a + x.v, 0))}</span></div>
-          {tren === null ? <div className="skel" style={{ height: 150 }} /> :
-            <div className="bars" role="img" aria-label={`Penjualan 7 hari terakhir: ${seri.map(x => `${x.l} ${rpk(x.v)}`).join(', ')}`}>
-              {seri.map(x => <div className={`bar ${x.today ? 'today' : ''}`} key={x.k}><span className="bv">{x.v ? rpk(x.v) : '-'}</span>
-                <div className="bt"><i style={{ height: `${x.v ? Math.max(6, (x.v / maxV) * 100) : 3}%` }} /></div><span className="bl">{x.l}</span></div>)}
-            </div>}
+          <div className="sech-in"><h3>Penjualan 7 hari terakhir</h3></div>
+          {tren === null ? <div className="skel" style={{ height: 260 }} /> : <SalesTrend seri={seri} />}
         </section>
 
         <section className="card o4">
-          <div className="sech-in"><h3>Produk fokus bulan ini</h3>{fokusList.length > 0 && <span className="muted">EC dan Qty</span>}</div>
+          <div className="sech-in"><h3>Produk fokus bulan ini</h3></div>
           {rk === null ? <div className="skel" style={{ height: 80 }} /> : fokusList.length === 0
             ? <p className="muted" style={{ margin: 0 }}>Belum ada penjualan produk fokus. Atur produk fokus di halaman Project atau Produk.</p>
-            : fokusList.map(([p, x]) => <div className="frow" key={p}>
-                <div className="fhead"><span>{p}</span><span className="fnum"><b>EC {x.ec}</b><b>Qty {x.qty}</b></span></div>
-                <div className="fbar" aria-hidden="true"><i style={{ width: `${(x.qty / maxQ) * 100}%` }} /></div></div>)}
+            : <FocusProducts items={fokusList} />}
         </section>
       </div>
 

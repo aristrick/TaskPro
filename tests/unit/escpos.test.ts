@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { asciiBersih, bungkus, kiriKanan, barisStruk, teksPolos, escpos, rawbtUrl, angka, type Struk } from '../../lib/escpos'
+import { balikUrutan, asciiBersih, bungkus, kiriKanan, barisStruk, teksPolos, escpos, rawbtUrl, angka, type Struk } from '../../lib/escpos'
 
 const struk: Struk = { judul: 'STRUK PENJUALAN', footer: 'Terima kasih', nomor: 'AB12CD34', waktu: '05/10/2026 09.12', outlet: 'Wr Sambel Seruit', alamat: 'Jalan Dokter KRT Radjiman Widyodiningrat, Cakung, Jakarta Timur',
   frontliner: 'Amiruddin', userId: '0300-TMTB01', total: 25100,
@@ -32,4 +32,15 @@ test('RawBT: format intent resmi dan isi base64 yang bisa dibaca kembali', () =>
   const d = Uint8Array.from([0x1b, 0x40, 0x41, 0x42]), u = rawbtUrl(d)
   assert.match(u, /^intent:base64,[A-Za-z0-9+/=]+#Intent;scheme=rawbt;package=ru\.a402d\.rawbtprinter;end;$/)
   assert.deepEqual([...Buffer.from(u.split(',')[1].split('#')[0], 'base64')], [0x1b, 0x40, 0x41, 0x42])
+})
+
+test('urutan struk: outlet, frontliner, produk, total, lalu terima kasih paling bawah', () => {
+  const t = teksPolos(barisStruk(struk, 32), 32), at = (re: RegExp) => t.search(re)
+  const urut = [/STRUK PENJUALAN/, /Wr Sambel Seruit/, /Sales\s*:\s*Amiruddin/, /Waktu/, /No\s*:/, /MAX BIO/, /MBP - BONTEH MATCHA/, /TOTAL/, /Terima kasih/].map(at)
+  assert.ok(urut.every(i => i >= 0)); assert.deepEqual(urut, [...urut].sort((a, b) => a - b))
+})
+test('balik urutan: baris pertama jadi terakhir, tidak mengubah isi atau jumlah baris', () => {
+  const B = barisStruk(struk, 32), R = balikUrutan(B)
+  assert.equal(R.length, B.length); assert.equal(R[0].t, 'Terima kasih'); assert.equal(R[R.length - 1].t.trim(), 'STRUK PENJUALAN'); assert.equal(B[0].t.trim(), 'STRUK PENJUALAN')   // aslinya tidak berubah
+  assert.deepEqual([...R].reverse(), B)
 })

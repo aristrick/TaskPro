@@ -427,3 +427,37 @@ a.tile2:hover{background:#F3F6FC;border-color:#C9D5EE} .tile2 b{font-size:22px;c
 .menit{display:inline-flex;align-items:center;gap:6px} .menit input{width:64px;min-height:36px;padding:4px 8px;text-align:center} .menit small{color:var(--muted)}
 .okc{color:var(--ok)} .badc{color:var(--danger)}
 .cdown{display:flex;align-items:center;gap:5px;color:#7A4B00;font-size:12px;font-weight:600;margin-top:2px}
+
+/* ===== Home: grafik penjualan 7 hari dan produk fokus (v16) ===== */
+.trend{display:flex;flex-direction:column;gap:16px}
+.trend-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.trend-stats>div{background:#F5F7FC;border-radius:14px;padding:10px 12px;display:flex;flex-direction:column;gap:2px;min-width:0}
+.trend-stats b{font-size:17px;line-height:1.25;color:var(--navy);font-variant-numeric:tabular-nums;overflow-wrap:anywhere} .trend-stats small{font-size:13px;color:var(--muted)}
+.trend-chart{display:grid;grid-template-columns:44px minmax(0,1fr);grid-template-rows:220px auto;column-gap:8px;margin-top:8px}
+.trend-y{position:relative;grid-row:1}
+.trend-y span{position:absolute;right:0;transform:translateY(50%);font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums;white-space:nowrap}
+.trend-plot{position:relative;grid-row:1;grid-column:2}
+.trend-grid i{position:absolute;left:0;right:0;height:0;border-top:1px dashed #D5DCEB} .trend-grid i.base{border-top:2px solid #B9C4DC}
+.trend-cols{position:absolute;inset:0;display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:clamp(4px,1.6vw,14px)}
+.tcol{position:relative;height:100%}
+.tbar{position:absolute;left:50%;bottom:0;width:min(100%,48px);transform:translateX(-50%);background:#7F97C9;border-radius:8px 8px 0 0;transition:height .5s var(--ease)}
+.tcol.today .tbar{background:var(--navy)}
+.tcol.zero .tbar{height:0;border-radius:0}
+.tval{position:absolute;left:50%;transform:translateX(-50%);font-size:13px;font-weight:600;color:var(--text);white-space:nowrap;font-variant-numeric:tabular-nums;line-height:1}
+.tcol.today .tval{font-weight:800;color:var(--navy)} .tcol.zero .tval{color:var(--muted);font-weight:500}
+.trend-x{grid-row:2;grid-column:2;display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:clamp(4px,1.6vw,14px);margin-top:8px}
+.trend-x>div{display:flex;flex-direction:column;align-items:center;line-height:1.25;min-width:0}
+.trend-x b{font-size:13px;color:var(--text);text-transform:capitalize} .trend-x small{font-size:12px;color:var(--muted);white-space:nowrap}
+.trend-x .today b,.trend-x .today small{color:var(--navy);font-weight:700}
+.trend-note{margin:12px 0 0;font-size:12px;color:var(--muted)}
+.trend-empty{margin:0;padding:24px 8px;text-align:center;color:var(--muted);background:#F5F7FC;border-radius:14px}
+.focus-list{list-style:none;margin:0;padding:0}
+.focus-row{display:grid;grid-template-columns:28px minmax(0,1fr) auto;column-gap:12px;row-gap:8px;align-items:center;padding:14px 0;border-top:1px solid var(--line)} .focus-row:first-child{border-top:0;padding-top:4px}
+.focus-rank{width:28px;height:28px;border-radius:50%;background:var(--navy-100);color:var(--navy);font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center}
+.focus-name{font-size:15px;font-weight:600;line-height:1.35;overflow-wrap:anywhere}
+.focus-nums{display:flex;gap:16px} .focus-nums span{display:flex;flex-direction:column;align-items:flex-end;line-height:1.2}
+.focus-nums small{font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)} .focus-nums b{font-size:17px;color:var(--navy);font-variant-numeric:tabular-nums}
+.focus-bar{grid-column:2/-1;height:10px;border-radius:99px;background:#E4EAF7;overflow:hidden} .focus-bar i{display:block;height:100%;background:var(--navy);border-radius:99px;transition:width .5s var(--ease)}
+.focus-more{width:100%;margin-top:4px}
+@media (max-width:520px){.trend-stats{grid-template-columns:1fr 1fr}.trend-stats>div:last-child{grid-column:1/-1}.trend-chart{grid-template-columns:38px minmax(0,1fr);grid-template-rows:200px auto}.tval{font-size:12px}.trend-x b{font-size:12px}.trend-x small{font-size:11px}}
+@media (max-width:520px){.trend-x .bln{display:none}}

@@ -48,3 +48,13 @@ export const rpk = (n: number) => {
   if (a >= 1e3) return `Rp ${Math.round(n / 1e3)} rb`
   return `Rp ${Math.round(n)}`
 }
+
+// Angka ringkas tanpa "Rp" untuk label di dalam grafik: 850 rb, 1,2 jt, 3,4 M
+export const rpc = (n: number) => rpk(n).replace(/^Rp /, '')
+// Skala sumbu Y yang rapi: 4 selang dengan langkah bulat (1, 2, 2,5, atau 5 x 10^n). Nilai tertinggi selalu muat.
+export function skala(max: number): { top: number; ticks: number[] } {
+  if (!(max > 0)) return { top: 0, ticks: [0] }
+  const mentah = max / 4, mag = Math.pow(10, Math.floor(Math.log10(mentah)))
+  const langkah = ([1, 2, 2.5, 5, 10].map(k => k * mag).find(x => x >= mentah) as number)
+  return { top: langkah * 4, ticks: [0, 1, 2, 3, 4].map(i => langkah * i) }
+}

@@ -15,6 +15,12 @@ dan tersimpan di perangkat itu saja.
 Bagaimana mengetahui printer Anda Bluetooth klasik atau LE? Jika *Bluetooth langsung* gagal dengan pesan "tidak punya jalur tulis", printer itu
 kemungkinan Bluetooth klasik: gunakan RawBT. Selalu pakai **Tes cetak** setelah memilih cara.
 
+## Urutan struk di kertas
+Susunan struk dari atas ke bawah: judul, nama outlet, alamat, **frontliner**, waktu, nomor, produk yang terjual, total, lalu **Terima kasih** paling bawah.
+Sebagian printer portable mengeluarkan kertas dengan baris pertama di bagian bawah, sehingga hasilnya terbaca terbalik. Karena itu ada saklar
+**Profile > Printer dan struk > Balik urutan cetak** (aktif secara bawaan untuk Bluetooth langsung dan RawBT). Jika hasil cetak di printer Anda sudah benar
+tanpa pembalikan, matikan saklar itu. Dialog cetak sistem tidak terpengaruh. Pratinjau di layar selalu berurutan normal.
+
 ## Kertas
 Pilih 58 mm (32 kolom) atau 80 mm (48 kolom). Teks dicetak sebagai ASCII (aksen dihapus) karena printer thermal murah tidak mendukung huruf lain.
 

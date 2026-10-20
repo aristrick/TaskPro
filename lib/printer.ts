@@ -1,18 +1,18 @@
-import { barisStruk, escpos, rawbtUrl, type Baris, type Struk } from './escpos'
+import { balikUrutan, barisStruk, escpos, rawbtUrl, type Baris, type Struk } from './escpos'
 
 // Tiga cara mencetak ke printer portable. Tidak ada yang bisa mencakup semua perangkat:
 //  bt     = Bluetooth langsung (Chrome/Edge/Samsung Internet; Android dan laptop; printer Bluetooth LE). Tidak tersedia di Safari iPhone.
 //  rawbt  = Android + aplikasi RawBT (mendukung printer Bluetooth klasik, USB, jaringan).
 //  system = dialog cetak bawaan browser (butuh printer yang terdaftar di sistem, mis. AirPrint di iPhone).
 export type Metode = 'bt' | 'rawbt' | 'system'
-export type Pref = { metode: Metode; lebar: 32 | 48; tanya: boolean; judul: string; footer: string; btNama: string }
+export type Pref = { metode: Metode; lebar: 32 | 48; tanya: boolean; judul: string; footer: string; btNama: string; balik: boolean }
 
 const KUNCI = 'taskpro-printer', TERAKHIR = 'taskpro-struk-terakhir'
 export const dukungBluetooth = () => typeof navigator !== 'undefined' && 'bluetooth' in navigator
 export const adaAndroid = () => typeof navigator !== 'undefined' && /android/i.test(navigator.userAgent)
 export const adaIOS = () => typeof navigator !== 'undefined' && /iphone|ipad|ipod/i.test(navigator.userAgent)
 export const metodeAwal = (): Metode => (dukungBluetooth() ? 'bt' : adaAndroid() ? 'rawbt' : 'system')
-export const prefBawaan = (): Pref => ({ metode: metodeAwal(), lebar: 32, tanya: true, judul: 'STRUK PENJUALAN', footer: 'Terima kasih', btNama: '' })
+export const prefBawaan = (): Pref => ({ metode: metodeAwal(), lebar: 32, tanya: true, judul: 'STRUK PENJUALAN', footer: 'Terima kasih', btNama: '', balik: true })
 
 export function muatPref(): Pref { try { return { ...prefBawaan(), ...JSON.parse(localStorage.getItem(KUNCI) || '{}') } } catch { return prefBawaan() } }
 export function simpanPref(p: Pref) { try { localStorage.setItem(KUNCI, JSON.stringify(p)) } catch { /* abaikan */ } }
@@ -66,11 +66,11 @@ function cetakSistem(B: Baris[], lebar: number) {
 }
 
 export async function cetak(s: Struk, p: Pref) {
-  const B = barisStruk(s, p.lebar)
-  if (p.metode === 'bt') { if (!dev) await pasangBt(); return cetakBt(escpos(B)) }
+  const B = barisStruk(s, p.lebar), R = p.balik ? balikUrutan(B) : B   // R dipakai printer thermal (bt/RawBT); dialog sistem selalu urutan normal
+  if (p.metode === 'bt') { if (!dev) await pasangBt(); return cetakBt(escpos(R)) }
   if (p.metode === 'rawbt') {
     if (!adaAndroid()) throw new Error('RawBT hanya untuk Android. Pilih metode lain di Profile > Printer & struk.')
-    location.href = rawbtUrl(escpos(B)); return
+    location.href = rawbtUrl(escpos(R)); return
   }
   return cetakSistem(B, p.lebar)
 }

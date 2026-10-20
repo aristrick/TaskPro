@@ -31,7 +31,7 @@ export function barisStruk(s: Struk, w: number): Baris[] {
   const tengah = (t: string, b = false) => { if (t.trim()) bungkus(asciiBersih(t), w).forEach(x => B.push({ t: x, c: true, b })) }
   tengah(s.judul, true); tengah(s.outlet, true); tengah(s.alamat)
   B.push({ t: garis })
-  for (const [k, v] of [['No', s.nomor], ['Waktu', s.waktu], ['Sales', `${s.frontliner} (${s.userId})`]] as const) {
+  for (const [k, v] of [['Sales', `${s.frontliner} (${s.userId})`], ['Waktu', s.waktu], ['No', s.nomor]] as const) {
     const [pertama, ...sisa] = bungkus(asciiBersih(`${k.padEnd(5)}: ${v}`), w); B.push({ t: pertama }); sisa.forEach(x => B.push({ t: '       ' + x.trimStart() }))
   }
   B.push({ t: garis })
@@ -45,6 +45,10 @@ export function barisStruk(s: Struk, w: number): Baris[] {
   tengah(s.footer)
   return B
 }
+
+// Sebagian printer portable mengeluarkan kertas dengan baris pertama di bagian bawah (hasil terbaca dari bawah ke atas).
+// Untuk printer seperti itu, baris dikirim terbalik supaya kertas yang dipegang terbaca: outlet, frontliner, produk, lalu terima kasih.
+export const balikUrutan = (B: Baris[]): Baris[] => [...B].reverse()
 
 // Teks polos untuk pratinjau layar.
 export const teksPolos = (B: Baris[], w: number) => B.map(x => (x.c ? ' '.repeat(Math.max(0, Math.floor((w - x.t.length) / 2))) + x.t : x.t)).join('\n')
