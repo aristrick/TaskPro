@@ -5,6 +5,8 @@ import Shell from '../../components/Shell'
 import Icon from '../../components/Icon'
 import { supabase } from '../../lib/supabase'
 import { useDialog } from '../../components/Dialog'
+import ProjectCard from '../../components/project/ProjectCard'
+import { inisial } from '../../components/mds/AkunCard'
 
 // Project = nama yang tampil di kolom "Project" pada Excel Kunjungan dan Selling. Satu frontliner hanya di satu project.
 function Project() {
@@ -58,7 +60,6 @@ function Project() {
       message: error.code === '23503' ? 'Project ini sudah tercatat pada data kunjungan. Ganti namanya saja agar riwayat tetap utuh.' : error.message })
     load()
   }
-  const pn = (id: string) => prods.find(x => x.id === id)?.product || '-'
   async function tambahFokus(pid: string, prod: string) {
     const { error } = await supabase.from('project_focus').insert({ project_id: pid, product_id: prod })
     setErr(error ? error.message : ''); load()
@@ -76,43 +77,40 @@ function Project() {
   }
 
   return (<>
-    <h2>Project</h2>
-    <p className="muted" style={{ marginTop: -4 }}>Nama project dipakai untuk kolom <b>Project</b> pada Excel Kunjungan dan Selling. Tiap project punya <b>produk fokus</b> sendiri, yang berlaku untuk semua frontliner di dalamnya. Project dan fokus dicatat saat transaksi, jadi riwayat lama tidak berubah jika frontliner pindah project atau fokus diganti.</p>
-    <div className="card">
-      <div className="row" style={{ margin: 0 }}>
-        {cabang.length > 1 && <select value={cid} onChange={e => setCid(e.target.value)} aria-label="Cabang">{cabang.map(c => <option key={c.id} value={c.id}>{c.kode} {c.nama}</option>)}</select>}
-        <input placeholder="Nama project baru (mis. Taskforce Beverage Pulogadung Sep 2026)" value={name} onChange={e => setName(e.target.value)} onKeyDown={e => e.key === 'Enter' && buat()} style={{ flex: 1, minWidth: 240 }} />
-        <button onClick={buat}><Icon name="plus" size={18} /> Buat project</button></div>
-      {err && <p className="err" role="alert" style={{ marginBottom: 0 }}>{err}</p>}
+    <div className="pagehead">
+      <div><h2>Project</h2><p className="muted pgdesc">Kelompokkan frontliner ke dalam project dan tentukan produk fokusnya.</p></div>
+      {cabang.length > 1 && <label className="fld-inline cabpick"><span className="label">Cabang</span>
+        <select value={cid} onChange={e => setCid(e.target.value)}>{cabang.map(c => <option key={c.id} value={c.id}>{c.kode} {c.nama}</option>)}</select></label>}
     </div>
+    <details className="infobox">
+      <summary>Bagaimana project bekerja?</summary>
+      <ul>
+        <li>Nama project dipakai untuk kolom <b>Project</b> pada Excel Kunjungan dan Selling.</li>
+        <li>Tiap project punya <b>produk fokus</b> sendiri, berlaku untuk semua frontliner di dalamnya. Satu frontliner hanya bisa di satu project.</li>
+        <li>Project dan fokus dicatat saat transaksi, jadi riwayat lama tidak berubah jika frontliner pindah project atau fokus diganti.</li>
+      </ul>
+    </details>
+
+    <section className="card projnew" aria-label="Buat project baru">
+      <label className="fld" style={{ margin: 0 }}><span className="label">Project baru{cabang.length === 1 && cid ? ` · ${cabang[0].kode} ${cabang[0].nama}` : ''}</span>
+        <div className="projnewrow">
+          <input placeholder="mis. Taskforce Beverage Pulogadung Sep 2026" value={name} onChange={e => setName(e.target.value)} onKeyDown={e => e.key === 'Enter' && buat()} aria-invalid={!!err} />
+          <button onClick={buat}><Icon name="plus" size={18} /> Buat project</button></div></label>
+      {err && <p className="err" role="alert" style={{ margin: '8px 0 0', fontSize: 14 }}>{err}</p>}
+    </section>
+
     {!ready && <SkelRows n={3} />}
-    {ready && cid && inCab.length === 0 && <div className="card muted">Belum ada project di cabang ini. Buat satu di atas, lalu masukkan frontliner.</div>}
+    {ready && cid && inCab.length === 0 && <div className="empty"><Icon name="folder" size={28} /><b>Belum ada project di cabang ini</b><p>Buat project pertama di atas, lalu masukkan frontliner dan pilih produk fokusnya.</p></div>}
     {inCab.map(p => {
       const mem = flCab.filter(f => f.project_id === p.id), other = flCab.filter(f => f.project_id !== p.id)
-      const fo = focus.filter(x => x.project_id === p.id).map(x => x.product_id), sumber = inCab.filter(x => x.id !== p.id)
-      return (
-        <div className="card" key={p.id}>
-          <div className="row"><b style={{ fontSize: 16 }}>{p.name}</b><span className="chip">{mem.length} frontliner</span><div className="grow" />
-            <button className="ghost" onClick={() => ganti(p)}><Icon name="edit" size={16} /> Ganti nama</button>
-            <button className="ghost danger" onClick={() => hapus(p)}><Icon name="trash" size={16} /> Hapus</button></div>
-          <div className="row" style={{ marginBottom: 0 }}>
-            {mem.map(f => <span className="chip" key={f.id}>{f.user_id} · {f.nama}<a onClick={() => anggota(f.id, null)} title="Keluarkan dari project"> ✕</a></span>)}
-            <select value="" aria-label="Tambah frontliner" onChange={e => e.target.value && anggota(e.target.value, p.id)}>
-              <option value="">+ Tambah frontliner…</option>
-              {other.map(f => <option key={f.id} value={f.id}>{f.user_id} · {f.nama}{f.project_id ? ` (dari ${pname(f.project_id)})` : ''}</option>)}</select></div>
-          <div className="row" style={{ margin: '12px 0 0', paddingTop: 12, borderTop: '1px solid var(--line)' }}>
-            <span className="label" style={{ width: '100%' }}>Produk fokus ({fo.length})</span>
-            {fo.map(x => <span className="chip" key={x}>{pn(x)}<a onClick={() => lepasFokus(p.id, x)} title="Lepas dari fokus"> ✕</a></span>)}
-            <select value="" aria-label="Tambah produk fokus" onChange={e => e.target.value && tambahFokus(p.id, e.target.value)}>
-              <option value="">+ Tambah produk fokus…</option>{prods.filter(x => !fo.includes(x.id)).map(x => <option key={x.id} value={x.id}>{x.product}</option>)}</select>
-            {sumber.length > 0 && <select value="" aria-label="Salin produk fokus" onChange={e => e.target.value && salinFokus(e.target.value, p.id)}>
-              <option value="">Salin dari project lain…</option>{sumber.map(x => <option key={x.id} value={x.id}>{x.name}</option>)}</select>}
-          </div>
-        </div>)
+      const fo = focus.filter(x => x.project_id === p.id).map(x => x.product_id)
+      return <ProjectCard key={p.id} p={p} anggota={mem} lainnya={other} fokus={fo} prods={prods} sumber={inCab.filter(x => x.id !== p.id)} namaProject={pname}
+        onGanti={() => ganti(p)} onHapus={() => hapus(p)} onAnggota={anggota} onTambahFokus={x => tambahFokus(p.id, x)} onLepasFokus={x => lepasFokus(p.id, x)} onSalin={from => salinFokus(from, p.id)} />
     })}
-    {cid && free.length > 0 && <div className="card"><span className="label">Belum masuk project ({free.length})</span>
-      <div className="row" style={{ margin: '8px 0 0' }}>{free.map(f => <span className="chip" key={f.id}>{f.user_id} · {f.nama}</span>)}</div>
-      <p className="muted" style={{ margin: '8px 0 0', fontSize: 13 }}>Kolom Project di Excel untuk frontliner ini akan berisi nama default (TASKFORCE BEVERAGE + nama cabang).</p></div>}
+    {cid && free.length > 0 && <section className="warnbox" aria-label="Frontliner belum masuk project">
+      <h4><Icon name="alert" size={18} /> {free.length} frontliner belum masuk project</h4>
+      <ul className="tags">{free.map(f => <li className="tag" key={f.id}><span className="tagav" aria-hidden="true">{inisial(f.nama)}</span><span className="tagtx"><b>{f.nama}</b><small>{f.user_id}</small></span></li>)}</ul>
+      <p>Kolom Project di Excel untuk frontliner ini akan berisi nama default (TASKFORCE BEVERAGE + nama cabang). Masukkan lewat kartu project di atas.</p></section>}
   </>)
 }
 export default function Page() { return <Shell roles={['mds', 'mdm', 'rmdm']}><Project /></Shell> }
