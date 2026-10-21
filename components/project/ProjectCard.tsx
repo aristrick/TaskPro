@@ -24,31 +24,30 @@ export default function ProjectCard({ p, anggota, lainnya, fokus, prods, sumber,
 
       <div className="projgrid">
         <section className="projsec" aria-label="Frontliner">
-          <h4 className="projsh"><Icon name="users" size={16} /> Frontliner <span className="cnt">{anggota.length}</span></h4>
+          <div className="projsech"><h4 className="projsh"><Icon name="users" size={16} /> Frontliner <span className="cnt">{anggota.length}</span></h4></div>
           {anggota.length > 0
-            ? <ul className="tags">{anggota.map(f => <li className="tag" key={f.id}>
-                <span className="tagav" aria-hidden="true">{inisial(f.nama)}</span>
-                <span className="tagtx"><b>{f.nama}</b><small>{f.user_id}</small></span>
-                <button type="button" className="tagx" aria-label={`Keluarkan ${f.nama} dari project`} title="Keluarkan dari project" onClick={() => onAnggota(f.id, null)}><Icon name="close" size={12} /></button></li>)}</ul>
+            ? <ul className="lrows">{anggota.map(f => <li className="lrow" key={f.id}>
+                <span className="lrow-ic" aria-hidden="true">{inisial(f.nama)}</span>
+                <span className="lrow-tx"><b>{f.nama}</b><small>{f.user_id}</small></span>
+                <button type="button" className="lrow-act" aria-label={`Keluarkan ${f.nama} dari project`} title="Keluarkan dari project" onClick={() => onAnggota(f.id, null)}>Keluarkan</button></li>)}</ul>
             : <p className="projempty">Belum ada frontliner di project ini.</p>}
-          <select className="addsel" value="" aria-label="Tambah frontliner" onChange={e => e.target.value && onAnggota(e.target.value, p.id)}>
+          <select className="addrow" value="" aria-label="Tambah frontliner" onChange={e => e.target.value && onAnggota(e.target.value, p.id)}>
             <option value="">+ Tambah frontliner…</option>
             {lainnya.map(f => <option key={f.id} value={f.id}>{f.user_id} · {f.nama}{f.project_id ? ` (dari ${namaProject(f.project_id)})` : ''}</option>)}</select>
         </section>
 
         <section className="projsec" aria-label="Produk fokus">
-          <h4 className="projsh"><Icon name="box" size={16} /> Produk fokus <span className="cnt">{fokus.length}</span></h4>
-          {fokus.length > 0
-            ? <ul className="tags">{fokus.map(x => <li className="tag prod" key={x}>
-                <span className="tagtx"><b>{pn(x)}</b></span>
-                <button type="button" className="tagx" aria-label={`Lepas ${pn(x)} dari fokus`} title="Lepas dari fokus" onClick={() => onLepasFokus(x)}><Icon name="close" size={12} /></button></li>)}</ul>
-            : <p className="projempty">Belum ada produk fokus.</p>}
-          <div className="accctl">
-            <select className="addsel" value="" aria-label="Tambah produk fokus" onChange={e => e.target.value && onTambahFokus(e.target.value)}>
-              <option value="">+ Tambah produk fokus…</option>{sisa.map(x => <option key={x.id} value={x.id}>{x.product}</option>)}</select>
+          <div className="projsech"><h4 className="projsh"><Icon name="box" size={16} /> Produk fokus <span className="cnt">{fokus.length}</span></h4>
             {sumber.length > 0 && <select className="addsel quiet" value="" aria-label="Salin produk fokus" onChange={e => e.target.value && onSalin(e.target.value)}>
-              <option value="">Salin dari project lain…</option>{sumber.map(x => <option key={x.id} value={x.id}>{x.name}</option>)}</select>}
-          </div>
+              <option value="">Salin dari project lain…</option>{sumber.map(x => <option key={x.id} value={x.id}>{x.name}</option>)}</select>}</div>
+          {fokus.length > 0
+            ? <ul className="lrows">{fokus.map(x => <li className="lrow" key={x}>
+                <span className="lrow-ic" aria-hidden="true"><Icon name="box" size={18} /></span>
+                <span className="lrow-tx"><b>{pn(x)}</b></span>
+                <button type="button" className="lrow-act" aria-label={`Lepas ${pn(x)} dari fokus`} title="Lepas dari fokus" onClick={() => onLepasFokus(x)}>Lepas</button></li>)}</ul>
+            : <p className="projempty">Belum ada produk fokus.</p>}
+          <select className="addrow" value="" aria-label="Tambah produk fokus" onChange={e => e.target.value && onTambahFokus(e.target.value)}>
+            <option value="">+ Tambah produk fokus…</option>{sisa.map(x => <option key={x.id} value={x.id}>{x.product}</option>)}</select>
         </section>
       </div>
     </article>)

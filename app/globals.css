@@ -519,3 +519,28 @@ a.tile2:hover{background:#F3F6FC;border-color:#C9D5EE} .tile2 b{font-size:22px;c
 @media (max-width:480px){.projh,.projsec{padding-left:16px;padding-right:16px}.projact{width:100%}.projact button{flex:1}.pagehead>button{width:100%}}
 @media (max-width:480px){.toolbar .seg{width:100%;overflow-x:auto}.toolbar .seg button{flex:1;padding:0 6px;font-size:13px}.tabn{margin-left:2px;padding:0 5px}}
 @media (max-width:480px){.toolbar .seg{gap:2px;padding:3px}.toolbar .seg button{padding:0 4px;font-size:12.5px;min-width:0}.toolbar .seg .tabn{min-width:0;margin-left:3px;padding:0 5px;font-size:11px;line-height:18px}}
+
+/* ===== Daftar baris seragam (v17): frontliner, produk fokus, cabang ===== */
+.projgrid{grid-template-columns:1fr}
+.projsec+.projsec{border-left:0;border-top:1px solid var(--line)}
+.projsech{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;min-height:36px}
+.lrows{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px;width:100%;max-width:680px}
+.lrow{display:flex;align-items:center;gap:12px;min-height:56px;padding:8px 10px 8px 12px;background:#fff;border:1px solid var(--line);border-radius:14px}
+.lrow-ic{flex:none;width:36px;height:36px;border-radius:50%;background:var(--navy-100);color:var(--navy);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700}
+.lrow-tx{flex:1;min-width:0;display:flex;flex-direction:column;justify-content:center;line-height:1.3}
+.lrow-tx b{font-size:15px;font-weight:600;color:var(--text);overflow-wrap:anywhere}
+.lrow-tx small{font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums}
+.lrow-act{flex:none;display:inline-flex;align-items:center;justify-content:center;min-height:34px;padding:0 14px;border:1px solid var(--line);border-radius:999px;background:#fff;color:var(--muted);font-size:13px;font-weight:600;box-shadow:none;transition:background .15s,color .15s,border-color .15s}
+.lrow-act:hover:not(:disabled){background:var(--danger-bg);color:var(--danger);border-color:#F0B8B3}
+.lrow.none{background:var(--danger-bg);border-color:#F3C6C2} .lrow.none .lrow-ic{background:#fff;color:var(--danger)} .lrow.none .lrow-tx b{color:var(--danger)}
+.addrow{display:block;width:100%;max-width:680px;min-height:56px;padding:0 16px;border:1.5px dashed #9FB2D9;border-radius:14px;background:#fff;color:var(--navy);font-weight:600;font-size:15px;cursor:pointer}
+.addrow:hover{background:#F3F6FC;border-color:var(--navy)}
+.movefield{display:flex;flex-direction:column;gap:6px}
+.movefield select{width:100%;min-height:48px;padding:0 14px;border:1.5px solid #9FB2D9;border-radius:14px;background:#fff;color:var(--navy);font-weight:600;font-size:15px;cursor:pointer}
+.movefield select:hover{border-color:var(--navy)}
+.acc .lrows,.acc .addrow{max-width:none}
+.acc .lrow{min-height:52px} .acc .addrow{min-height:52px}
+.acc .accbody{gap:12px}
+.acc .lrow-ic{width:32px;height:32px}
+.warnbox .lrow{border-color:#F0DDA6}
+@media (max-width:480px){.lrow{padding-left:10px;gap:10px}.lrow-act{padding:0 12px}}

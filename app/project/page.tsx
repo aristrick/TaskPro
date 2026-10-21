@@ -109,7 +109,7 @@ function Project() {
     })}
     {cid && free.length > 0 && <section className="warnbox" aria-label="Frontliner belum masuk project">
       <h4><Icon name="alert" size={18} /> {free.length} frontliner belum masuk project</h4>
-      <ul className="tags">{free.map(f => <li className="tag" key={f.id}><span className="tagav" aria-hidden="true">{inisial(f.nama)}</span><span className="tagtx"><b>{f.nama}</b><small>{f.user_id}</small></span></li>)}</ul>
+      <ul className="lrows">{free.map(f => <li className="lrow" key={f.id}><span className="lrow-ic" aria-hidden="true">{inisial(f.nama)}</span><span className="lrow-tx"><b>{f.nama}</b><small>{f.user_id}</small></span></li>)}</ul>
       <p>Kolom Project di Excel untuk frontliner ini akan berisi nama default (TASKFORCE BEVERAGE + nama cabang). Masukkan lewat kartu project di atas.</p></section>}
   </>)
 }
