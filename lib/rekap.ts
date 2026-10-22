@@ -58,3 +58,14 @@ export function skala(max: number): { top: number; ticks: number[] } {
   const langkah = ([1, 2, 2.5, 5, 10].map(k => k * mag).find(x => x >= mentah) as number)
   return { top: langkah * 4, ticks: [0, 1, 2, 3, 4].map(i => langkah * i) }
 }
+
+// ---- Zona waktu untuk layar yang melihat banyak cabang (Home) ----
+const ZONA = ['Asia/Jakarta', 'Asia/Makassar', 'Asia/Jayapura']   // urut dari barat ke timur
+export const labelTz = (tz: string) => (({ 'Asia/Jakarta': 'WIB', 'Asia/Makassar': 'WITA', 'Asia/Jayapura': 'WIT' }) as Record<string, string>)[tz] || tz
+// Zona acuan = zona paling timur di antara cabang yang terlihat, supaya "hari ini" tidak tertinggal untuk cabang WITA/WIT. Tanpa data: WIB.
+export const tzAcuan = (tzs: string[]) => [...ZONA].reverse().find(z => tzs.includes(z)) || TZ
+// Database mengelompokkan hari menurut zona tiap cabang (kunci tanggal lokal). Agar tidak ada yang terlewat, ambil jendela terlebar
+// (00:00 di zona terdepan sampai 00:00 di zona paling belakang), lalu saring hasilnya dengan kunci tanggal.
+export const jendela = (tglMulai: string, tglAkhirEksklusif: string) => ({ from: `${tglMulai}T00:00:00+09:00`, to: `${tglAkhirEksklusif}T00:00:00+07:00` })
+export const tglBulanDepan = (tgl: string) => { const [y, m] = tgl.split('-').map(Number); return `${m === 12 ? y + 1 : y}-${String(m === 12 ? 1 : m + 1).padStart(2, '0')}-01` }
+export const hanyaBulan = <T,>(rk: Record<string, T>, tgl: string): Record<string, T> => Object.fromEntries(Object.entries(rk).filter(([k]) => k.startsWith(tgl.slice(0, 7))))

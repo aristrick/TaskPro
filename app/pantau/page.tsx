@@ -31,12 +31,14 @@ function Pantau() {
       setRows(data || [])
     })()
   }, [tab, role])
+  const batas = tab === 'err' ? 100 : 200, penuh = !!rows && rows.length >= batas
   const aksiList = tab === 'audit' && rows ? [...new Set(rows.map(r => r.action))] : []
   const tabs: [Tab, string][] = [['sus', 'Kunjungan mencurigakan'], ...(mdm ? [['audit', 'Jejak audit'], ['err', 'Error aplikasi']] as [Tab, string][] : [])]
   return (<>
     <h2>Pantau</h2>
     <div className="seg" role="tablist" style={{ maxWidth: 560, marginBottom: 12 }}>
       {tabs.map(([k, t]) => <button key={k} role="tab" aria-selected={tab === k} className={tab === k ? 'on' : ''} onClick={() => setTab(k)}>{t}</button>)}</div>
+    {penuh && <div className="notice warn" role="status">Menampilkan {batas} data terbaru. Data yang lebih lama tidak ditampilkan di sini.</div>}
     {rows === null ? <SkelRows n={5} /> : tab === 'sus' ? (rows.length === 0 ? <div className="card muted">Tidak ada kunjungan yang ditandai. Penanda muncul jika akurasi GPS 0 (kemungkinan lokasi palsu) atau perpindahan antar check-in tidak wajar.</div> :
       <div className="scroll"><table><thead><tr><th>Waktu</th><th>Frontliner</th><th>Outlet</th><th>Alasan</th><th>Jarak</th><th>Akurasi</th></tr></thead>
         <tbody>{rows.map(r => <tr key={r.id}><td>{dt(r.checkin_at, r.cabang?.tz)}</td><td>{r.fl?.user_id} · {r.fl?.nama}</td><td>{r.outlets?.name}<div className="muted" style={{ fontSize: 12 }}>{r.outlets?.code}</div></td>

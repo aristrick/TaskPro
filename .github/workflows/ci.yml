@@ -4,7 +4,7 @@ on:
   pull_request: {}
 jobs:
   web:
-    name: Tipe, tes unit, dan build
+    name: Tipe, lint, tes unit, dan build
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -12,7 +12,9 @@ jobs:
         with: { node-version: 22, cache: npm }
       - run: npm ci
       - run: npm run typecheck
+      - run: npm run lint
       - run: npm test
+      - run: npm audit --omit=dev --audit-level=high
       - run: npm run build
         env:
           NEXT_PUBLIC_SUPABASE_URL: https://example.supabase.co
@@ -27,3 +29,16 @@ jobs:
         with: { python-version: '3.12' }
       - run: pip install pgserver
       - run: python tests/sql/verify.py
+  e2e:
+    name: Tes uji-ujung (aplikasi di browser, Supabase ditiru)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:e2e
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with: { name: e2e-hasil, path: test-results, retention-days: 7 }

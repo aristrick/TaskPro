@@ -2,7 +2,8 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { createElement as h } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
-import ProjectCard from '../../components/project/ProjectCard'
+import ProjectCard, { opsiFokus, opsiFrontliner } from '../../components/project/ProjectCard'
+import { saring } from '../../components/Combobox'
 import AkunCard, { type Cabang } from '../../components/mds/AkunCard'
 
 const noop = () => {}
@@ -17,9 +18,9 @@ test('kartu project: ringkasan, dua bagian berjudul, dan tombol keluarkan/lepas 
   assert.match(html, /1 frontliner · 2 produk fokus/); assert.match(html, /Frontliner <span class="cnt">1/); assert.match(html, /Produk fokus <span class="cnt">2/)
   assert.match(html, /aria-label="Keluarkan Marianah dari project"/); assert.match(html, /aria-label="Lepas BONTEH MATCHA dari fokus"/)
   assert.match(html, /<button type="button" class="lrow-act"/); assert.doesNotMatch(html, /<a /)           // bukan tautan tanpa href lagi
-  assert.match(html, /Ganti nama/); assert.match(html, /Hapus/); assert.match(html, /\(dari PROJECT LAIN\)/)
+  assert.match(html, /Ganti nama/); assert.match(html, /Hapus/); assert.match(html, /role="combobox"/); assert.match(html, /aria-label="Tambah frontliner"/); assert.match(html, /aria-label="Tambah produk fokus"/)
   assert.equal((html.match(/class="lrow"/g) || []).length, 3)   // 1 frontliner + 2 produk fokus: semua baris memakai kelas yang sama (ukuran seragam)
-  assert.doesNotMatch(html, /SAYANG LIQUID 20ML<\/b>/); assert.match(html, /<option value="c">SAYANG LIQUID 20ML/)   // yang sudah fokus tidak muncul lagi di pilihan
+  assert.doesNotMatch(html, /SAYANG LIQUID 20ML<\/b>/)
 })
 
 test('kartu project kosong: keadaan kosong yang menjelaskan, bukan ruang hampa', () => {
@@ -44,4 +45,15 @@ test('kartu akun MDS: Lepas cabang sejajar dengan Hapus di kaki kartu; pilihan p
 test('kartu akun RMDM: cabang berupa daftar baris seragam dengan tombol Lepas di tiap baris', () => {
   const html = renderToStaticMarkup(h(AkunCard, { m: { id: 'r1', user_id: 'JBK31.MDGT', nama: 'Agus', role: 'rmdm' }, cabang, bebasMds: [], bebasR: [], viewerRole: 'mdm', status: null, bisaPaksa: false, onHapus: noop, onPaksa: noop, onOp: noop }))
   assert.equal((html.match(/class="lrow"/g) || []).length, 2); assert.equal((html.match(/class="lrow-act"/g) || []).length, 2); assert.match(html, /aria-label="Lepas 0300"/)
+})
+
+test('pilihan tambah: yang sudah fokus tidak ditawarkan lagi, keterangan frontliner menyebut project sekarang', () => {
+  assert.deepEqual(opsiFokus(prods, ['a', 'b']).map(o => o.label), ['SAYANG LIQUID 20ML'])
+  const f = opsiFrontliner([{ id: 'f2', user_id: '0100-TMTB02', nama: 'Budi', project_id: 'p2' }, { id: 'f3', user_id: '0100-TMTB03', nama: 'Sari', project_id: null }], id => (id === 'p2' ? 'PROJECT LAIN' : undefined))
+  assert.equal(f[0].sub, '0100-TMTB02 · sekarang di PROJECT LAIN'); assert.equal(f[1].sub, '0100-TMTB03 · belum punya project')
+})
+test('pencarian pilihan: huruf besar/kecil diabaikan, cocok di nama maupun User ID, dibatasi jumlahnya', () => {
+  const o = [{ value: '1', label: 'Marianah', sub: '0100-TMTB01' }, { value: '2', label: 'Budi Santoso', sub: '0100-TMTB02' }, { value: '3', label: 'Sari', sub: '0300-TMTB05' }]
+  assert.deepEqual(saring(o, 'budi').map(x => x.value), ['2']); assert.deepEqual(saring(o, '0300').map(x => x.value), ['3']); assert.deepEqual(saring(o, '  ').length, 3)
+  assert.deepEqual(saring(o, 'xyz'), []); assert.equal(saring(Array.from({ length: 300 }, (_, i) => ({ value: String(i), label: 'P' + i })), '').length, 100)
 })

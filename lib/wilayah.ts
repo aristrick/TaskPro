@@ -14,7 +14,7 @@ const ISO: Record<string, string> = { AC: 'Aceh', SU: 'Sumatera Utara', SB: 'Sum
 // Samakan penulisan ("Daerah Khusus Ibukota Jakarta" -> "DKI Jakarta"). Tidak dikenal = null.
 export function kanon(raw?: string | null): string | null {
   if (!raw) return null
-  let n = String(raw).toLowerCase().trim().replace(/^provinsi\s+/, '').replace(/daerah khusus ibu ?kota|special capital region of/g, 'dki')
+  const n = String(raw).toLowerCase().trim().replace(/^provinsi\s+/, '').replace(/daerah khusus ibu ?kota|special capital region of/g, 'dki')
     .replace(/daerah istimewa|special region of/g, 'di').replace(/\s+/g, ' ')
   if (/jakarta/.test(n)) return 'DKI Jakarta'
   if (/yogyakarta/.test(n)) return 'DI Yogyakarta'

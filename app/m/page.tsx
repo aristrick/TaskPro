@@ -1,79 +1,86 @@
 'use client'
-import { useEffect, useState } from 'react'
+// Layar frontliner (HP). Halaman ini hanya mengatur alur: login, GPS, check-in, check-out, antrean kirim, dan tab.
+// Tampilannya ada di components/hp/*, pengambilan datanya di components/hp/hooks.ts, antrean sinyal lemah di lib/outbox.ts.
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '../../lib/supabase'
 import { loadMe } from '../../lib/auth'
 import { logout, keluarLokal, useHeartbeat } from '../../lib/sesi'
 import { useDialog } from '../../components/Dialog'
-import { rekap, day, rp, VSEL, OFFSET, startOfDay } from '../../lib/rekap'
+import { rekap, VSEL, startOfDay, fetchAll } from '../../lib/rekap'
 import { friendly } from '../../lib/friendly'
-import OutletForm from '../../components/OutletForm'
 import StokForm from '../../components/StokForm'
 import RekapTab from '../../components/hp/RekapTab'
+import ProfileTab from '../../components/hp/ProfileTab'
 import ReceiptDialog from '../../components/ReceiptDialog'
 import PrinterSettings from '../../components/PrinterSettings'
+import SellScreen from '../../components/hp/SellScreen'
+import OutletList from '../../components/hp/OutletList'
+import FarDialog, { type Jauh } from '../../components/hp/FarDialog'
+import { OfflineBar, OutboxBar } from '../../components/hp/Bars'
+import { draftKey, useAntrean, useDraft, useGps, useKonteks, useOutlets, useStok, type Qty } from '../../components/hp/hooks'
 import { muatPref, prefBawaan, simpanTerakhir, muatTerakhir, type Pref } from '../../lib/printer'
 import type { Struk } from '../../lib/escpos'
-import ProfileTab from '../../components/hp/ProfileTab'
-import { PageLoader, SkelRows } from '../../components/Loaders'
+import { PageLoader } from '../../components/Loaders'
 import Icon from '../../components/Icon'
+import { fresh, payload, buzz, sisaDetik, mmss } from '../../lib/hp'
+import { susunStruk } from '../../lib/struk'
+import { antre, adaUntuk, galatJaringan, muat, type Hasil } from '../../lib/outbox'
+import { hapusSnap, muatSnap, simpanSnap, type Snap } from '../../lib/snapshot'
+import type { Kunjungan, Me, Outlet } from '../../lib/types'
 
-import { meters, fresh, payload, fmt, buzz, sisaDetik, mmss } from '../../lib/hp'
+const VISIT_SEL = 'id,outlet_id,checkin_at,project_id,outlets(name,address,lat,long)'
 
 export default function Frontliner() {
   const router = useRouter(), dlg = useDialog()
-  const [me, setMe] = useState<any>(null)
-  const [pos, setPos] = useState<{ lat: number; lng: number } | null>(null)
-  const [gps, setGps] = useState<'wait' | 'ok' | 'denied' | 'nogeo'>('wait')
-  const [rayon, setRayon] = useState(1)
-  const [q, setQ] = useState('')
-  const [rows, setRows] = useState<any[]>([])
+  const [me, setMe] = useState<Me | null>(null)
   const [tab, setTab] = useState<'sell' | 'rekap' | 'profile'>('sell')
-  const [menu, setMenu] = useState(false)
-  const [visit, setVisit] = useState<any>(null)
-  const [products, setProducts] = useState<any[]>([])
-  const [qty, setQty] = useState<Record<string, number>>({})
-  const [last, setLast] = useState<Record<string, number>>({})
-  const [visited, setVisited] = useState<Set<any>>(new Set())
-  const [editMode, setEditMode] = useState(false)
-  const [form, setForm] = useState<any>(null)
-  const [rk, setRk] = useState<any>(null)
+  const [visit, setVisit] = useState<Kunjungan | null>(null)
+  const [visitSiap, setVisitSiap] = useState(false)       // true setelah status kunjungan berjalan diketahui (dari server atau salinan)
+  const [qty, setQty] = useState<Qty>({})
+  const [rk, setRk] = useState<Record<string, any> | null>(null)
   const [sel, setSel] = useState('')
+  const [sub, setSub] = useState('')
+  const [anim, setAnim] = useState('')
   const [err, setErr] = useState('')
   const [busy, setBusy] = useState(false)
+  const [busyId, setBusyId] = useState<number | null>(null)
   const [toast, setToast] = useState('')
-  const [spin, setSpin] = useState(false)
-  const [anim, setAnim] = useState('')
-  const [sub, setSub] = useState('')
-  const [closingMenu, setClosingMenu] = useState(false)
-  const [far, setFar] = useState<any>(null)
-  const [pq, setPq] = useState('')
-  const [pf, setPf] = useState<'all' | 'focus' | 'sel'>('all')
-  const [confirmOut, setConfirmOut] = useState(false)
+  const [far, setFar] = useState<Jauh | null>(null)
   const [loadErr, setLoadErr] = useState('')
-  const [focusIds, setFocusIds] = useState<Set<string>>(new Set())   // produk fokus project frontliner (satu project saja)
-  const [rowsLoading, setRowsLoading] = useState(true)
-  const [prodReady, setProdReady] = useState(false)
-  const [busyId, setBusyId] = useState<any>(null)
-  const [pref, setPref] = useState<Pref>(prefBawaan())          // pengaturan printer (tersimpan di perangkat)
-  const [struk, setStruk] = useState<Struk | null>(null)           // struk yang sedang ditawarkan untuk dicetak
-  const [terakhir, setTerakhir] = useState<Struk | null>(null)     // struk terakhir, untuk cetak ulang
+  const [tz, setTz] = useState('Asia/Jakarta')                // zona waktu cabang frontliner (WIB/WITA/WIT)
+  const [pref, setPref] = useState<Pref>(prefBawaan())        // pengaturan printer (tersimpan di perangkat)
+  const [struk, setStruk] = useState<Struk | null>(null)      // struk yang sedang ditawarkan untuk dicetak
+  const [terakhir, setTerakhir] = useState<Struk | null>(null) // struk terakhir, untuk cetak ulang
   const [prefOpen, setPrefOpen] = useState(false)
-  const [minCo, setMinCo] = useState(0)                           // batas minimal check-out (menit) yang diatur MDS/RMDM/MDM
-  const [, setTick] = useState(0)
-  const [tz, setTz] = useState('Asia/Jakarta')   // zona waktu cabang frontliner (WIB/WITA/WIT)
-  const [savedId, setSavedId] = useState<any>(null)
-  // Stok pembawaan hari ini: penjualan tidak boleh melebihi stok yang dibawa (dijaga juga di database)
   const [stokOpen, setStokOpen] = useState(false)
-  const [stok, setStok] = useState<Record<string, { dibawa: number; terjual: number }>>({})
-  const [stokOn, setStokOn] = useState(true)          // saklar MDM di halaman Home
-  const [stokMissing, setStokMissing] = useState(false) // migrasi 09 belum dijalankan: jangan memblokir
-  const [stokReady, setStokReady] = useState(false)
-  const [stokTick, setStokTick] = useState(0)
-  const [draftId, setDraftId] = useState('')
-  const enforce = stokOn && !stokMissing
-  const sisaOf = (id: string) => (enforce ? Math.max(0, (stok[id]?.dibawa || 0) - (stok[id]?.terjual || 0)) : 9999)
-  const draftKey = (id: string) => `taskpro-draft-${id}`
+  const [snap, setSnap] = useState<Snap | null>(null)         // terisi jika aplikasi dibuka tanpa sinyal memakai salinan terakhir
+
+  const { pos, setPos, gps, getPos } = useGps()
+  const o = useOutlets(me, visit?.id, tz)
+  const stokH = useStok(me, visit?.id, snap)
+  const ctx = useKonteks(me, visit, snap)
+  useDraft(visit?.id, qty, setQty)
+
+  const say = (t: string) => { buzz(18); setTimeout(() => { setToast(t); setTimeout(() => setToast(''), 2200) }, 350) }
+  const loadVisit = async (uid: string, a = '') => {
+    const { data, error } = await supabase.from('visits').select(VISIT_SEL).eq('frontliner_id', uid).is('checkout_at', null).maybeSingle()
+    if (error) return false                                  // gangguan jaringan: jangan menghapus kunjungan yang sedang tampil
+    setAnim(a); setVisit(data && !adaUntuk(data.id) ? (data as unknown as Kunjungan) : null); setVisitSiap(true); return true   // kunjungan yang check-out-nya sedang mengantre dianggap selesai
+  }
+
+  // ---- Antrean check-out (sinyal lemah) ----
+  const hasilRef = useRef<(h: Hasil) => void>(() => {})
+  hasilRef.current = async h => {
+    for (const t of h.terkirim) { try { localStorage.removeItem(draftKey(t.visit_id)) } catch { /* abaikan */ } }
+    if (h.terkirim.length) say(h.terkirim.length === 1 ? 'Check-out terkirim' : `${h.terkirim.length} check-out terkirim`)
+    for (const d of h.ditolak) await dlg.alert({ title: 'Penjualan belum bisa dikirim', icon: 'alert', tone: 'danger', message: <>Kunjungan di <b>{d.item.outlet}</b> ditolak server: {d.pesan} Kunjungan dibuka kembali dengan isian terakhir Anda. Perbaiki lalu check-out lagi.</> })
+    if (me && h.ditolak.length) await loadVisit(me.id)
+    stokH.segarkan()
+  }
+  const onHasil = useCallback((h: Hasil) => hasilRef.current(h), [])
+  const antrean = useAntrean(!!me, onHasil)
+
   useHeartbeat(!!me, async () => {
     await dlg.alert({ title: 'Sesi berakhir', icon: 'logout', message: 'Akun Anda keluar karena login di perangkat lain atau sesinya diakhiri admin.' })
     await keluarLokal(); router.replace('/login')
@@ -82,152 +89,105 @@ export default function Frontliner() {
     if (!(await dlg.confirm({ title: 'Keluar dari akun?', icon: 'logout', tone: 'danger', okText: 'Log out', message: 'Anda perlu login lagi untuk memakai TaskPro di perangkat ini.' }))) return
     await logout(); router.replace('/login')
   }
-  const say = (t: string) => { buzz(18); setTimeout(() => { setToast(t); setTimeout(() => setToast(''), 2200) }, 350) }
-  const closeMenu = () => { setClosingMenu(true); setTimeout(() => { setMenu(false); setClosingMenu(false) }, 200) }
 
-  const loadVisit = async (uid: string, a = '') => {
-    const { data } = await supabase.from('visits').select('id,outlet_id,checkin_at,project_id,outlets(name,address,lat,long)').eq('frontliner_id', uid).is('checkout_at', null).maybeSingle()
-    setAnim(a); setVisit(data)
-  }
-  function getPos() {
-    if (!navigator.geolocation) return setGps('nogeo')
-    setGps('wait')
-    navigator.geolocation.getCurrentPosition(
-      p => { setPos({ lat: p.coords.latitude, lng: p.coords.longitude }); setGps('ok') },
-      () => setGps('denied'), { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 })
-  }
-  const loadRows = (keep?: boolean) => { if (me) { if (keep !== true) setRowsLoading(true); supabase.from('outlets').select('*').eq('kode_md', me.user_id).eq('rayon', rayon).eq('status', 'AKTIF').limit(1000).then(({ data }) => { setRows(data || []); setRowsLoading(false) }) } }
-
+  // ---- Memuat akun. Tanpa sinyal: pakai salinan kunjungan terakhir bila ada ----
+  // Supabase mencoba ulang permintaan yang gagal (jeda 1, 2, 4 detik), jadi loadMe tanpa sinyal baru menyerah setelah puluhan detik.
+  // Karena itu salinan dipakai segera jika HP jelas offline, atau setelah 6 detik jika sinyal hanya lemah. Jika data asli tiba kemudian, itu yang dipakai.
+  const dariSalinan = useRef(false)
   useEffect(() => {
-    loadMe().then(({ me: p, error }) => {
-      if (error) return setLoadErr(error)
+    const pakaiSalinan = async () => {
+      const { data: { session } } = await supabase.auth.getSession()
+      const s = session ? muatSnap(session.user.id) : null
+      if (!s || adaUntuk(s.visit.id) || dariSalinan.current) return !!s
+      dariSalinan.current = true; setSnap(s); setMe(s.me); setVisit(s.visit); setTz(s.tz); setVisitSiap(true); return true
+    }
+    let selesai = false
+    const t = setTimeout(() => { if (!selesai) pakaiSalinan() }, navigator.onLine ? 6000 : 0)
+    loadMe().then(async ({ me: p, error }) => {
+      selesai = true; clearTimeout(t)
+      if (error) { if (!dariSalinan.current && !(await pakaiSalinan())) setLoadErr(error); return }
       if (!p) return router.replace('/login')
       if (p.role !== 'frontliner') return router.replace('/')
-      setMe(p); loadVisit(p.id)
+      dariSalinan.current = false; setSnap(null); setMe(p as Me); loadVisit(p.id)
     })
-    setRayon(+(localStorage.getItem('rayon') || 1)); getPos()
-    try {   // buang draf penjualan yang sudah lebih dari 3 hari
-      for (let i = localStorage.length - 1; i >= 0; i--) {
-        const k = localStorage.key(i)!
-        if (k.startsWith('taskpro-draft-')) { const d = JSON.parse(localStorage.getItem(k) || '{}'); if (!d.t || Date.now() - d.t > 3 * 864e5) localStorage.removeItem(k) }
-      }
-    } catch {}
-  }, [router])
-  useEffect(loadRows, [me, rayon])
+    o.setRayon(+(localStorage.getItem('rayon') || 1)); getPos()
+    return () => clearTimeout(t)
+  }, [router])   // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { setPref(muatPref()); setTerakhir(muatTerakhir()) }, [])
+  useEffect(() => { if (me?.cabang_id) supabase.from('cabang').select('tz').eq('id', me.cabang_id).maybeSingle().then(({ data }) => { if (data?.tz) setTz(data.tz) }) }, [me?.id])   // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Salinan kunjungan berjalan (untuk membuka aplikasi tanpa sinyal). Dihapus saat tidak ada kunjungan berjalan.
   useEffect(() => {
-    if (me) supabase.from('visits').select('outlet_id').eq('frontliner_id', me.id).gte('checkin_at', startOfDay(tz))
-      .then(({ data }) => setVisited(new Set((data || []).map((x: any) => x.outlet_id))))
-  }, [me, visit, tz])
-  useEffect(() => {
-    if (!visit) return
-    setProdReady(false)
-    supabase.from('products').select('*').eq('active', true).order('product').then(({ data }) => { setProducts(data || []); setProdReady(true) })
-    supabase.from('visits').select('sales(product_id,qty)').eq('outlet_id', visit.outlet_id).eq('frontliner_id', me.id).not('checkout_at', 'is', null)
-      .order('checkin_at', { ascending: false }).limit(1).then(({ data }) => setLast(Object.fromEntries(((data?.[0] as any)?.sales || []).map((x: any) => [x.product_id, x.qty]))))
-  }, [visit])
+    if (!me || !visitSiap) return
+    if (!visit) { hapusSnap(me.id); return }
+    if (ctx.siap) simpanSnap({ t: Date.now(), me, visit, products: ctx.products, focus: [...ctx.focusIds], minCo: ctx.minCo, tz, stok: stokH.stok, stokOn: stokH.stokOn })
+  }, [me, visitSiap, visit, ctx.siap, ctx.products, ctx.focusIds, ctx.minCo, tz, stokH.stok, stokH.stokOn])
+
+  // Rekap 35 hari. Cara baru: ringkasan dihitung di database. Cadangan jika migrasi 15 belum dijalankan: unduh baris kunjungan (berhalaman) dan hitung di HP.
   useEffect(() => {
     if (tab !== 'rekap' || !me) return
-    // Cara baru: ringkasan dihitung di database (puluhan KB). Cadangan jika migrasi 15 belum dijalankan: unduh baris kunjungan dan hitung di HP (ratusan KB).
-    supabase.rpc('rekap_saya', { p_from: startOfDay(tz, 35) }).then(({ data, error }) => {
+    supabase.rpc('rekap_saya', { p_from: startOfDay(tz, 35) }).then(async ({ data, error }) => {
       if (!error && data) return setRk(data)
-      supabase.from('visits').select(VSEL).eq('frontliner_id', me.id).gte('checkin_at', startOfDay(tz, 35)).limit(2000).then(({ data: v }) => setRk(rekap(v || [])))
+      try { setRk(rekap(await fetchAll((a, b) => supabase.from('visits').select(VSEL).eq('frontliner_id', me.id).gte('checkin_at', startOfDay(tz, 35)).order('checkin_at').range(a, b)))) } catch { setRk({}) }
     })
   }, [tab, me, tz])
 
-  // Produk fokus mengikuti project frontliner: saat kunjungan berjalan memakai project yang tercatat saat check-in
-  useEffect(() => {
-    if (!me) return
-    let off = false
-    ;(async () => {
-      let pid = visit?.project_id
-      if (!visit) { const { data } = await supabase.from('profiles').select('project_id').eq('id', me.id).maybeSingle(); pid = data?.project_id }
-      if (!pid) { if (!off) setFocusIds(new Set()); return }
-      const { data } = await supabase.from('project_focus').select('product_id').eq('project_id', pid)
-      if (!off) setFocusIds(new Set((data || []).map((x: any) => x.product_id)))
-    })()
-    return () => { off = true }
-  }, [me?.id, visit?.id])
-  useEffect(() => { setPref(muatPref()); setTerakhir(muatTerakhir()) }, [])
-  // Batas check-out: ambil nilai terbaru saat kunjungan dimulai, lalu hitung mundur tiap detik. Server tetap menolak check-out yang terlalu cepat.
-  useEffect(() => {
-    if (visit && me) supabase.from('profiles').select('min_checkout_menit').eq('id', me.id).maybeSingle().then(({ data }) => setMinCo(Number(data?.min_checkout_menit) || 0))
-    else setMinCo(0)
-  }, [visit?.id])
-  useEffect(() => { if (!visit || !minCo) return; const t = setInterval(() => setTick(x => x + 1), 1000); return () => clearInterval(t) }, [visit?.id, minCo])
-  useEffect(() => { if (me?.cabang_id) supabase.from('cabang').select('tz').eq('id', me.cabang_id).maybeSingle().then(({ data }) => { if (data?.tz) setTz(data.tz) }) }, [me?.id])
-  // Mode Edit Outlet: warna status bar ikut merah, dan mode otomatis berakhir jika pindah tab
-  useEffect(() => { document.querySelector('meta[name="theme-color"]')?.setAttribute('content', editMode && tab === 'sell' ? '#B3261E' : '#0B1F4B') }, [editMode, tab])
-  useEffect(() => { if (tab !== 'sell') setEditMode(false) }, [tab])
-  // Draf penjualan: tersimpan otomatis per kunjungan, pulih saat halaman dimuat ulang, dihapus setelah check-out
-  useEffect(() => {
-    if (!visit) { setDraftId(''); return }
-    try { const d = JSON.parse(localStorage.getItem(draftKey(visit.id)) || 'null'); if (d?.qty) setQty(d.qty) } catch {}
-    setDraftId(visit.id)
-  }, [visit?.id])
-  useEffect(() => {
-    if (!visit || draftId !== visit.id) return
-    try {
-      if (Object.values(qty).some(v => v > 0)) localStorage.setItem(draftKey(visit.id), JSON.stringify({ qty, t: Date.now() }))
-      else localStorage.removeItem(draftKey(visit.id))
-    } catch {}
-  }, [qty, draftId, visit?.id])
-  // Stok hari ini (di layar penjualan tidak menghitung penjualan kunjungan yang sedang berjalan)
-  useEffect(() => {
-    if (!me) return
-    let off = false; setStokReady(false)
-    supabase.rpc('stok_hari_ini', visit ? { p_exclude: visit.id } : {}).then(({ data, error }) => {
-      if (off) return
-      if (error) setStokMissing(true)
-      setStok(Object.fromEntries((data || []).map((x: any) => [x.product_id, { dibawa: x.dibawa, terjual: x.terjual }]))); setStokReady(true)
-    })
-    return () => { off = true }
-  }, [me, visit?.id, stokTick])
-  useEffect(() => { if (me) supabase.from('settings').select('value').eq('key', 'stok_enforced').maybeSingle().then(({ data }) => setStokOn(data ? data.value === true : true)) }, [me])
-  // Draf lama yang melebihi stok saat ini dipangkas
-  useEffect(() => {
-    if (!enforce || !stokReady) return
-    setQty(q => { let c = false; const n = { ...q }; for (const id in n) { const s = sisaOf(id); if (n[id] > s) { n[id] = s; c = true } if (n[id] <= 0) { delete n[id]; c = true } } return c ? n : q })
-  }, [stok, stokReady, enforce])
-
+  // ---- Check-in dan check-out ----
   // Frontliner yang dikecualikan MDM boleh tanpa GPS: posisi kosong dan server tidak menerapkan batas 50 m
-  const geo = async () => { try { return await fresh() } catch (e) { if (me.gps_required === false) return null; throw e } }
-  const jauh = (e: any, name: string, lat: any, long: any) => {
+  const geo = async () => { try { return await fresh() } catch (e) { if (me?.gps_required === false) return null; throw e } }
+  const jauh = (e: any, name: string, lat: number | null | undefined, long: number | null | undefined) => {
     const m = /Anda (\d+) m dari outlet/.exec(e?.message || ''); if (!m) return false
     setFar({ name, d: +m[1], lat, long }); return true
   }
-  async function masuk(r: any) {
+  async function masuk(r: Outlet) {
+    if (!me) return
     if (!(await dlg.confirm({ title: 'Check-in di outlet ini?', icon: 'pin', okText: 'Check-in', message: <>Mulai kunjungan di <b>{r.name}</b>.</> }))) return
     setBusy(true); setBusyId(r.id); setErr('')
     try {
+      if (muat().length) {   // kunjungan sebelumnya masih mengantre: kirim dulu, karena server hanya mengizinkan satu kunjungan berjalan
+        await antrean.kirim()
+        if (muat().length) throw new Error('Masih ada kunjungan yang menunggu dikirim. Check-in baru bisa setelah terkirim. Pastikan ada sinyal, lalu coba lagi.')
+      }
       const p = await geo(); if (p) setPos({ lat: p.coords.latitude, lng: p.coords.longitude })
       const { error } = await supabase.rpc('checkin', { p_outlet: r.id, ...payload(p) }); if (error) throw error
-      setQty({}); setPq(''); setPf('all'); await loadVisit(me.id, 'fwd'); buzz()
+      setQty({}); await loadVisit(me.id, 'fwd'); buzz()
     } catch (e: any) { if (!jauh(e, r.name, r.lat, r.long)) setErr(friendly(e, 'Gagal membaca lokasi')) }
     setBusy(false); setBusyId(null)
   }
+  const selesai = (baru: Struk | null, pesan: string) => {
+    if (baru) { simpanTerakhir(baru); setTerakhir(baru); if (pref.tanya) setStruk(baru) }
+    setAnim('back'); setVisit(null); setQty({}); say(pesan)
+  }
   async function keluar() {
-    if (sisa > 0) { setErr(`Check-out baru bisa dilakukan ${minCo} menit setelah check-in. Tunggu ${mmss(sisa)} lagi.`); return }
+    if (!visit || !me) return
+    const sisa = sisaDetik(visit.checkin_at, ctx.minCo)
+    if (sisa > 0) { setErr(`Check-out baru bisa dilakukan ${ctx.minCo} menit setelah check-in. Tunggu ${mmss(sisa)} lagi.`); return }
     // Struk disusun sekarang, selagi daftar produk dan jumlahnya masih ada (keadaan direset setelah check-out)
-    const rinci = products.filter(x => qty[x.id] > 0)
-    const baru: Struk | null = rinci.length ? { judul: pref.judul, footer: pref.footer, nomor: String(visit.id).slice(0, 8).toUpperCase(),
-      waktu: new Date().toLocaleString('id-ID', { timeZone: tz, day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }),
-      outlet: visit.outlets?.name || '', alamat: visit.outlets?.address || '', frontliner: me.nama, userId: me.user_id,
-      items: rinci.map(x => ({ nama: x.product, qty: qty[x.id], harga: Number(x.price) })), total: rinci.reduce((a, x) => a + qty[x.id] * Number(x.price), 0) } : null
+    const baru = susunStruk({ judul: pref.judul, footer: pref.footer, visit, me, produk: ctx.products, qty, tz })
+    const items = ctx.products.filter(x => qty[x.id] > 0).map(x => ({ product_id: x.id, qty: qty[x.id] }))
+    const at = new Date().toISOString()   // waktu check-out sebenarnya (dipakai jika harus diantrekan)
     setBusy(true); setErr('')
+    let p: GeolocationPosition | null = null, tahap: 'gps' | 'kirim' = 'gps'
     try {
-      const items = products.filter(x => qty[x.id] > 0).map(x => ({ product_id: x.id, qty: qty[x.id] }))
-      if (items.length) { const p = await geo(); const { error } = await supabase.rpc('save_sales', { p_visit: visit.id, p_items: items, ...payload(p) }); if (error) throw error }
+      if (items.length) p = await geo()
+      tahap = 'kirim'
+      if (items.length) { const { error } = await supabase.rpc('save_sales', { p_visit: visit.id, p_items: items, ...payload(p) }); if (error) throw error }
       const { error } = await supabase.rpc('checkout', { p_visit: visit.id }); if (error) throw error
-      try { localStorage.removeItem(draftKey(visit.id)) } catch {}
-      if (baru) { simpanTerakhir(baru); setTerakhir(baru); if (pref.tanya) setStruk(baru) }
-      setAnim('back'); setVisit(null); setQty({}); say('Check-out berhasil')
-    } catch (e: any) { if (!jauh(e, visit.outlets?.name, visit.outlets?.lat, visit.outlets?.long)) setErr(friendly(e, 'Gagal membaca lokasi')) }
+      try { localStorage.removeItem(draftKey(visit.id)) } catch { /* abaikan */ }
+      selesai(baru, 'Check-out berhasil')
+    } catch (e: any) {
+      if (tahap === 'kirim' && (galatJaringan(e) || !navigator.onLine)) {
+        // Sinyal hilang: simpan di HP dan kirim otomatis nanti. Draf tetap disimpan sampai terkirim (jika ditolak, isian bisa dipulihkan).
+        antre({ visit_id: visit.id, items, lat: p?.coords.latitude ?? null, lng: p?.coords.longitude ?? null, acc: p?.coords.accuracy ?? null, at, outlet: visit.outlets?.name || '', dibuat: Date.now() })
+        hapusSnap(me.id); antrean.segarkan(); selesai(baru, 'Tersimpan di HP. Dikirim otomatis saat sinyal kembali')
+      } else if (!jauh(e, visit.outlets?.name || '', visit.outlets?.lat, visit.outlets?.long)) setErr(friendly(e, 'Gagal membaca lokasi'))
+    }
     setBusy(false)
   }
-  const total = products.reduce((a, x) => a + (qty[x.id] || 0) * Number(x.price), 0)
-  const sisa = visit ? sisaDetik(visit.checkin_at, minCo) : 0
-  const items = products.filter(x => qty[x.id] > 0).length
-  const pcs = products.reduce((a, x) => a + (qty[x.id] || 0), 0)
+
+  // ---- Tampilan ----
+  const stokSum = Object.values(stokH.stok).reduce((a, x) => (x.dibawa > 0 ? { n: a.n + 1, pcs: a.pcs + x.dibawa, sisa: a.sisa + x.dibawa - x.terjual } : a), { n: 0, pcs: 0, sisa: 0 })
+  const backRekap = () => { if (sel) { setSub('back'); setSel('') } else { setSub(''); setTab('sell') } }
 
   if (loadErr) return <div className="gate"><h2>Gagal memuat akun</h2><p className="muted">{loadErr}</p><button onClick={() => location.reload()}>Coba lagi</button></div>
   if (!me) return <PageLoader text="Memuat…" />
@@ -240,127 +200,33 @@ export default function Frontliner() {
       <button className="ghost" onClick={keluarAkun}><Icon name="logout" size={18} /> Logout</button>
     </div>)
 
-  const farDialog = far && <div className="overlay" onClick={() => setFar(null)}><div className="dialog" role="alertdialog" onClick={e => e.stopPropagation()}>
-    <div className="dicon"><Icon name="pin" size={28} /></div>
-    <h3>Terlalu jauh dari outlet</h3>
-    <p>Jarak Anda <b>{far.d >= 1000 ? (far.d / 1000).toFixed(1) + ' km' : far.d + ' m'}</b> dari <b>{far.name}</b>. Check-in dan input penjualan hanya bisa maksimal 50 m dari outlet.</p>
-    <div className="dbtns"><button className="ghost" onClick={() => setFar(null)}>Cancel</button>
-      {far.lat != null && <a className="btnlink" target="_blank" onClick={() => setFar(null)} href={`https://www.google.com/maps/dir/?api=1&destination=${far.lat},${far.long}`}><Icon name="nav" size={18} /> Menuju Outlet</a>}</div></div></div>
-
-  const stokModal = stokOpen && <StokForm focusIds={focusIds} onClose={() => setStokOpen(false)} onSaved={() => { setStokTick(t => t + 1); say('Stok tersimpan') }} />
-
-  // ---------- Layar input penjualan ----------
-  const ch = (id: string, v: number) => { buzz(8); setQty(q => ({ ...q, [id]: Math.max(0, Math.min(9999, sisaOf(id), Math.round(v) || 0)) })) }
-  const totalSisa = products.reduce((a, x) => a + sisaOf(x.id) * (enforce ? 1 : 0), 0)
-  const noStock = enforce && stokReady && products.length > 0 && totalSisa === 0
-  const inTime = visit?.checkin_at ? new Date(visit.checkin_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', timeZone: tz }) : ''
-  const nFocus = products.filter(x => focusIds.has(x.id)).length
-  const shown = products.filter(x => (!pq.trim() || (x.product + ' ' + (x.brand || '')).toLowerCase().includes(pq.trim().toLowerCase()))
-    && (pf === 'all' || (pf === 'focus' ? focusIds.has(x.id) : qty[x.id] > 0)))
-  const focusRows = shown.filter(x => focusIds.has(x.id)), otherRows = shown.filter(x => !focusIds.has(x.id))
-  const prodRow = (x: any) => {
-    const n = qty[x.id] || 0, price = Number(x.price), s = sisaOf(x.id), lim = enforce && stokReady
-    return (
-      <div key={x.id} className={`prow ${n > 0 ? 'on' : ''}`} onClick={() => n === 0 && (!lim || s > 0) && ch(x.id, 1)}>
-        <div><div className="pname2">{x.product}{focusIds.has(x.id) && <span className="badge">FOKUS</span>}</div>
-          <div className="pmeta">{[x.brand, rp(price)].filter(Boolean).join(' · ')}{lim && <span className={`stk ${s === 0 ? 'zero' : s <= 5 ? 'low' : ''}`}> · Sisa {s}</span>}</div></div>
-        {n === 0
-          ? <button className="addbtn" disabled={lim && s === 0} aria-label={`Tambah ${x.product}`} onClick={e => { e.stopPropagation(); ch(x.id, 1) }}><Icon name="plus" size={20} /></button>
-          : <div className="stepper" onClick={e => e.stopPropagation()}>
-              <button aria-label="Kurangi" onClick={() => ch(x.id, n - 1)}><Icon name="minus" size={18} /></button>
-              <input inputMode="numeric" aria-label={`Jumlah ${x.product}`} value={n} onFocus={e => e.target.select()}
-                onChange={e => { const v = e.target.value.replace(/\D/g, ''); ch(x.id, v === '' ? 1 : +v) }} />
-              <button aria-label="Tambah" disabled={lim && n >= s} onClick={() => ch(x.id, n + 1)}><Icon name="plus" size={18} /></button></div>}
-        {n > 0 && <div className="psub"><span>{n} × {rp(price)}{lim && n >= s && <span className="stk zero"> · sesuai sisa stok</span>}</span><b key={n} className="pop">{rp(n * price)}</b></div>}
-      </div>)
-  }
+  const overlays = <>
+    <FarDialog far={far} onClose={() => setFar(null)} />
+    {stokOpen && <StokForm focusIds={ctx.focusIds} onClose={() => setStokOpen(false)} onSaved={() => { stokH.segarkan(); say('Stok tersimpan') }} />}
+    {toast && <div className="toast" role="status"><Icon name="check" size={18} /> {toast}</div>}
+  </>
+  const barOffline = snap ? <OfflineBar onMuat={() => location.reload()} /> : null
 
   if (visit) return (
-    <div className={`phone dark ${anim}`}>
-      {farDialog}
-      {stokModal}
-      {toast && <div className="toast" role="status"><Icon name="check" size={18} /> {toast}</div>}
-      {confirmOut && <div className="overlay" onClick={() => setConfirmOut(false)}><div className="dialog left" role="dialog" onClick={e => e.stopPropagation()}>
-        <h3>{items ? 'Simpan penjualan & check-out?' : 'Check-out tanpa penjualan?'}</h3>
-        {items ? <div className="sumlist">
-            {products.filter(x => qty[x.id] > 0).map(x => <div className="line" key={x.id}><span>{qty[x.id]} × {x.product}</span><b>{rp(qty[x.id] * Number(x.price))}</b></div>)}
-            <div className="line tot"><span>Total</span><b>{rp(total)}</b></div></div>
-          : <p>Belum ada produk yang diisi. Kunjungan akan dicatat tanpa penjualan (bukan Effective Call).</p>}
-        <div className="dbtns"><button className="ghost" onClick={() => setConfirmOut(false)}>Kembali</button>
-          <button disabled={busy} onClick={() => { setConfirmOut(false); keluar() }}>{items ? 'Simpan & Check-out' : 'Check-out'}</button></div></div></div>}
-      <div className="hero compact"><span className="label">Kunjungan berjalan · sejak {inTime}</span><h2>{visit.outlets?.name}</h2><div className="hint">{visit.outlets?.address}</div></div>
-      <div className="sheet">
-        {noStock && <div className="notice warn row"><span className="grow">{Object.values(stok).some(x => x.dibawa > 0) ? 'Stok pembawaan hari ini sudah habis terjual.' : 'Belum ada stok pembawaan hari ini. Tambahkan dulu agar penjualan bisa diinput.'}</span>
-          <button className="ghost small" onClick={() => setStokOpen(true)}>Tambahkan stok</button></div>}
-        <div className="shead">
-          <div className="searchbox"><Icon name="search" size={18} /><input placeholder="Cari produk…" aria-label="Cari produk" value={pq} onChange={e => setPq(e.target.value)} /></div>
-          <div className="seg" role="tablist">
-            {([['all', `Semua ${products.length}`], ['focus', `Fokus ${nFocus}`], ['sel', `Terpilih ${items}`]] as const).map(([k, t]) =>
-              <button key={k} role="tab" aria-selected={pf === k} className={pf === k ? 'on' : ''} onClick={() => setPf(k)}>{t}</button>)}</div>
-          {Object.keys(last).length > 0 && <button className="ghost small" onClick={() => setQty(last)}><Icon name="refresh" size={16} /> Isi seperti kunjungan terakhir</button>}
-        </div>
-        {!prodReady && <SkelRows n={6} />}
-        {prodReady && shown.length === 0 && <div className="empty"><b>{pf === 'sel' && !pq ? 'Belum ada produk dipilih' : 'Produk tidak ditemukan'}</b>
-          <p className="muted">{pf === 'sel' && !pq ? 'Ketuk tombol ＋ pada produk untuk menambahkannya.' : 'Coba kata kunci lain atau pilih tab Semua.'}</p></div>}
-        {focusRows.length > 0 && <><span className="label sec">Produk fokus</span>{focusRows.map(prodRow)}</>}
-        {otherRows.length > 0 && <>{focusRows.length > 0 && <span className="label sec">Produk lain</span>}{otherRows.map(prodRow)}</>}
-        {err && <p className="err" role="alert">{err}</p>}
-      </div>
-      <div className="stickybar sumbar">
-        <div className="sumtxt">{items ? <><span className="muted">{items} produk · {pcs} pcs</span><b>{rp(total)}</b></> : <span className="muted">Belum ada penjualan</span>}{sisa > 0 && <span className="cdown"><Icon name="lock" size={12} /> Check-out tersedia dalam {mmss(sisa)} (batas {minCo} menit)</span>}</div>
-        <button disabled={busy || sisa > 0} aria-busy={busy} onClick={() => setConfirmOut(true)}>{busy ? 'Memproses…' : sisa > 0 ? `Check-out (${mmss(sisa)})` : 'Check-out'}</button>
-      </div>
-    </div>)
-
-  const list = rows
-    .map(r => ({ ...r, d: r.lat == null || !pos ? null : meters(pos.lat, pos.lng, r.lat, r.long) }))
-    .filter(r => !q.trim() || (r.name + ' ' + r.address).toLowerCase().includes(q.trim().toLowerCase()))
-    .sort((a, b) => (a.d ?? 1e12) - (b.d ?? 1e12))
-  const done = rows.filter(r => visited.has(r.id)).length
-  const stokSum = Object.values(stok).reduce((a, x) => (x.dibawa > 0 ? { n: a.n + 1, pcs: a.pcs + x.dibawa, sisa: a.sisa + x.dibawa - x.terjual } : a), { n: 0, pcs: 0, sisa: 0 })
-  const backRekap = () => { if (sel) { setSub('back'); setSel('') } else { setSub(''); setTab('sell') } }
+    <SellScreen visit={visit} tz={tz} anim={anim} produk={ctx.products} siap={ctx.siap} terakhir={ctx.last} fokus={ctx.focusIds} qty={qty} setQty={setQty}
+      stok={stokH.stok} enforce={stokH.enforce} stokSiap={stokH.siap} sisaOf={stokH.sisaOf} minCo={ctx.minCo} busy={busy} err={err}
+      onKeluar={keluar} onStok={() => setStokOpen(true)} atas={barOffline}>{overlays}</SellScreen>)
 
   return (
     <div className={`phone ${anim}`}>
-      {struk && !prefOpen && <ReceiptDialog struk={struk} pref={pref} onClose={() => setStruk(null)} onDone={() => { setStruk(null); say('Struk dicetak') }} onSettings={() => setPrefOpen(true)} />}
+      {struk && !prefOpen && <ReceiptDialog struk={struk} pref={pref} onClose={() => setStruk(null)} onDone={() => { setStruk(null); say('Struk selesai') }} onSettings={() => setPrefOpen(true)} />}
       {prefOpen && <PrinterSettings pref={pref} onChange={setPref} onClose={() => setPrefOpen(false)} onToast={say} />}
-      {farDialog}
-      {stokModal}
-      {toast && <div className="toast" role="status"><Icon name="check" size={18} /> {toast}</div>}
-      {form && <OutletForm me={me} rayon={rayon} pos={pos} outlet={form === 'new' ? null : form} onClose={() => setForm(null)} onSaved={() => { const id = form !== 'new' ? form?.id : null; setForm(null); loadRows(true); say('Outlet tersimpan'); if (id) { setSavedId(id); setTimeout(() => setSavedId(null), 2000) } }}
-        onDeleted={(r: string) => { setForm(null); setEditMode(false); loadRows(); say(r === 'deleted' ? 'Outlet dihapus' : 'Outlet dinonaktifkan') }} />}
-      {menu && <div className={`drawer ${closingMenu ? 'out' : ''}`} onClick={closeMenu}><div onClick={e => e.stopPropagation()}>
-        <h3>Menu</h3>
-        <a onClick={() => { closeMenu(); setTab('sell'); setEditMode(true); buzz(25) }}><Icon name="edit" size={20} /> Edit Outlet</a>
-        <a onClick={() => { closeMenu(); dlg.alert({ title: 'TaskPro', message: 'Aplikasi kunjungan dan penjualan Taskforce.' }) }}><Icon name="info" size={20} /> About</a></div></div>}
-      <div className={`ph-head ${editMode && tab === 'sell' ? 'editing' : ''}`}>
-        {tab === 'sell' && <div className="hrow">
-          <button className="icon" aria-label="Menu" onClick={() => setMenu(true)}><Icon name="dots" /></button>
-          <h3 className="htitle">{editMode ? 'Mode Edit Outlet' : 'Input Selling'}</h3><div className="grow" />
-          {editMode
-            ? <button className="donebtn" onClick={() => setEditMode(false)}><Icon name="check" size={18} /> Selesai</button>
-            : <>          <button className="icon" aria-label="Refresh lokasi" onClick={() => { setSpin(true); setTimeout(() => setSpin(false), 700); getPos(); buzz(10) }}><Icon name="refresh" className={spin ? 'spin' : ''} /></button>
-          <button className="icon" aria-label="Tambah outlet" onClick={() => setForm('new')}><Icon name="plus" /></button></>}</div>}
-        {tab === 'rekap' && <div className="hrow">
-          <button className="back" aria-label={sel ? 'Kembali ke daftar tanggal' : 'Kembali ke Input'} onClick={backRekap}><Icon name="back" /></button>
-          <h3 className="htitle">{sel ? 'Detail Harian' : 'Rekap'}</h3></div>}
-        {tab === 'profile' && <div className="hrow"><h3 className="htitle">Profile</h3></div>}
-        {tab === 'sell' && <>
-          <div className="hrow"><input placeholder="Cari outlet…" value={q} onChange={e => setQ(e.target.value)} style={{ flex: 1 }} />
-            <select value={rayon} style={{ width: 92 }} onChange={e => { setRayon(+e.target.value); localStorage.setItem('rayon', e.target.value) }}>
-              {Array.from({ length: 24 }, (_, i) => <option key={i} value={i + 1}>R{String(i + 1).padStart(2, '0')}</option>)}</select></div>
-          {!editMode && <div className="progress" aria-label="Progres kunjungan"><div className="bar" style={{ width: rows.length ? `${(done / rows.length) * 100}%` : 0 }} /></div>}
-          <div className="hint">{editMode ? 'Ketuk outlet yang ingin diubah. Check-in dinonaktifkan sampai Anda menekan Selesai.' : `${done} dari ${rows.length} outlet sudah dikunjungi hari ini`}</div></>}
-      </div>
-      {err && tab === 'sell' && <p className="err" role="alert" style={{ padding: '8px 16px', margin: 0 }}>{err}</p>}
-      {tab === 'sell' && (rowsLoading ? <SkelRows n={6} /> : list.length === 0 ? <div className="empty"><b>Belum ada outlet di rayon R{String(rayon).padStart(2, '0')}</b><p className="muted">Pilih rayon lain, atau tambah outlet baru dengan tombol + di kanan atas.</p></div>
-        : list.map((r, i) => <div className={`item ${r.lat == null ? 'nolat-row' : ''} ${savedId === r.id ? 'flash' : ''}`} style={{ ['--i' as any]: Math.min(i, 10) }} key={r.id} onClick={() => !busy && (editMode ? setForm(r) : masuk(r))}>
-          <div className={`dist ${r.lat == null ? 'nolat' : r.d != null && r.d <= 50 ? 'near' : ''}`} title={r.lat == null ? 'Lokasi outlet belum ada' : undefined}>{busyId === r.id ? <span className="spinner" /> : r.lat == null ? <Icon name="alert" size={24} /> : r.d == null ? '?' : fmt(r.d)}</div>
-          <div className="grow"><b>{r.name}</b>{visited.has(r.id) && <span className="badge ok"><Icon name="check" size={12} /> SUDAH</span>}
-            <div className="muted" style={{ fontSize: 13 }}>{r.address}</div>
-            {r.lat == null && <div className="nolat-msg"><Icon name="alert" size={14} /> Lokasi outlet belum ada</div>}</div>
-          {r.lat != null && <a className="go" aria-label="Menuju lokasi" target="_blank" onClick={e => e.stopPropagation()} href={`https://www.google.com/maps/dir/?api=1&destination=${r.lat},${r.long}`}><Icon name="nav" size={20} /></a>}
-        </div>))}
+      {overlays}
+      {tab === 'sell'
+        ? <OutletList me={me} rayon={o.rayon} setRayon={o.setRayon} rows={o.rows} loading={o.loading} visited={o.visited} pos={pos} getPos={getPos}
+            busy={busy} busyId={busyId} err={err} onMasuk={masuk} onReload={o.load} onToast={say} luring={!!snap}
+            bar={<>{barOffline}<OutboxBar n={antrean.n} mengirim={antrean.mengirim} onKirim={antrean.kirim} /></>} />
+        : <div className="ph-head">
+            {tab === 'rekap' && <div className="hrow">
+              <button className="back" aria-label={sel ? 'Kembali ke daftar tanggal' : 'Kembali ke Input'} onClick={backRekap}><Icon name="back" /></button>
+              <h3 className="htitle">{sel ? 'Detail Harian' : 'Rekap'}</h3></div>}
+            {tab === 'profile' && <div className="hrow"><h3 className="htitle">Profile</h3></div>}
+          </div>}
       {tab === 'rekap' && <RekapTab rk={rk} sel={sel} sub={sub} tz={tz} onPick={x => { setSub('fwd'); setSel(x) }} />}
       {tab === 'profile' && <ProfileTab nama={me.nama} userId={me.user_id} stokSum={stokSum} onStok={() => setStokOpen(true)} onLogout={keluarAkun} onPrinter={() => setPrefOpen(true)}
         onReprint={() => { const s = muatTerakhir(); if (s) setStruk(s) }}

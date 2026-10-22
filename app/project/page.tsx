@@ -5,18 +5,21 @@ import Shell from '../../components/Shell'
 import Icon from '../../components/Icon'
 import { supabase } from '../../lib/supabase'
 import { useDialog } from '../../components/Dialog'
-import ProjectCard from '../../components/project/ProjectCard'
+import { useUndo } from '../../components/UndoToast'
+import ProjectCard, { type Fl, type Prod, type Proj } from '../../components/project/ProjectCard'
 import { inisial } from '../../components/mds/AkunCard'
 
+type Cab = { id: string; kode: string; nama: string }
+type Fokus = { project_id: string; product_id: string }
 // Project = nama yang tampil di kolom "Project" pada Excel Kunjungan dan Selling. Satu frontliner hanya di satu project.
 function Project() {
-  const dlg = useDialog()
-  const [cabang, setCabang] = useState<any[]>([])
+  const dlg = useDialog(), undo = useUndo()
+  const [cabang, setCabang] = useState<Cab[]>([])
   const [cid, setCid] = useState('')
-  const [projects, setProjects] = useState<any[]>([])
-  const [fls, setFls] = useState<any[]>([])
-  const [prods, setProds] = useState<any[]>([])
-  const [focus, setFocus] = useState<any[]>([])
+  const [projects, setProjects] = useState<(Proj & { cabang_id: string })[]>([])
+  const [fls, setFls] = useState<(Fl & { cabang_id: string })[]>([])
+  const [prods, setProds] = useState<Prod[]>([])
+  const [focus, setFocus] = useState<Fokus[]>([])
   const [ready, setReady] = useState(false)
   const [name, setName] = useState('')
   const [err, setErr] = useState('')
@@ -45,7 +48,7 @@ function Project() {
     setErr(error ? (error.code === '23505' ? 'Nama project ini sudah ada di cabang ini' : error.message) : '')
     if (!error) { setName(''); load() }
   }
-  async function ganti(p: any) {
+  async function ganti(p: Proj) {
     const v = await dlg.form({ title: 'Ganti nama project', okText: 'Simpan', fields: [{ key: 'name', label: 'Nama project', value: p.name }] })
     if (!v) return
     if (!v.name.trim()) return void dlg.alert({ title: 'Nama kosong', message: 'Nama project wajib diisi.', tone: 'danger', icon: 'close' })
@@ -53,7 +56,7 @@ function Project() {
     if (error) await dlg.alert({ title: 'Gagal menyimpan', message: error.code === '23505' ? 'Nama project ini sudah ada di cabang ini.' : error.message, tone: 'danger', icon: 'close' })
     load()
   }
-  async function hapus(p: any) {
+  async function hapus(p: Proj) {
     if (!(await dlg.confirm({ title: 'Hapus project?', tone: 'danger', okText: 'Hapus', message: <><b>{p.name}</b> akan dihapus dan semua anggotanya dilepas.</> }))) return
     const { error } = await supabase.from('projects').delete().eq('id', p.id)
     if (error) await dlg.alert({ title: 'Project tidak bisa dihapus', tone: 'danger', icon: 'close',
@@ -73,7 +76,17 @@ function Project() {
   }
   async function anggota(fid: string, pid: string | null) {
     const { error } = await supabase.rpc('project_set_member', { p_frontliner: fid, p_project: pid })
-    setErr(error ? error.message : ''); load()
+    setErr(error ? error.message : ''); load(); return !error
+  }
+  // Aksi yang bisa dibalik memberi tombol Urungkan, bukan dialog konfirmasi.
+  async function pindahAnggota(fid: string, pid: string | null, dari: Proj) {
+    const f = fls.find(x => x.id === fid), sebelum: string | null = f?.project_id ?? null
+    if (!(await anggota(fid, pid))) return
+    undo.tampil(pid ? `${f?.nama} dimasukkan ke ${pname(pid)}.` : `${f?.nama} dikeluarkan dari ${dari?.name}.`, () => anggota(fid, sebelum))
+  }
+  async function lepasFokusUndo(p: Proj, prod: string) {
+    await lepasFokus(p.id, prod)
+    undo.tampil(`${prods.find(x => x.id === prod)?.product} dilepas dari fokus ${p.name}.`, () => tambahFokus(p.id, prod))
   }
 
   return (<>
@@ -105,12 +118,13 @@ function Project() {
       const mem = flCab.filter(f => f.project_id === p.id), other = flCab.filter(f => f.project_id !== p.id)
       const fo = focus.filter(x => x.project_id === p.id).map(x => x.product_id)
       return <ProjectCard key={p.id} p={p} anggota={mem} lainnya={other} fokus={fo} prods={prods} sumber={inCab.filter(x => x.id !== p.id)} namaProject={pname}
-        onGanti={() => ganti(p)} onHapus={() => hapus(p)} onAnggota={anggota} onTambahFokus={x => tambahFokus(p.id, x)} onLepasFokus={x => lepasFokus(p.id, x)} onSalin={from => salinFokus(from, p.id)} />
+        onGanti={() => ganti(p)} onHapus={() => hapus(p)} onAnggota={(fid, pid) => pindahAnggota(fid, pid, p)} onTambahFokus={x => tambahFokus(p.id, x)} onLepasFokus={x => lepasFokusUndo(p, x)} onSalin={from => salinFokus(from, p.id)} />
     })}
     {cid && free.length > 0 && <section className="warnbox" aria-label="Frontliner belum masuk project">
       <h4><Icon name="alert" size={18} /> {free.length} frontliner belum masuk project</h4>
       <ul className="lrows">{free.map(f => <li className="lrow" key={f.id}><span className="lrow-ic" aria-hidden="true">{inisial(f.nama)}</span><span className="lrow-tx"><b>{f.nama}</b><small>{f.user_id}</small></span></li>)}</ul>
       <p>Kolom Project di Excel untuk frontliner ini akan berisi nama default (TASKFORCE BEVERAGE + nama cabang). Masukkan lewat kartu project di atas.</p></section>}
+    {undo.node}
   </>)
 }
 export default function Page() { return <Shell roles={['mds', 'mdm', 'rmdm']}><Project /></Shell> }

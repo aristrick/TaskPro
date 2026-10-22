@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import Icon from '../Icon'
+import Combobox from '../Combobox'
 
 export type Cabang = { id: string; kode: string; nama: string; mds_id: string | null; rmdm_id: string | null }
 export type Akun = { id: string; user_id: string; nama: string; role: 'mds' | 'rmdm' | 'mdm' }
@@ -50,8 +51,8 @@ export default function AkunCard({ m, cabang, bebasMds, bebasR, viewerRole, stat
               {viewerRole === 'mdm' && <button type="button" className="lrow-act" aria-label={`Lepas ${c.kode}`} title={`Lepas ${cb(c)}`} onClick={() => onOp({ id: m.id, op: 'rmdm_remove', cabang_id: c.id })}>Lepas</button>}</li>)}</ul>
           : <p className="projempty">Belum mengcover cabang</p>}
         {viewerRole === 'mdm'
-          ? <select className="addrow" value="" aria-label="Tambah cabang yang dicover" onChange={e => e.target.value && onOp({ id: m.id, op: 'rmdm_add', cabang_id: e.target.value })}>
-              <option value="">+ Tambah cabang…</option>{bebasR.map(c => <option key={c.id} value={c.id}>{cb(c)}</option>)}</select>
+          ? <Combobox label="Tambah cabang yang dicover" placeholder="+ Tambah cabang…" kosong="Semua cabang sudah punya RMDM" onPilih={v => onOp({ id: m.id, op: 'rmdm_add', cabang_id: v })}
+              opsi={bebasR.map(c => ({ value: c.id, label: cb(c) }))} />
           : <span className="setnote"><Icon name="lock" size={13} /> Hanya MDM yang bisa mengatur cakupan RMDM.</span>}
       </div>}
 

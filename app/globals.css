@@ -544,3 +544,19 @@ a.tile2:hover{background:#F3F6FC;border-color:#C9D5EE} .tile2 b{font-size:22px;c
 .acc .lrow-ic{width:32px;height:32px}
 .warnbox .lrow{border-color:#F0DDA6}
 @media (max-width:480px){.lrow{padding-left:10px;gap:10px}.lrow-act{padding:0 12px}}
+
+/* ===== Pilihan yang bisa dicari dan tombol Urungkan (v17) ===== */
+.cbx{position:relative;width:100%;max-width:680px}
+.cbx input.addrow{text-align:left;font-weight:600} .cbx input.addrow::placeholder{color:var(--navy);opacity:1}
+.cbx input.addrow:focus{border-style:solid;border-color:var(--navy);outline:0;box-shadow:0 0 0 3px rgba(11,31,75,.12)}
+.acc .cbx{max-width:none}
+.cbx-list{position:absolute;z-index:30;left:0;right:0;top:calc(100% + 6px);margin:0;padding:6px;list-style:none;background:#fff;border:1px solid var(--line);border-radius:14px;box-shadow:0 12px 32px rgba(11,31,75,.18);max-height:300px;overflow:auto}
+.cbx-list li{display:flex;flex-direction:column;gap:2px;min-height:48px;justify-content:center;padding:6px 12px;border-radius:10px;cursor:pointer}
+.cbx-list li b{font-size:15px;font-weight:600;color:var(--text)} .cbx-list li small{font-size:13px;color:var(--muted)}
+.cbx-list li.on{background:var(--navy-100)}
+.cbx-list li.cbx-empty{color:var(--muted);cursor:default;font-size:14px}
+.undo-toast{position:fixed;z-index:60;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);display:flex;align-items:center;gap:12px;max-width:min(560px,calc(100vw - 24px));padding:10px 10px 10px 18px;border-radius:999px;background:#1F2A44;color:#fff;box-shadow:0 10px 30px rgba(11,31,75,.35);font-size:14px;animation:pop .3s var(--ease)}
+.undo-btn{min-height:36px;padding:0 14px;border-radius:999px;background:transparent;border:1.5px solid #9FB2D9;color:#fff;font-weight:700;font-size:14px;box-shadow:none}
+.undo-btn:hover:not(:disabled){background:rgba(255,255,255,.14)}
+.undo-x{width:32px;height:32px;min-height:32px;padding:0;border-radius:50%;background:transparent;color:#C9D3E8;font-size:20px;line-height:1;box-shadow:none}
+@media (max-width:480px){.undo-toast{border-radius:18px;bottom:calc(88px + env(safe-area-inset-bottom,0px))}}

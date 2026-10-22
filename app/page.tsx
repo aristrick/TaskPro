@@ -9,7 +9,7 @@ import FocusProducts from '../components/FocusProducts'
 import { useDialog } from '../components/Dialog'
 import { supabase } from '../lib/supabase'
 import { loadMe } from '../lib/auth'
-import { rekap, day, rp, rpk, VSEL, fetchAll, startOfDay } from '../lib/rekap'
+import { rekap, day, rp, rpk, VSEL, fetchAll, startOfDay, tzAcuan, labelTz, jendela, tglBulanDepan, hanyaBulan } from '../lib/rekap'
 import { friendly } from '../lib/friendly'
 
 type N = number | null
@@ -17,7 +17,7 @@ const hitung = async (t: string, f?: (q: any) => any): Promise<N> => {
   let q: any = supabase.from(t).select('id', { count: 'exact', head: true }); if (f) q = f(q)
   const { count, error } = await q; return error ? null : (count ?? 0)
 }
-const salam = () => { const j = Number(new Date().toLocaleTimeString('en-GB', { hour: '2-digit', hour12: false, timeZone: 'Asia/Jakarta' })); return j < 11 ? 'Selamat pagi' : j < 15 ? 'Selamat siang' : j < 18 ? 'Selamat sore' : 'Selamat malam' }
+const salam = (tz: string) => { const j = Number(new Date().toLocaleTimeString('en-GB', { hour: '2-digit', hour12: false, timeZone: tz })); return j < 11 ? 'Selamat pagi' : j < 15 ? 'Selamat siang' : j < 18 ? 'Selamat sore' : 'Selamat malam' }
 const Skel = ({ w = 96 }: { w?: number }) => <span className="skel kpiskel" style={{ width: w }} />
 
 function Home() {
@@ -29,6 +29,8 @@ function Home() {
   const [radius, setRadius] = useState<boolean | null>(null)
   const [stok, setStok] = useState<boolean | null>(null)
   const [usage, setUsage] = useState<any>(null)
+  const [tzs, setTzs] = useState<string[] | null>(null)   // zona waktu cabang yang terlihat oleh akun ini; null = belum dimuat
+  const tz = tzAcuan(tzs || [])
   const role: string = me?.role || ''
   const mdm = role === 'mdm'
 
@@ -36,21 +38,24 @@ function Home() {
     loadMe().then(({ me }) => setMe(me))
     supabase.from('settings').select('value').eq('key', 'radius_enforced').maybeSingle().then(({ data }) => setRadius(data ? data.value === true : true))
     supabase.from('settings').select('value').eq('key', 'stok_enforced').maybeSingle().then(({ data }) => setStok(data ? data.value === true : true))
+    supabase.from('cabang').select('tz').then(({ data, error }) => setTzs(error ? [] : [...new Set((data || []).map((x: any) => x.tz as string))]))
+  }, [])
+  useEffect(() => {
+    if (tzs === null) return   // tunggu zona cabang diketahui supaya batas hari dan bulan benar
     // Rekap dihitung di database (hanya hasil ringkas yang dikirim; hemat kuota egress paket gratis)
-    const h = day(new Date()), [y, mo] = h.split('-').map(Number)
-    const awal = `${h.slice(0, 8)}01T00:00:00+07:00`
-    const akhir = `${mo === 12 ? y + 1 : y}-${String(mo === 12 ? 1 : mo + 1).padStart(2, '0')}-01T00:00:00+07:00`
-    supabase.rpc('rekap_harian', { p_from: awal, p_to: akhir }).then(({ data, error }) => {
-      if (!error && data) return setRk(data)
+    const h = day(new Date(), tz), awalTgl = `${h.slice(0, 8)}01`, w = jendela(awalTgl, tglBulanDepan(h))
+    supabase.rpc('rekap_harian', { p_from: w.from, p_to: w.to }).then(({ data, error }) => {
+      if (!error && data) return setRk(hanyaBulan(data, h))
       // Cadangan jika migrasi 12 belum dijalankan: hitung di browser seperti sebelumnya
-      fetchAll((a, b) => supabase.from('visits').select(VSEL).gte('checkin_at', awal).order('checkin_at').range(a, b)).then(v => setRk(rekap(v))).catch(() => setRk({}))
+      fetchAll((a, b) => supabase.from('visits').select(VSEL).gte('checkin_at', w.from).order('checkin_at').range(a, b)).then(v => setRk(hanyaBulan(rekap(v), h))).catch(() => setRk({}))
     })
-    supabase.rpc('rekap_harian', { p_from: startOfDay('Asia/Jakarta', 6), p_to: startOfDay('Asia/Jakarta', -1) }).then(({ data }) => setTren(data || {}))
+    const t7 = jendela(day(new Date(Date.now() - 6 * 864e5), tz), day(new Date(Date.now() + 864e5), tz))
+    supabase.rpc('rekap_harian', { p_from: t7.from, p_to: t7.to }).then(({ data }) => setTren(data || {}))
     ;(async () => {
       const [cabang, outlet, frontliner, project, tanpaKoordinat, berjalan, mencurigakan] = await Promise.all([
         hitung('cabang'), hitung('outlets'), hitung('profiles', q => q.eq('role', 'frontliner')), hitung('projects'),
         hitung('outlets', q => q.is('lat', null)), hitung('visits', q => q.is('checkout_at', null)),
-        hitung('visits', q => q.eq('suspect', true).gte('checkin_at', startOfDay('Asia/Jakarta', 7)))])
+        hitung('visits', q => q.eq('suspect', true).gte('checkin_at', startOfDay(tz, 7)))])
       setD(x => ({ ...x, cabang, outlet, frontliner, project, tanpaKoordinat, berjalan, mencurigakan }))
       try {   // frontliner yang belum mengisi stok pembawaan hari ini
         const rows = await fetchAll((a, b) => supabase.rpc('stok_laporan', { p_from: h, p_to: h, p_cabang: null, p_frontliner: null }).range(a, b) as any)
@@ -58,7 +63,7 @@ function Home() {
         setD(x => ({ ...x, belumStok: frontliner == null ? null : Math.max(0, frontliner - sudah) }))
       } catch { setD(x => ({ ...x, belumStok: null })) }
     })()
-  }, [])
+  }, [tzs])
   useEffect(() => { if (mdm) supabase.rpc('db_usage').then(({ data }) => setUsage(data)) }, [mdm])
 
   // Mematikan aturan memengaruhi semua frontliner, jadi dikonfirmasi dulu. Tampilan diperbarui langsung dan dikembalikan jika gagal.
@@ -69,7 +74,7 @@ function Home() {
     if (error) { set(!v); dlg.alert({ title: 'Gagal menyimpan', message: friendly(error), tone: 'danger', icon: 'close' }) }
   }
 
-  const hr = day(new Date())
+  const hr = day(new Date(), tz)
   const days = rk ? Object.values(rk) as any[] : []
   const hari = rk?.[hr]
   const bulan = days.reduce((a, x) => a + x.value, 0), ocB = days.reduce((a, x) => a + x.oc, 0), visB = days.reduce((a, x) => a + x.visits, 0)
@@ -78,9 +83,9 @@ function Home() {
   days.forEach(x => Object.entries(x.prod).forEach(([p, v]: any) => { if (v.focus) { const f = (fokus[p] ||= { ec: 0, qty: 0 }); f.ec += v.ec; f.qty += v.qty } }))
   const fokusList = Object.entries(fokus).sort((a, b) => b[1].qty - a[1].qty).map(([nama, x]) => ({ nama, ...x }))
   const seri = Array.from({ length: 7 }, (_, i) => {
-    const t = new Date(Date.now() - (6 - i) * 864e5), k = day(t)
-    return { k, v: Number(tren?.[k]?.value || 0), today: i === 6, l: t.toLocaleDateString('id-ID', { weekday: 'short', timeZone: 'Asia/Jakarta' }),
-      tgl: t.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', timeZone: 'Asia/Jakarta' }), lengkap: t.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'Asia/Jakarta' }) }
+    const t = new Date(Date.now() - (6 - i) * 864e5), k = day(t, tz)
+    return { k, v: Number(tren?.[k]?.value || 0), today: i === 6, l: t.toLocaleDateString('id-ID', { weekday: 'short', timeZone: tz }),
+      tgl: t.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', timeZone: tz }), lengkap: t.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', timeZone: tz }) }
   })
   const BATAS = Number(process.env.NEXT_PUBLIC_DB_LIMIT_MB || 500) * 1024 * 1024   // paket gratis Supabase: 500 MB (isi NEXT_PUBLIC_DB_LIMIT_MB jika paket naik)
   const pakai = usage ? Number(usage.bytes) / BATAS : 0
@@ -103,7 +108,7 @@ function Home() {
 
   return (<>
     <div className="homehead">
-      <div><h2>Home</h2><p className="muted">{salam()}{me?.nama ? `, ${me.nama}` : ''} · {new Date().toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Asia/Jakarta' })}</p></div>
+      <div><h2>Home</h2><p className="muted">{salam(tz)}{me?.nama ? `, ${me.nama}` : ''} · {new Date().toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', timeZone: tz })} · <span title={tzs && tzs.length > 1 ? 'Cabang Anda berada di beberapa zona waktu. Hari dan tanggal mengikuti zona paling timur; angka tiap cabang tetap dihitung menurut zona cabangnya.' : undefined}>{labelTz(tz)}{tzs && tzs.length > 1 ? ' (zona terdepan)' : ''}</span></p></div>
     </div>
 
     <div className="home">

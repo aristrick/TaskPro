@@ -1,9 +1,15 @@
 import Icon from '../Icon'
 import { inisial } from '../mds/AkunCard'
+import Combobox, { type Opsi } from '../Combobox'
 
 export type Fl = { id: string; user_id: string; nama: string; project_id: string | null }
 export type Prod = { id: string; product: string }
 export type Proj = { id: string; name: string }
+
+// Daftar pilihan untuk kolom tambah. Frontliner yang sudah di project ini tidak ditawarkan lagi; produk yang sudah fokus juga tidak.
+export const opsiFrontliner = (lainnya: Fl[], namaProject: (id: string) => string | undefined): Opsi[] =>
+  lainnya.map(f => ({ value: f.id, label: f.nama, sub: `${f.user_id}${f.project_id ? ` · sekarang di ${namaProject(f.project_id)}` : ' · belum punya project'}` }))
+export const opsiFokus = (prods: Prod[], fokus: string[]): Opsi[] => prods.filter(x => !fokus.includes(x.id)).map(x => ({ value: x.id, label: x.product }))
 
 // Kartu satu project. Dua kolom sejajar: siapa anggotanya (kiri) dan produk fokusnya (kanan). Tiap kolom: judul, isi, lalu satu aksi tambah.
 export default function ProjectCard({ p, anggota, lainnya, fokus, prods, sumber, namaProject, onGanti, onHapus, onAnggota, onTambahFokus, onLepasFokus, onSalin }: {
@@ -11,7 +17,6 @@ export default function ProjectCard({ p, anggota, lainnya, fokus, prods, sumber,
   onGanti: () => void; onHapus: () => void; onAnggota: (fid: string, pid: string | null) => void
   onTambahFokus: (prod: string) => void; onLepasFokus: (prod: string) => void; onSalin: (from: string) => void }) {
   const pn = (id: string) => prods.find(x => x.id === id)?.product || '-'
-  const sisa = prods.filter(x => !fokus.includes(x.id))
   return (
     <article className="proj" aria-label={`Project ${p.name}`}>
       <header className="projh">
@@ -31,9 +36,8 @@ export default function ProjectCard({ p, anggota, lainnya, fokus, prods, sumber,
                 <span className="lrow-tx"><b>{f.nama}</b><small>{f.user_id}</small></span>
                 <button type="button" className="lrow-act" aria-label={`Keluarkan ${f.nama} dari project`} title="Keluarkan dari project" onClick={() => onAnggota(f.id, null)}>Keluarkan</button></li>)}</ul>
             : <p className="projempty">Belum ada frontliner di project ini.</p>}
-          <select className="addrow" value="" aria-label="Tambah frontliner" onChange={e => e.target.value && onAnggota(e.target.value, p.id)}>
-            <option value="">+ Tambah frontliner…</option>
-            {lainnya.map(f => <option key={f.id} value={f.id}>{f.user_id} · {f.nama}{f.project_id ? ` (dari ${namaProject(f.project_id)})` : ''}</option>)}</select>
+          <Combobox label="Tambah frontliner" placeholder="+ Tambah frontliner… (ketik untuk mencari)" kosong="Tidak ada frontliner lain di cabang ini" onPilih={fid => onAnggota(fid, p.id)}
+            opsi={opsiFrontliner(lainnya, namaProject)} />
         </section>
 
         <section className="projsec" aria-label="Produk fokus">
@@ -46,8 +50,8 @@ export default function ProjectCard({ p, anggota, lainnya, fokus, prods, sumber,
                 <span className="lrow-tx"><b>{pn(x)}</b></span>
                 <button type="button" className="lrow-act" aria-label={`Lepas ${pn(x)} dari fokus`} title="Lepas dari fokus" onClick={() => onLepasFokus(x)}>Lepas</button></li>)}</ul>
             : <p className="projempty">Belum ada produk fokus.</p>}
-          <select className="addrow" value="" aria-label="Tambah produk fokus" onChange={e => e.target.value && onTambahFokus(e.target.value)}>
-            <option value="">+ Tambah produk fokus…</option>{sisa.map(x => <option key={x.id} value={x.id}>{x.product}</option>)}</select>
+          <Combobox label="Tambah produk fokus" placeholder="+ Tambah produk fokus… (ketik untuk mencari)" kosong="Semua produk sudah jadi fokus" onPilih={onTambahFokus}
+            opsi={opsiFokus(prods, fokus)} />
         </section>
       </div>
     </article>)

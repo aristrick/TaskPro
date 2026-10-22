@@ -1,11 +1,11 @@
 # TaskPro
 ## Instalasi baru
-1. Supabase → SQL Editor: jalankan `database.sql` (berisi semua migrasi 01–08).
+1. Supabase → SQL Editor: jalankan `database.sql` (sudah memuat migrasi 01–15), lalu `16_migration.sql`. Tabel lengkap dan cara mengecek versi: `docs/VERSI-DATABASE.md`.
 2. Authentication → Users → Add user `mdm01@taskpro.app` (Auto Confirm), lalu jalankan `seed_mdm.sql`.
 3. `.env.example` → `.env.local`, isi 3 nilai (Project Settings → API). Jangan di-commit.
 4. `npm install` → `npm run dev`. Login `MDM01`.
 ## Database yang sudah berjalan
-Migrasi 14 (batas minimal check-out per frontliner): jalankan `14_migration.sql`. Migrasi 11 (produk fokus per project): jalankan `11_migration.sql`. Migrasi 10 (Project): jalankan `10_migration.sql`. Jalankan hanya migrasi yang belum: `06_migration.sql`, `07_migration.sql`, lalu **`08_migration.sql`** (MDS 1 cabang + sesi perangkat/logout paksa; jika ada MDS yang memegang >1 cabang, hanya cabang berkode terkecil yang dipertahankan) (Outlet ID 9 angka acak untuk semua outlet). Opsional `06b_ubah_data_lama.sql`: ubah kode outlet hasil import lama ke format baru.
+Jalankan hanya migrasi yang belum terpasang, urut dari yang terkecil. Cara mengeceknya ada di `docs/VERSI-DATABASE.md`. Catatan lama per migrasi: migrasi 14 (batas minimal check-out per frontliner): jalankan `14_migration.sql`. Migrasi 11 (produk fokus per project): jalankan `11_migration.sql`. Migrasi 10 (Project): jalankan `10_migration.sql`. Jalankan hanya migrasi yang belum: `06_migration.sql`, `07_migration.sql`, lalu **`08_migration.sql`** (MDS 1 cabang + sesi perangkat/logout paksa; jika ada MDS yang memegang >1 cabang, hanya cabang berkode terkecil yang dipertahankan) (Outlet ID 9 angka acak untuk semua outlet). Opsional `06b_ubah_data_lama.sql`: ubah kode outlet hasil import lama ke format baru.
 ## Urutan pemakaian
 MDM: Cabang → MDS & RMDM. MDS: Frontliner (TL/Kormot dulu, lalu Frontliner) → Outlet > Import DMP → Produk. Frontliner: buka di HP.
 ## Deploy (GitHub + Vercel)
@@ -60,3 +60,18 @@ Aturan dijaga di database. Di HP, tombol Check-out menampilkan hitung mundur sam
 ## Migrasi 15 (jalankan `15_migration.sql` sekali): performa untuk 45+ frontliner
 Kebijakan akses dibungkus agar dihitung sekali per query (Home, Report, Stok, dan daftar jauh lebih cepat) dan tab Rekap di HP mengirim data ±10x lebih kecil.
 Aplikasi tetap berjalan tanpa migrasi ini (otomatis memakai cara lama), hanya lebih lambat dan lebih boros kuota. Angka ukur: `docs/KAPASITAS.md`.
+
+## Mode sinyal lemah (layar frontliner)
+Aplikasi tetap bisa dibuka tanpa sinyal setelah pernah dibuka online sekali, dan check-out yang gagal karena jaringan disimpan di HP lalu dikirim otomatis. Check-in tetap butuh internet. Penjelasan, batasan, dan cara mengujinya: `docs/SINYAL-LEMAH.md`. Butuh migrasi 16 agar jam check-out tercatat tepat (tanpa 16 tetap berjalan).
+
+## Pengujian
+| Perintah | Isi |
+|---|---|
+| `npm run typecheck` | Pemeriksaan tipe |
+| `npm run lint` | ESLint. Jumlah peringatan dibatasi (ratchet di `package.json`): boleh turun, tidak boleh naik |
+| `npm test` | Tes unit |
+| `npm run test:sql` | Tes aturan database (Postgres tertanam, tidak menyentuh Supabase Anda) |
+| `npm run test:e2e` | Aplikasi dijalankan di browser sungguhan dengan Supabase tiruan (`tests/e2e/mock.ts`). Pertama kali: `npx playwright install chromium` |
+
+## Excel
+Impor dan ekspor memakai ExcelJS (`lib/excel.ts`), menggantikan paket `xlsx` yang punya kerentanan tanpa perbaikan di npm. File unggahan dibatasi 10 MB. `package.json` memuat `overrides` untuk `uuid` dan `postcss` agar `npm audit` bersih; jangan dihapus tanpa memeriksa ulang.

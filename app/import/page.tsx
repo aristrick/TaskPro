@@ -15,11 +15,11 @@ function Import() {
   async function pick(file: File) {
     setRes(null); setMsg('Membaca file…')
     try {
-      const XLSX = await import('xlsx')
-      const wb = XLSX.read(await file.arrayBuffer())
+      const { bacaXlsx } = await import('../../lib/excel')
+      const sheets = await bacaXlsx(await file.arrayBuffer())
       let out: any = null, lastErr = ''
-      for (const n of wb.SheetNames) {
-        try { out = parseDmp(XLSX.utils.sheet_to_json(wb.Sheets[n], { header: 1, raw: true, defval: null }) as any[][], kode); break }
+      for (const sh of sheets) {
+        try { out = parseDmp(sh.baris, kode!); break }
         catch (e: any) { lastErr = e.message }
       }
       if (!out) throw new Error(lastErr)

@@ -5,8 +5,10 @@ Anda tidak berwenang atas cabang ini.
 Anda tidak berwenang atas cabang ini.
 Anda tidak berwenang atas cabang ini.
 Anda tidak berwenang atas cabang ini.
+Check-out baru bisa dilakukan N menit setelah check-in.
 Check-out baru bisa dilakukan N menit setelah check-in. Tunggu N detik lagi.
 Check-out baru bisa dilakukan N menit setelah check-in. Tunggu N detik lagi.
+Data tertunda lebih dari N jam.
 Frontliner harus dari cabang yang sama dengan project.
 Hanya MDM.
 Hanya MDM.
@@ -14,6 +16,8 @@ Hanya MDM.
 Hanya frontliner yang mengisi stok pembawaan.
 Jumlah (pcs) harus lebih dari N.
 Kode MD tujuan harus akun frontliner yang terdaftar.
+Kunjungan tidak aktif.
+Kunjungan tidak aktif.
 Pilih frontliner (Kode MD).
 Produk PN muncul dua kali. Gabungkan jumlahnya.
 Stok PN tidak cukup. Sisa N pcs, diminta N pcs.
@@ -23,6 +27,8 @@ Stok tidak boleh kurang dari yang sudah terjual (N pcs).
 Stok tidak boleh kurang dari yang sudah terjual (N pcs).
 Tidak ada outlet yang cocok.
 Waktu check-out tidak boleh sebelum check-in.
+Waktu check-out tidak valid.
+Waktu check-out tidak valid.
 Waktu tidak boleh di masa depan.
 new row for relation "cabang" violates check constraint "cabang_tz_check"
 new row for relation "profiles" violates check constraint "profiles_min_checkout_menit_check"
@@ -36,6 +42,7 @@ permission denied for function audit_prune
 permission denied for function cek_radius
 permission denied for function cek_radius
 permission denied for function checkin
+permission denied for function checkout_tertunda
 permission denied for function kunjungan_edit
 permission denied for function project_set_member
 permission denied for function rekap_harian

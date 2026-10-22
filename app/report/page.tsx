@@ -47,9 +47,8 @@ function Report() {
           'SKU Code': p.sku_code || '', Product: p.product || '', Brand: p.brand || '', Dibawa: r.dibawa, Terjual: r.terjual, Sisa: r.dibawa - r.terjual }
       })
       if (!rows.length) { setBusy(false); return setMsg('Tidak ada data stok pada rentang ini.') }
-      const XLSX = await import('xlsx'); const wb = XLSX.utils.book_new()
-      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(rows), 'STOK')
-      XLSX.writeFile(wb, `STOK_PEMBAWAAN${cab ? '_' + cabs.find(c => c.id === cab)?.kode : ''}${nmProj()}_${from}_${to}.xlsx`)
+      const { unduhXlsx } = await import('../../lib/excel')
+      await unduhXlsx(`STOK_PEMBAWAAN${cab ? '_' + cabs.find(c => c.id === cab)?.kode : ''}${nmProj()}_${from}_${to}.xlsx`, 'STOK', rows)
       setMsg(`Selesai: ${rows.length} baris diunduh.`)
     } catch (e: any) { setMsg(friendly(e, 'Gagal mengambil data stok')) }
     setBusy(false)
@@ -92,9 +91,8 @@ function Report() {
             'Category Product': p.category_product || '', Price: Number(s.price), 'Total (Pcs)': s.qty, Value: Number(s.value), Images: '' }) }
       }
       if (!rows.length) { setBusy(false); return setMsg('Tidak ada data pada rentang ini.') }
-      const XLSX = await import('xlsx'); const wb = XLSX.utils.book_new()
-      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(rows), jenis === 'kunjungan' ? 'CHECKIN' : 'SELLING')
-      XLSX.writeFile(wb, `${jenis === 'kunjungan' ? 'CHECKIN_KUNJUNGAN' : 'SELLING_PENJUALAN'}${cab ? '_' + cabs.find(c => c.id === cab)?.kode : ''}${nmProj()}_${from}_${to}.xlsx`)
+      const { unduhXlsx } = await import('../../lib/excel')
+      await unduhXlsx(`${jenis === 'kunjungan' ? 'CHECKIN_KUNJUNGAN' : 'SELLING_PENJUALAN'}${cab ? '_' + cabs.find(c => c.id === cab)?.kode : ''}${nmProj()}_${from}_${to}.xlsx`, jenis === 'kunjungan' ? 'CHECKIN' : 'SELLING', rows)
       setMsg(`Selesai: ${rows.length} baris diunduh.`)
     } catch (e: any) { setMsg(friendly(e, 'Gagal mengambil data')) }
     setBusy(false)

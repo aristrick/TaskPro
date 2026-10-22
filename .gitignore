@@ -13,3 +13,5 @@ next-env.d.ts
 *.log
 # Hasil uji lokal
 tests/sql/*.out
+test-results
+playwright-report

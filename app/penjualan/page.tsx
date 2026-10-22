@@ -9,6 +9,7 @@ import { day, dt, rp, OFFSET } from '../../lib/rekap'
 import { friendly } from '../../lib/friendly'
 
 const SEL = 'id,checkin_at,checkout_at,effective,cabang(nama,tz),fl:profiles(user_id,nama),outlets(name,code),sales(id,qty,price,value,product_id)'
+const BATAS = 500   // jumlah kunjungan maksimal yang dimuat sekali (layar ini untuk mengoreksi, bukan laporan; laporan lengkap ada di menu Report)
 type Baris = { key: string; product_id: string; qty: string; price: string }
 const lokal = (iso: string, tz: string) => new Date(iso).toLocaleString('sv-SE', { timeZone: tz }).replace(' ', 'T').slice(0, 16)   // untuk input datetime-local
 const keIso = (v: string, tz: string) => new Date(`${v}:00${OFFSET[tz] || '+07:00'}`).toISOString()
@@ -101,13 +102,15 @@ function Penjualan() {
   const [rows, setRows] = useState<any[] | null>(null)
   const [prods, setProds] = useState<any[]>([])
   const [edit, setEdit] = useState<any>(null)
+  const [terpotong, setTerpotong] = useState(false)   // true jika server mengembalikan tepat sebesar batas muat (data lain mungkin tidak ikut)
 
   async function load() {
     setRows(null)
-    let qq = supabase.from('visits').select(SEL).gte('checkin_at', `${from}T00:00:00+09:00`).lte('checkin_at', `${to}T23:59:59.999+07:00`).order('checkin_at', { ascending: false }).limit(500)
+    let qq = supabase.from('visits').select(SEL).gte('checkin_at', `${from}T00:00:00+09:00`).lte('checkin_at', `${to}T23:59:59.999+07:00`).order('checkin_at', { ascending: false }).limit(BATAS)
     if (cab) qq = qq.eq('cabang_id', cab)
     if (fl) qq = qq.eq('frontliner_id', fl)
     const { data, error } = await qq
+    setTerpotong((data || []).length >= BATAS)
     if (error) { await dlg.alert({ title: 'Gagal memuat data', message: friendly(error), tone: 'danger', icon: 'close' }); return setRows([]) }
     setRows((data || []).filter((v: any) => { const d = day(v.checkin_at, v.cabang?.tz || 'Asia/Jakarta'); return d >= from && d <= to }))
   }
@@ -130,7 +133,8 @@ function Penjualan() {
       <label className="fld"><span className="label">Frontliner</span><select value={fl} onChange={e => setFl(e.target.value)}><option value="">Semua frontliner</option>{flOpsi.map(f => <option key={f.id} value={f.id}>{f.user_id} · {f.nama}</option>)}</select></label>
     </div></div>
     <div className="toolbar"><label className="searchbox"><Icon name="search" size={18} /><input placeholder="Cari outlet, kode outlet, atau frontliner…" aria-label="Cari" value={q} onChange={e => setQ(e.target.value)} /></label>
-      {rows && <span className="muted">{tampil.length} kunjungan{rows.length >= 500 ? ' (dibatasi 500; persempit filter)' : ''}</span>}</div>
+      {rows && <span className="muted">{tampil.length} kunjungan</span>}</div>
+    {terpotong && <div className="notice warn" role="status">Hanya {BATAS} kunjungan terbaru yang dimuat, jadi sebagian data pada rentang ini belum tampil. Persempit tanggal, pilih cabang, atau pilih frontliner. Untuk data lengkap gunakan menu Report.</div>}
     {rows === null ? <SkelRows n={5} /> : tampil.length === 0 ? <div className="card muted">Tidak ada kunjungan pada filter ini.</div> :
       <div className="scroll"><table>
         <thead><tr><th>Waktu check-in</th><th>Frontliner</th><th>Outlet</th><th>Penjualan</th><th>Total</th><th /></tr></thead>

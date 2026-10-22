@@ -50,9 +50,8 @@ function Outlet() {
         Cycle: o.cycle || '', Name: o.name, Address: o.address, Province: o.province_name || '', City: o.city_name || '', District: o.district || '', Village: o.village || '',
         Latitude: o.lat ?? '', Longitude: o.long ?? '', Category: o.category || '', Account: o.account || '', 'Profile Outlet': o.profile_outlet || '', Owner: o.owner || '', Phone: o.phone || '',
         Status: o.status, 'Created at': o.created_at ? dt(o.created_at) : '' }))
-      const XLSX = await import('xlsx'); const wb = XLSX.utils.book_new()
-      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(data), 'OUTLET')
-      XLSX.writeFile(wb, `OUTLET_${day(new Date())}.xlsx`)
+      const { unduhXlsx } = await import('../../lib/excel')
+      await unduhXlsx(`OUTLET_${day(new Date())}.xlsx`, 'OUTLET', data)
     } catch (e: any) { dlg.alert({ title: 'Gagal mengunduh', message: e.message || 'Terjadi kesalahan.', tone: 'danger', icon: 'close' }) }
   }
   useEffect(() => { const t = setTimeout(load, 300); return () => clearTimeout(t) }, [cid, rayon, q, page, kmd, tanpa])

@@ -3,25 +3,28 @@ import { useEffect, useState } from 'react'
 import Shell from '../../components/Shell'
 import Icon from '../../components/Icon'
 import { useDialog } from '../../components/Dialog'
+import { useUndo } from '../../components/UndoToast'
 import { supabase } from '../../lib/supabase'
 import { loadMe } from '../../lib/auth'
 import { api } from '../../lib/api'
 import { useAktif } from '../../lib/sesi'
 import { jam } from '../../lib/rekap'
-import AkunCard from '../../components/mds/AkunCard'
+import AkunCard, { type Akun, type Cabang, type Konfirmasi } from '../../components/mds/AkunCard'
+
+type Filter = 'all' | 'rmdm' | 'mds' | 'mdm'
 
 const EMPTY = { role: 'mds', user_id: '', nama: '', password: '', cabang_id: '' }
 
 function Mds() {
-  const dlg = useDialog()
-  const [list, setList] = useState<any[]>([])
-  const [cabang, setCabang] = useState<any[]>([])
+  const dlg = useDialog(), undo = useUndo()
+  const [list, setList] = useState<Akun[]>([])
+  const [cabang, setCabang] = useState<Cabang[]>([])
   const [f, setF] = useState(EMPTY)
   const [err, setErr] = useState(''); const [busy, setBusy] = useState(false)
   const [role, setRole] = useState('')
   const [aktif, refreshAktif] = useAktif()
   const [buka, setBuka] = useState(false)
-  const [q, setQ] = useState(''); const [rf, setRf] = useState<'all' | 'rmdm' | 'mds' | 'mdm'>('all')
+  const [q, setQ] = useState(''); const [rf, setRf] = useState<Filter>('all')
   async function load() {
     const { data: p } = await supabase.from('profiles').select('id,user_id,nama,role').in('role', ['mds', 'rmdm', 'mdm']).order('user_id')
     const { data: c } = await supabase.from('cabang').select('id,kode,nama,mds_id,rmdm_id').order('kode')
@@ -29,7 +32,7 @@ function Mds() {
   }
   useEffect(() => { load(); loadMe().then(({ me }) => setRole(me?.role || '')) }, [])
   const bebasMds = cabang.filter(c => !c.mds_id), bebasR = cabang.filter(c => !c.rmdm_id)
-  const cb = (c: any) => `${c.kode} ${c.nama}`
+  const cb = (c: Cabang) => `${c.kode} ${c.nama}`
 
   async function create() {
     setErr('')
@@ -38,33 +41,38 @@ function Mds() {
     setBusy(true); const e = await api('/api/mds', 'POST', f); setBusy(false); setErr(e)
     if (!e) { setF({ ...EMPTY, role: f.role }); setBuka(false); await load(); dlg.alert({ title: 'Akun dibuat', tone: 'ok', message: <>Akun <b>{f.user_id.trim().toUpperCase()}</b> berhasil dibuat.</> }) }
   }
-  async function remove(m: any) {
+  async function remove(m: Akun) {
     if (!(await dlg.confirm({ title: `Hapus akun ${m.role.toUpperCase()}?`, tone: 'danger', okText: 'Hapus', message: <><b>{m.nama}</b> ({m.user_id}) akan dihapus. Cabang yang dipegang akan kembali kosong.</> }))) return
     const e = await api('/api/mds', 'DELETE', { id: m.id }); if (e) await dlg.alert({ title: 'Gagal menghapus', message: e, tone: 'danger', icon: 'close' }); load()
   }
-  async function op(body: any, konfirmasi?: { title: string; message: any }) {
+  async function op(body: Record<string, unknown>, konfirmasi?: Konfirmasi, tanpaUndo = false) {
     if (konfirmasi && !(await dlg.confirm({ ...konfirmasi, okText: 'Ya, lanjut' }))) return
     const e = await api('/api/mds', 'PATCH', body)
     if (e) await dlg.alert({ title: 'Gagal menyimpan', message: e, tone: 'danger', icon: 'close' })
+    else if (!tanpaUndo && (body.op === 'rmdm_add' || body.op === 'rmdm_remove')) {   // menambah/melepas cakupan RMDM bisa dibalik: beri tombol Urungkan
+      const c = cabang.find(x => x.id === body.cabang_id), r = list.find(x => x.id === body.id), nm = c ? `${c.kode} ${c.nama}` : 'Cabang'
+      undo.tampil(body.op === 'rmdm_add' ? `${nm} ditambahkan ke ${r?.nama || 'RMDM'}.` : `${nm} dilepas dari ${r?.nama || 'RMDM'}.`,
+        () => op({ id: body.id, op: body.op === 'rmdm_add' ? 'rmdm_remove' : 'rmdm_add', cabang_id: body.cabang_id }, undefined, true))
+    }
     load()
   }
-  async function paksa(m: any) {
+  async function paksa(m: Akun) {
     if (!(await dlg.confirm({ title: 'Logout paksa?', icon: 'logout', tone: 'danger', okText: 'Logout paksa', message: <><b>{m.nama}</b> akan dikeluarkan dari semua perangkat dalam hitungan detik.</> }))) return
     const e = await api('/api/sesi', 'POST', { id: m.id }); if (e) await dlg.alert({ title: 'Gagal', message: e, tone: 'danger', icon: 'close' }); refreshAktif()
   }
-  const status = (m: any) => aktif[m.id]
+  const status = (m: Akun) => aktif[m.id]
     ? <><span className="on-badge">Aktif</span><span className="off-badge">terakhir {jam(aktif[m.id]).slice(0, 5)}</span></>
     : <span className="off-badge">Tidak aktif</span>
 
-  const cabangText = (m: any) => cabang.filter(c => (m.role === 'mds' ? c.mds_id : c.rmdm_id) === m.id).map(cb).join(' ')
-  const cocok = (m: any) => { const t = q.trim().toLowerCase(); return !t || `${m.nama} ${m.user_id} ${cabangText(m)}`.toLowerCase().includes(t) }
+  const cabangText = (m: Akun) => cabang.filter(c => (m.role === 'mds' ? c.mds_id : c.rmdm_id) === m.id).map(cb).join(' ')
+  const cocok = (m: Akun) => { const t = q.trim().toLowerCase(); return !t || `${m.nama} ${m.user_id} ${cabangText(m)}`.toLowerCase().includes(t) }
   const jml = (r: string) => list.filter(m => m.role === r).length
   const grup: [string, string][] = [['rmdm', 'RMDM'], ['mds', 'MDS'], ...(role === 'mdm' ? [['mdm', 'MDM'] as [string, string]] : [])]
   const tampil = grup.filter(([k]) => rf === 'all' || rf === k).map(([k, nm]) => [k, nm, list.filter(m => m.role === k && cocok(m))] as const).filter(([, , it]) => it.length)
 
   const DESK: Record<string, string> = { rmdm: 'Mencover banyak cabang', mds: 'Memegang 1 cabang', mdm: 'Pengelola utama' }
   const jmlTab = (k: string) => k === 'all' ? grup.reduce((a, [g]) => a + jml(g), 0) : jml(k)
-  const tabs: [string, string][] = [['all', 'Semua'], ['rmdm', 'RMDM'], ['mds', 'MDS'], ...(role === 'mdm' ? [['mdm', 'MDM'] as [string, string]] : [])]
+  const tabs: [Filter, string][] = [['all', 'Semua'], ['rmdm', 'RMDM'], ['mds', 'MDS'], ...(role === 'mdm' ? [['mdm', 'MDM'] as [Filter, string]] : [])]
 
   return (<>
     <div className="pagehead">
@@ -96,7 +104,7 @@ function Mds() {
     <div className="toolbar">
       <label className="searchbox"><Icon name="search" size={18} /><input placeholder="Cari nama, User ID, atau cabang…" aria-label="Cari akun" value={q} onChange={e => setQ(e.target.value)} /></label>
       <div className="seg segsm" role="tablist" aria-label="Filter role">
-        {tabs.map(([k, t]) => <button key={k} role="tab" aria-selected={rf === k} className={rf === k ? 'on' : ''} onClick={() => setRf(k as any)}>{t} <span className="tabn">{jmlTab(k)}</span></button>)}</div>
+        {tabs.map(([k, t]) => <button key={k} role="tab" aria-selected={rf === k} className={rf === k ? 'on' : ''} onClick={() => setRf(k)}>{t} <span className="tabn">{jmlTab(k)}</span></button>)}</div>
     </div>
 
     {tampil.length === 0 && <div className="empty"><Icon name="search" size={28} /><b>Tidak ada akun yang cocok</b><p>Coba kata kunci lain{rf !== 'all' ? ' atau pilih filter Semua' : ''}.</p>
@@ -106,6 +114,7 @@ function Mds() {
       <div className="accgrid">{items.map(m => <AkunCard key={m.id} m={m} cabang={cabang} bebasMds={bebasMds} bebasR={bebasR} viewerRole={role} status={status(m)} bisaPaksa={!!aktif[m.id]}
         onHapus={() => remove(m)} onPaksa={() => paksa(m)} onOp={op} />)}</div>
     </section>)}
+    {undo.node}
   </>)
 }
 export default function Page() { return <Shell roles={['mdm', 'rmdm']}><Mds /></Shell> }

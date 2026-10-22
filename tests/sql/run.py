@@ -6,6 +6,7 @@ here = os.path.dirname(os.path.abspath(__file__)); root = os.path.abspath(os.pat
 s = pgserver.get_server(tempfile.mkdtemp(prefix='taskpro-test-'))
 s.psql(f"\\set ON_ERROR_STOP on\n\\i {here}/00_stub.sql")
 s.psql(f"\\set ON_ERROR_STOP on\n\\i {root}/database.sql")
+s.psql(f"\\set ON_ERROR_STOP on\n\\i {root}/16_migration.sql")   # migrasi 16 dijalankan di atas database.sql, seperti di database sungguhan
 print(s.psql(f"\\i {here}/10_test.sql"))
 print(s.psql(f"\\i {here}/20_project_test.sql"))
 print(s.psql(f"\\i {here}/30_focus_test.sql"))
@@ -13,3 +14,4 @@ print(s.psql(f"\\i {here}/40_v12_test.sql"))
 print(s.psql(f"\\i {here}/50_v13_test.sql"))
 print(s.psql(f"\\i {here}/60_v14_test.sql"))
 print(s.psql(f"\\i {here}/70_v15_test.sql"))
+print(s.psql(f"\\i {here}/80_v16_test.sql"))

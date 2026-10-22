@@ -91,3 +91,11 @@ R4 daftar outlet per hari ada dan terurut (jumlah baris outlet > 0): true
 R5 batas waktu dihormati (data lebih tua dari batas tidak ikut): true
 R6 frontliner lain hanya melihat kunjungannya sendiri (selisih harus 0): 0
 R7 MDM tidak punya kunjungan sendiri, hasil kosong: true
+O3 penolakan tidak mengubah data, kunjungan masih terbuka: true
+O4 check-out memakai waktu yang dikirim (2 jam lalu, selisih di bawah 5 detik): true
+O5 effective benar karena ada penjualan: true
+O7 pengiriman ulang tidak mengubah jam check-out (selisih di bawah 5 detik dari 2 jam lalu): true
+O9 waktu kirim 6 menit setelah check-in diterima dan dicatat apa adanya: true
+O10 tanpa penjualan, effective false: true
+O13 kunjungan masih terbuka setelah penolakan: true
+O15 cadangan checkout() biasa berhasil: true
