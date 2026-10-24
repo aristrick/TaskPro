@@ -560,3 +560,25 @@ a.tile2:hover{background:#F3F6FC;border-color:#C9D5EE} .tile2 b{font-size:22px;c
 .undo-btn:hover:not(:disabled){background:rgba(255,255,255,.14)}
 .undo-x{width:32px;height:32px;min-height:32px;padding:0;border-radius:50%;background:transparent;color:#C9D3E8;font-size:20px;line-height:1;box-shadow:none}
 @media (max-width:480px){.undo-toast{border-radius:18px;bottom:calc(88px + env(safe-area-inset-bottom,0px))}}
+
+/* ===== Kerapian antarhalaman (v18): kepala halaman, dialog pilihan cepat, tabel Frontliner ===== */
+.pagehead-t{min-width:0}
+.pagehead-a{display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end}
+.pagehead-a .fld-inline{min-width:200px;flex:none;margin:0} .pagehead-a select{min-height:44px}
+.empty p{margin:0 0 4px}
+.pilih{display:flex;gap:8px;flex-wrap:wrap;margin:-4px 0 14px}
+.pill-opt{min-height:36px;padding:0 14px;border:1px solid var(--line);border-radius:999px;background:#fff;color:var(--navy);font-size:14px;font-weight:600;box-shadow:none}
+.pill-opt:hover:not(:disabled){background:var(--navy-100)}
+.pill-opt.on{background:var(--navy);border-color:var(--navy);color:#fff}
+table.tfl{table-layout:fixed;min-width:920px}
+.tfl td{height:68px}
+.tfl col.c-atasan{width:130px} .tfl col.c-gps{width:92px} .tfl col.c-menit{width:156px} .tfl col.c-status{width:156px} .tfl col.c-aksi{width:272px}
+.akun-sub{display:flex;align-items:center;gap:8px;min-width:0} .akun-sub small{white-space:nowrap}
+.akun-nama{display:flex;flex-direction:column;gap:2px;line-height:1.3;min-width:0} .akun-nama b{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap} .akun-nama small{color:var(--muted);font-size:13px}
+.menit-btn{display:inline-flex;align-items:center;justify-content:space-between;gap:10px;min-width:132px;white-space:nowrap;min-height:36px;padding:0 12px;border:1px solid var(--line);border-radius:999px;background:#fff;color:var(--text);font-size:14px;font-weight:600;box-shadow:none}
+.menit-btn:hover:not(:disabled){background:var(--navy-100);border-color:#9FB2D9} .menit-btn svg{color:var(--muted)}
+.stat{white-space:nowrap} .stat .on-badge{margin-right:6px}
+.aksi{display:flex;gap:6px;justify-content:flex-end;flex-wrap:nowrap} .aksi button{white-space:nowrap;padding:0 12px}
+.aksi button:disabled{opacity:.45;cursor:not-allowed}
+.tfl .switch{vertical-align:middle}
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}

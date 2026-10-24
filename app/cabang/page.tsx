@@ -1,6 +1,8 @@
 'use client'
 import { useEffect, useState } from 'react'
 import Shell from '../../components/Shell'
+import Icon from '../../components/Icon'
+import PageHead from '../../components/PageHead'
 import { useDialog } from '../../components/Dialog'
 import { supabase } from '../../lib/supabase'
 import { loadMe } from '../../lib/auth'
@@ -46,15 +48,17 @@ function Cabang() {
   }
   async function setRmdm(id: string, v: string) { await supabase.from('cabang').update({ rmdm_id: v || null }).eq('id', id); load() }
   return (<>
-    <h2>Cabang</h2>
-    <div className="row">
-      <input placeholder="Kode (4 digit)" value={f.kode} maxLength={4} inputMode="numeric" onChange={e => setF({ ...f, kode: e.target.value })} />
-      <input placeholder="Nama cabang" value={f.nama} onChange={e => setF({ ...f, nama: e.target.value })} />
-      <input placeholder="Alamat" value={f.alamat} onChange={e => setF({ ...f, alamat: e.target.value })} />
-      <select value={f.tz} onChange={e => setF({ ...f, tz: e.target.value })} aria-label="Zona waktu">{ZONA.map(([v, t]) => <option key={v} value={v}>{t}</option>)}</select>
-      <button onClick={add}>Tambah</button>
-    </div>
-    {err && <p className="err">{err}</p>}
+    <PageHead title="Cabang" desc="Kelola cabang, zona waktunya (WIB, WITA, WIT), dan RMDM yang mencover." />
+    <section className="card" aria-label="Tambah cabang">
+      <div className="row" style={{ margin: 0, alignItems: 'flex-end' }}>
+        <label className="fld" style={{ margin: 0, maxWidth: 140 }}><span className="label">Kode (4 digit)</span><input value={f.kode} maxLength={4} inputMode="numeric" onChange={e => setF({ ...f, kode: e.target.value })} /></label>
+        <label className="fld" style={{ margin: 0, flex: 1, minWidth: 180 }}><span className="label">Nama cabang</span><input value={f.nama} onChange={e => setF({ ...f, nama: e.target.value })} /></label>
+        <label className="fld" style={{ margin: 0, flex: 2, minWidth: 220 }}><span className="label">Alamat</span><input value={f.alamat} onChange={e => setF({ ...f, alamat: e.target.value })} /></label>
+        <label className="fld" style={{ margin: 0 }}><span className="label">Zona waktu</span><select value={f.tz} onChange={e => setF({ ...f, tz: e.target.value })}>{ZONA.map(([v, t]) => <option key={v} value={v}>{t}</option>)}</select></label>
+        <button onClick={add}><Icon name="plus" size={18} /> Tambah cabang</button>
+      </div>
+      {err && <p className="err" role="alert" style={{ margin: '12px 0 0' }}>{err}</p>}
+    </section>
     <div className="scroll"><table>
       <thead><tr><th>Kode</th><th>Nama</th><th>Alamat</th><th>Zona waktu</th><th>MDS</th><th>RMDM</th><th /></tr></thead>
       <tbody>{rows.map(r => <tr key={r.id}>
@@ -63,7 +67,7 @@ function Cabang() {
         <td>{me?.role === 'mdm'
           ? <select value={r.rmdm_id || ''} onChange={e => setRmdm(r.id, e.target.value)}><option value="">-</option>{ppl.filter(x => x.role === 'rmdm').map(x => <option key={x.id} value={x.id}>{x.nama}</option>)}</select>
           : nm(r.rmdm_id)}</td>
-        <td style={{ whiteSpace: 'nowrap' }}><button className="ghost" onClick={() => edit(r)}>Edit</button> <button className="ghost danger" onClick={() => del(r)}>Hapus</button></td>
+        <td><div className="aksi"><button className="ghost small" onClick={() => edit(r)}><Icon name="edit" size={16} /> Edit</button><button className="ghost danger small" onClick={() => del(r)}><Icon name="trash" size={16} /> Hapus</button></div></td>
       </tr>)}</tbody>
     </table></div>
   </>)

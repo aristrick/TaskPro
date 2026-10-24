@@ -2,6 +2,7 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import Link from 'next/link'
 import Shell from '../components/Shell'
+import PageHead from '../components/PageHead'
 import Icon from '../components/Icon'
 import { SettingRow } from '../components/Switch'
 import SalesTrend from '../components/SalesTrend'
@@ -107,9 +108,7 @@ function Home() {
     <div className={`kpi2 ${tone}`}><span className="kico"><Icon name={icon} size={18} /></span><span className="label">{label}</span><b>{val}</b>{sub && <small>{sub}</small>}</div>
 
   return (<>
-    <div className="homehead">
-      <div><h2>Home</h2><p className="muted">{salam(tz)}{me?.nama ? `, ${me.nama}` : ''} · {new Date().toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', timeZone: tz })} · <span title={tzs && tzs.length > 1 ? 'Cabang Anda berada di beberapa zona waktu. Hari dan tanggal mengikuti zona paling timur; angka tiap cabang tetap dihitung menurut zona cabangnya.' : undefined}>{labelTz(tz)}{tzs && tzs.length > 1 ? ' (zona terdepan)' : ''}</span></p></div>
-    </div>
+    <PageHead title="Home" desc={<>{salam(tz)}{me?.nama ? `, ${me.nama}` : ''} · {new Date().toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', timeZone: tz })} · <span title={tzs && tzs.length > 1 ? 'Cabang Anda berada di beberapa zona waktu. Hari dan tanggal mengikuti zona paling timur; angka tiap cabang tetap dihitung menurut zona cabangnya.' : undefined}>{labelTz(tz)}{tzs && tzs.length > 1 ? ' (zona terdepan)' : ''}</span></>} />
 
     <div className="home">
       <div className="col">

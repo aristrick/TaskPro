@@ -24,8 +24,17 @@ export function buatMock(opsi: { role?: string } = {}) {
     { id: 'u-fl-2', user_id: '0300-TMTB02', nama: 'Budi Santoso', cabang_id: 'cab-1', project_id: null as string | null },
     { id: 'u-fl-3', user_id: '0300-TMTB03', nama: 'Sari Wulandari', cabang_id: 'cab-1', project_id: null as string | null }]
   const projects = [{ id: 'proj-1', name: 'TASKFORCE BONTEH SUNTER', cabang_id: 'cab-1' }]
+  const akunCabang = [
+    { id: 'tl-1', user_id: '0300-TL01', nama: 'Rudi Hartono', role: 'tl', atasan_id: null as string | null, gps_required: true, min_checkout_menit: 0 },
+    { id: 'u-fl-1', user_id: '0300-TMTB01', nama: 'Adin Shandi', role: 'frontliner', atasan_id: 'tl-1', gps_required: true, min_checkout_menit: 5 },
+    { id: 'u-fl-2', user_id: '0300-TMTB02', nama: 'Budi Santoso', role: 'frontliner', atasan_id: 'tl-1', gps_required: true, min_checkout_menit: 0 }]
+  const sekarang = new Date().toISOString()
+  const visitAdmin = [
+    { id: 'v-1', checkin_at: sekarang, checkout_at: sekarang, effective: true, cabang: { nama: 'Pulogadung', tz: 'Asia/Jakarta' }, fl: { user_id: '0300-TMTB01', nama: 'Adin Shandi' }, outlets: { name: 'Warung Sumber Rejeki', code: 'OUT-1' },
+      sales: [{ id: 's1', qty: 2, price: 19500, value: 39000, product_id: 'pr-1' }, { id: 's2', qty: 1, price: 2500, value: 2500, product_id: 'pr-3' }] },
+    { id: 'v-2', checkin_at: sekarang, checkout_at: sekarang, effective: false, cabang: { nama: 'Pulogadung', tz: 'Asia/Jakarta' }, fl: { user_id: '0300-TMTB02', nama: 'Budi Santoso' }, outlets: { name: 'Toko Berkah Jaya', code: 'OUT-2' }, sales: [] as { id: string; qty: number; price: number; value: number; product_id: string }[] }]
   const s = {
-    me, outlets, produk, frontliners, projects, fokus: ['pr-1'], kunjungan: [] as Kunjungan[], online: true, passwordBenar: 'rahasia',
+    me, outlets, produk, frontliners, projects, akunCabang, visitAdmin, aktifIds: ['u-fl-1'] as string[], akunPanggilan: [] as { method: string; body: Record<string, unknown> }[], sesiPanggilan: [] as Record<string, unknown>[], tolakHapus: '' as string, fokus: ['pr-1'], kunjungan: [] as Kunjungan[], online: true, passwordBenar: 'rahasia',
     rpc: [] as { fn: string; args: any }[], stokDibawa: 50, tolakSaveSales: '' as string, tanpaFungsiTertunda: false,
     aktif: () => s.kunjungan.find(v => !v.checkout_at) || null,
     panggilan: (fn: string) => s.rpc.filter(x => x.fn === fn),
@@ -48,6 +57,13 @@ function rpc(m: Mock, fn: string, a: any, route: Route) {
     case 'sesi_detak': return json(route, true)
     case 'stok_hari_ini': return json(route, m.produk.map(p => ({ product_id: p.id, dibawa: m.stokDibawa, terjual: 0 })))
     case 'rekap_saya': return json(route, {})
+    case 'penjualan_hapus': {
+      if (m.tolakHapus) return galat(route, m.tolakHapus)
+      if (!a.p_alasan || String(a.p_alasan).trim().length < 3) return galat(route, 'Alasan penghapusan wajib diisi.')
+      const vv = m.visitAdmin.find(x => x.id === a.p_visit); if (!vv) return galat(route, 'Kunjungan tidak ditemukan.')
+      if (!vv.sales.length) return galat(route, 'Kunjungan ini tidak punya penjualan.')
+      vv.sales = []; vv.effective = false; return json(route, null)
+    }
     case 'project_set_member': { const f = m.frontliners.find(x => x.id === a.p_frontliner); if (f) f.project_id = a.p_project; return json(route, null) }
     case 'checkin': {
       if (m.aktif()) return galat(route, 'Masih ada kunjungan yang belum check-out.')
@@ -72,7 +88,8 @@ function rpc(m: Mock, fn: string, a: any, route: Route) {
 function tabel(m: Mock, nama: string, u: URL) {
   const q = u.search
   switch (nama) {
-    case 'profiles': return u.searchParams.get('role') === 'eq.frontliner' ? m.frontliners : [m.me]
+    case 'profiles': return u.searchParams.get('role') === 'eq.frontliner' ? m.frontliners : u.searchParams.get('cabang_id') ? m.akunCabang : [m.me]
+    case 'device_sessions': return m.aktifIds.map(user_id => ({ user_id, last_seen: new Date().toISOString() }))
     case 'projects': return m.projects
     case 'outlets': { const r = u.searchParams.get('rayon'); return m.outlets.filter(o => !r || r === `eq.${o.rayon}`) }
     case 'products': return m.produk
@@ -80,6 +97,7 @@ function tabel(m: Mock, nama: string, u: URL) {
     case 'cabang': return [{ id: 'cab-1', kode: '0300', nama: 'Pulogadung', tz: 'Asia/Jakarta' }]
     case 'settings': return u.searchParams.get('key') === 'eq.stok_enforced' ? [{ value: true }] : []
     case 'visits': {
+      if (q.includes('fl%3Aprofiles') || q.includes('fl:profiles')) return m.visitAdmin
       if (q.includes('checkout_at=is.null')) { const v = m.aktif(); const o = v && m.outlets.find(x => x.id === v.outlet_id); return v && o ? [{ id: v.id, outlet_id: v.outlet_id, checkin_at: v.checkin_at, project_id: v.project_id, outlets: { name: o.name, address: o.address, lat: o.lat, long: o.long } }] : [] }
       if (q.includes('checkout_at=not.is.null')) { const sel = m.kunjungan.filter(x => x.checkout_at && String(x.outlet_id) === (u.searchParams.get('outlet_id') || '').replace('eq.', '')).slice(-1); return sel.map(x => ({ sales: x.items })) }
       return m.kunjungan.map(x => ({ outlet_id: x.outlet_id }))
@@ -91,6 +109,12 @@ function tabel(m: Mock, nama: string, u: URL) {
 // Pasang tiruan ke halaman. `masuk: true` menanam sesi login supaya tes tidak perlu mengetik User ID dan password.
 export async function pasang(page: Page, m: Mock, opsi: { masuk?: boolean } = { masuk: true }) {
   if (opsi.masuk !== false) await page.addInitScript(([s]) => { localStorage.setItem('taskpro-auth', JSON.stringify(s)); localStorage.setItem('taskpro-claimed', '1') }, [sesi(m)] as const)
+  await page.route('**/api/akun', async route => {
+    const req = route.request(); const body = JSON.parse(req.postData() || '{}'); m.akunPanggilan.push({ method: req.method(), body })
+    if (req.method() === 'PATCH') { const x = m.akunCabang.find(a => a.id === body.id); if (x && body.min_checkout_menit !== undefined) x.min_checkout_menit = body.min_checkout_menit as number; if (x && typeof body.gps_required === 'boolean') x.gps_required = body.gps_required }
+    return route.fulfill({ status: 200, contentType: 'application/json', body: '{}' })
+  })
+  await page.route('**/api/sesi', async route => { const b = JSON.parse(route.request().postData() || '{}'); m.sesiPanggilan.push(b); m.aktifIds = m.aktifIds.filter(x => x !== b.id); return route.fulfill({ status: 200, contentType: 'application/json', body: '{}' }) })
   await page.route(`${SB}/**`, async route => {
     const req = route.request(), u = new URL(req.url()), p = u.pathname
     if (req.method() === 'OPTIONS') return route.fulfill({ status: 204, headers: CORS })

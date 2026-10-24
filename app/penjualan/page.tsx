@@ -1,6 +1,8 @@
 'use client'
 import { useEffect, useState } from 'react'
 import Shell from '../../components/Shell'
+import PageHead from '../../components/PageHead'
+import Empty from '../../components/Empty'
 import Icon from '../../components/Icon'
 import { SkelRows } from '../../components/Loaders'
 import { supabase } from '../../lib/supabase'
@@ -10,6 +12,7 @@ import { friendly } from '../../lib/friendly'
 
 const SEL = 'id,checkin_at,checkout_at,effective,cabang(nama,tz),fl:profiles(user_id,nama),outlets(name,code),sales(id,qty,price,value,product_id)'
 const BATAS = 500   // jumlah kunjungan maksimal yang dimuat sekali (layar ini untuk mengoreksi, bukan laporan; laporan lengkap ada di menu Report)
+type BarisHapus = { id: string; outlets?: { name?: string } | null; fl?: { nama?: string } | null; sales: { qty: number; value: number | string }[] }
 type Baris = { key: string; product_id: string; qty: string; price: string }
 const lokal = (iso: string, tz: string) => new Date(iso).toLocaleString('sv-SE', { timeZone: tz }).replace(' ', 'T').slice(0, 16)   // untuk input datetime-local
 const keIso = (v: string, tz: string) => new Date(`${v}:00${OFFSET[tz] || '+07:00'}`).toISOString()
@@ -121,11 +124,25 @@ function Penjualan() {
   }, [])
   useEffect(() => { load() }, [from, to, cab, fl])
 
+  // Hapus semua penjualan satu kunjungan (khusus MDM). Kunjungannya tetap ada tanpa penjualan; alasan wajib dan tercatat di Jejak Audit.
+  async function hapusPenjualan(v: BarisHapus) {
+    const pcs = v.sales.reduce((a, s) => a + s.qty, 0), tot = v.sales.reduce((a, s) => a + Number(s.value), 0)
+    const x = await dlg.form({
+      title: 'Hapus penjualan ini?', tone: 'danger', okText: 'Hapus penjualan',
+      message: <>Semua penjualan pada kunjungan <b>{v.outlets?.name}</b> oleh <b>{v.fl?.nama}</b> ({v.sales.length} produk, {pcs} pcs, <b>{rp(tot)}</b>) akan dihapus. Kunjungannya tetap ada tanpa penjualan. Penghapusan tercatat di Jejak Audit.</>,
+      fields: [{ key: 'alasan', label: 'Alasan penghapusan', placeholder: 'mis. salah input, input ganda' }],
+      validate: f => (f.alasan.trim().length >= 3 ? null : 'Alasan wajib diisi (minimal 3 huruf).') })
+    if (!x) return
+    const { error } = await supabase.rpc('penjualan_hapus', { p_visit: v.id, p_alasan: x.alasan.trim() })
+    if (error) { await dlg.alert({ title: 'Gagal menghapus penjualan', message: friendly(error), tone: 'danger', icon: 'close' }); return }
+    await dlg.alert({ title: 'Penjualan dihapus', tone: 'ok', message: 'Tercatat di Jejak Audit: nilai lama dan alasan.' })
+    load()
+  }
   const t = q.trim().toLowerCase()
   const tampil = (rows || []).filter(v => !t || `${v.outlets?.name} ${v.outlets?.code} ${v.fl?.user_id} ${v.fl?.nama}`.toLowerCase().includes(t))
   const flOpsi = fls.filter(f => !cab || f.cabang_id === cab)
   return (<>
-    <div className="pagehead"><div><h2>Edit Penjualan</h2><p className="muted">Koreksi tanggal, produk, jumlah, dan harga pada kunjungan. Khusus MDM, wajib beralasan, dan tercatat di Jejak Audit.</p></div></div>
+    <PageHead title="Edit Penjualan" desc="Koreksi tanggal, produk, jumlah, dan harga pada kunjungan, atau hapus penjualannya. Khusus MDM, wajib beralasan, dan tercatat di Jejak Audit." />
     <div className="card"><div className="row" style={{ margin: 0 }}>
       <label className="fld"><span className="label">Dari tanggal</span><input type="date" value={from} onChange={e => e.target.value && setFrom(e.target.value)} /></label>
       <label className="fld"><span className="label">Sampai tanggal</span><input type="date" value={to} onChange={e => e.target.value && setTo(e.target.value)} /></label>
@@ -135,15 +152,18 @@ function Penjualan() {
     <div className="toolbar"><label className="searchbox"><Icon name="search" size={18} /><input placeholder="Cari outlet, kode outlet, atau frontliner…" aria-label="Cari" value={q} onChange={e => setQ(e.target.value)} /></label>
       {rows && <span className="muted">{tampil.length} kunjungan</span>}</div>
     {terpotong && <div className="notice warn" role="status">Hanya {BATAS} kunjungan terbaru yang dimuat, jadi sebagian data pada rentang ini belum tampil. Persempit tanggal, pilih cabang, atau pilih frontliner. Untuk data lengkap gunakan menu Report.</div>}
-    {rows === null ? <SkelRows n={5} /> : tampil.length === 0 ? <div className="card muted">Tidak ada kunjungan pada filter ini.</div> :
+    {rows === null ? <SkelRows n={5} /> : tampil.length === 0 ? <Empty icon="search" title="Tidak ada kunjungan pada filter ini">Ubah rentang tanggal, cabang, atau frontliner di atas.</Empty> :
       <div className="scroll"><table>
-        <thead><tr><th>Waktu check-in</th><th>Frontliner</th><th>Outlet</th><th>Penjualan</th><th>Total</th><th /></tr></thead>
+        <thead><tr><th>Waktu check-in</th><th>Frontliner</th><th>Outlet</th><th>Penjualan</th><th>Total</th><th><span className="sr-only">Aksi</span></th></tr></thead>
         <tbody>{tampil.map(v => {
           const pcs = v.sales.reduce((a: number, s: any) => a + s.qty, 0), tot = v.sales.reduce((a: number, s: any) => a + Number(s.value), 0)
-          return <tr key={v.id}><td>{dt(v.checkin_at, v.cabang?.tz)}</td><td>{v.fl?.user_id} · {v.fl?.nama}</td>
+          return <tr key={v.id}><td style={{ whiteSpace: 'nowrap' }}>{dt(v.checkin_at, v.cabang?.tz)}</td><td>{v.fl?.user_id} · {v.fl?.nama}</td>
             <td>{v.outlets?.name}<div className="muted" style={{ fontSize: 12 }}>{v.outlets?.code}</div></td>
-            <td>{v.sales.length ? `${v.sales.length} produk · ${pcs} pcs` : <span className="muted">tanpa penjualan</span>}</td><td>{rp(tot)}</td>
-            <td>{v.checkout_at ? <button className="ghost" onClick={() => setEdit(v)}><Icon name="edit" size={16} /> Edit</button> : <span className="chip warnchip" title="Frontliner belum check-out">Berjalan</span>}</td></tr>
+            <td style={{ whiteSpace: 'nowrap' }}>{v.sales.length ? `${v.sales.length} produk · ${pcs} pcs` : <span className="muted">tanpa penjualan</span>}</td><td style={{ whiteSpace: 'nowrap' }}>{rp(tot)}</td>
+            <td>{v.checkout_at
+              ? <div className="aksi"><button className="ghost small" onClick={() => setEdit(v)}><Icon name="edit" size={16} /> Edit</button>
+                  <button className="ghost danger small" disabled={!v.sales.length} title={v.sales.length ? 'Hapus semua penjualan kunjungan ini' : 'Kunjungan ini tidak punya penjualan'} aria-label={`Hapus penjualan ${v.outlets?.name}`} onClick={() => hapusPenjualan(v)}><Icon name="trash" size={16} /> Hapus</button></div>
+              : <span className="chip warnchip" title="Frontliner belum check-out">Berjalan</span>}</td></tr>
         })}</tbody></table></div>}
     {edit && <Editor v={edit} prods={prods} onClose={() => setEdit(null)} onSaved={() => { setEdit(null); load() }} />}
   </>)

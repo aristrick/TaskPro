@@ -6,6 +6,8 @@ import Icon from '../../components/Icon'
 import { supabase } from '../../lib/supabase'
 import { useDialog } from '../../components/Dialog'
 import { useUndo } from '../../components/UndoToast'
+import PageHead from '../../components/PageHead'
+import Empty from '../../components/Empty'
 import ProjectCard, { type Fl, type Prod, type Proj } from '../../components/project/ProjectCard'
 import { inisial } from '../../components/mds/AkunCard'
 
@@ -90,11 +92,10 @@ function Project() {
   }
 
   return (<>
-    <div className="pagehead">
-      <div><h2>Project</h2><p className="muted pgdesc">Kelompokkan frontliner ke dalam project dan tentukan produk fokusnya.</p></div>
+    <PageHead title="Project" desc="Kelompokkan frontliner ke dalam project dan tentukan produk fokusnya.">
       {cabang.length > 1 && <label className="fld-inline cabpick"><span className="label">Cabang</span>
         <select value={cid} onChange={e => setCid(e.target.value)}>{cabang.map(c => <option key={c.id} value={c.id}>{c.kode} {c.nama}</option>)}</select></label>}
-    </div>
+    </PageHead>
     <details className="infobox">
       <summary>Bagaimana project bekerja?</summary>
       <ul>
@@ -113,7 +114,7 @@ function Project() {
     </section>
 
     {!ready && <SkelRows n={3} />}
-    {ready && cid && inCab.length === 0 && <div className="empty"><Icon name="folder" size={28} /><b>Belum ada project di cabang ini</b><p>Buat project pertama di atas, lalu masukkan frontliner dan pilih produk fokusnya.</p></div>}
+    {ready && cid && inCab.length === 0 && <Empty icon="folder" title="Belum ada project di cabang ini">Buat project pertama di atas, lalu masukkan frontliner dan pilih produk fokusnya.</Empty>}
     {inCab.map(p => {
       const mem = flCab.filter(f => f.project_id === p.id), other = flCab.filter(f => f.project_id !== p.id)
       const fo = focus.filter(x => x.project_id === p.id).map(x => x.product_id)

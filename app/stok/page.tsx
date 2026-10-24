@@ -1,6 +1,8 @@
 'use client'
 import { useEffect, useState } from 'react'
 import Shell from '../../components/Shell'
+import PageHead from '../../components/PageHead'
+import Empty from '../../components/Empty'
 import Icon from '../../components/Icon'
 import { SkelRows } from '../../components/Loaders'
 import { supabase } from '../../lib/supabase'
@@ -49,13 +51,13 @@ function Stok() {
   const per = (id: string) => rows.filter(r => r.frontliner_id === id).sort((a, b) => (prods[a.product_id]?.product || '').localeCompare(prods[b.product_id]?.product || ''))
   const belum = daftar.filter(f => per(f.id).length === 0)
   return (<>
-    <h2>Stok Pembawaan</h2>
+    <PageHead title="Stok Pembawaan" desc="Stok yang dibawa frontliner tiap hari. Penjualan tidak bisa melebihi stok ini." />
     <div className="card"><div className="row" style={{ margin: 0 }}>
       <label className="fld"><span className="label">Tanggal</span><input type="date" value={tgl} onChange={e => e.target.value && setTgl(e.target.value)} /></label>
       {cabs.length > 1 && <label className="fld"><span className="label">Cabang</span><select value={cab} onChange={e => setCab(e.target.value)}><option value="">Semua cabang</option>{cabs.map(c => <option key={c.id} value={c.id}>{c.kode} · {c.nama}</option>)}</select></label>}
       {!loading && <span className={belum.length ? 'chip warnchip' : 'chip'}>{belum.length ? `${belum.length} frontliner belum mengisi stok` : 'Semua frontliner sudah mengisi stok'}</span>}
     </div></div>
-    {loading ? <SkelRows n={4} /> : daftar.length === 0 ? <div className="card muted">Belum ada frontliner di cabang ini.</div> : daftar.map(f => {
+    {loading ? <SkelRows n={4} /> : daftar.length === 0 ? <Empty icon="users" title="Belum ada frontliner di cabang ini">Tambahkan frontliner di menu Frontliner.</Empty> : daftar.map(f => {
       const rs = per(f.id), t = rs.reduce((a, r) => ({ d: a.d + r.dibawa, t: a.t + r.terjual }), { d: 0, t: 0 })
       return (
         <div className="card" key={f.id}>

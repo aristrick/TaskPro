@@ -99,3 +99,9 @@ O9 waktu kirim 6 menit setelah check-in diterima dan dicatat apa adanya: true
 O10 tanpa penjualan, effective false: true
 O13 kunjungan masih terbuka setelah penolakan: true
 O15 cadangan checkout() biasa berhasil: true
+S1 sebelum hapus: baris=2, effective=true
+S6 penolakan tidak mengubah data: baris=2
+S7 semua baris penjualan terhapus: baris=0, effective=false
+S8 kunjungan tetap ada dengan jam check-in dan check-out utuh: true
+S9 audit HAPUS_PENJUALAN: salah input jumlah | 2 baris, total 8000 | frontliner 0300-TMTB01
+S13 jumlah catatan audit HAPUS_PENJUALAN: 1

@@ -1,6 +1,6 @@
 # TaskPro
 ## Instalasi baru
-1. Supabase → SQL Editor: jalankan `database.sql` (sudah memuat migrasi 01–15), lalu `16_migration.sql`. Tabel lengkap dan cara mengecek versi: `docs/VERSI-DATABASE.md`.
+1. Supabase → SQL Editor: jalankan `database.sql` (sudah memuat migrasi 01–15), lalu `16_migration.sql` dan `17_migration.sql`. Tabel lengkap dan cara mengecek versi: `docs/VERSI-DATABASE.md`.
 2. Authentication → Users → Add user `mdm01@taskpro.app` (Auto Confirm), lalu jalankan `seed_mdm.sql`.
 3. `.env.example` → `.env.local`, isi 3 nilai (Project Settings → API). Jangan di-commit.
 4. `npm install` → `npm run dev`. Login `MDM01`.
@@ -60,6 +60,11 @@ Aturan dijaga di database. Di HP, tombol Check-out menampilkan hitung mundur sam
 ## Migrasi 15 (jalankan `15_migration.sql` sekali): performa untuk 45+ frontliner
 Kebijakan akses dibungkus agar dihitung sekali per query (Home, Report, Stok, dan daftar jauh lebih cepat) dan tab Rekap di HP mengirim data ±10x lebih kecil.
 Aplikasi tetap berjalan tanpa migrasi ini (otomatis memakai cara lama), hanya lebih lambat dan lebih boros kuota. Angka ukur: `docs/KAPASITAS.md`.
+
+## Keamanan sesi dan fitur admin
+- **Keluar otomatis:** akun MDS, RMDM, dan MDM yang tidak beraktivitas (klik, ketik, gulir, sentuh) selama 30 menit keluar otomatis. Satu menit sebelumnya muncul peringatan dengan hitung mundur dan tombol "Tetap masuk". Setelah keluar, halaman login menjelaskan alasannya. Waktu aktivitas disimpan di perangkat (dibagi antar tab), jadi sesi yang dibuka lagi setelah lama langsung diminta login. Frontliner, TL, dan Kormot tidak terkena. Batasnya ada di `lib/inaktif.ts` (`BATAS_MENIT`).
+- **Hapus penjualan (khusus MDM):** menu Edit Penjualan, tombol Hapus pada baris kunjungan. Butuh migrasi 17. Alasan wajib dan tercatat di Jejak Audit.
+- **Batas minimal check-out:** diubah dari menu Frontliner lewat dialog (pilih menit, lihat ringkasan, Simpan) dan ada tombol Urungkan. Nilai 0 sampai 120 menit.
 
 ## Mode sinyal lemah (layar frontliner)
 Aplikasi tetap bisa dibuka tanpa sinyal setelah pernah dibuka online sekali, dan check-out yang gagal karena jaringan disimpan di HP lalu dikirim otomatis. Check-in tetap butuh internet. Penjelasan, batasan, dan cara mengujinya: `docs/SINYAL-LEMAH.md`. Butuh migrasi 16 agar jam check-out tercatat tepat (tanpa 16 tetap berjalan).

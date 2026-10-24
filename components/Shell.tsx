@@ -7,6 +7,8 @@ import { loadMe, cachedMe } from '../lib/auth'
 import { logout, keluarLokal, useHeartbeat } from '../lib/sesi'
 import { useDialog } from './Dialog'
 import Icon from './Icon'
+import InaktifGuard from './InaktifGuard'
+import { KUNCI_INFO, perluInaktif } from '../lib/inaktif'
 
 const ALL = ['mds', 'mdm', 'rmdm', 'tl', 'kormot'], ADM = ['mds', 'mdm', 'rmdm']
 type Item = [string, string, string[], string]
@@ -37,6 +39,11 @@ export default function Shell({ roles, children }: { roles: string[]; children: 
     await dlg.alert({ title: 'Sesi berakhir', icon: 'logout', message: 'Akun Anda dikeluarkan karena sesinya diakhiri oleh admin atau login di perangkat lain.' })
     await keluarLokal(); router.replace('/login')
   })
+  // Akun admin yang tidak beraktivitas 30 menit keluar otomatis; halaman login menjelaskan alasannya.
+  async function habisInaktif() {
+    try { localStorage.setItem(KUNCI_INFO, 'inaktif') } catch { /* abaikan */ }
+    await logout(); router.replace('/login')
+  }
   async function keluar() {
     const ya = await dlg.confirm({ title: 'Keluar dari akun?', icon: 'logout', tone: 'danger', okText: 'Log out', message: 'Anda perlu login lagi untuk memakai TaskPro di perangkat ini.' })
     if (!ya) return
@@ -51,6 +58,7 @@ export default function Shell({ roles, children }: { roles: string[]; children: 
   const link = ([h, t, , ic]: Item) => <Link key={h} href={h} className={on(h) ? 'active' : ''} aria-current={on(h) ? 'page' : undefined}><Icon name={ic} size={20} />{t}</Link>
   return (
     <div className="shell">
+      {perluInaktif(me.role) && <InaktifGuard onHabis={habisInaktif} />}
       <nav>
         <h1>TaskPro</h1>
         {MAIN.filter(x => x[2].includes(me.role)).map(link)}

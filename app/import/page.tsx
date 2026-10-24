@@ -1,6 +1,7 @@
 'use client'
 import { useEffect, useState } from 'react'
 import Shell from '../../components/Shell'
+import PageHead from '../../components/PageHead'
 import { supabase } from '../../lib/supabase'
 import { parseDmp } from '../../lib/dmp'
 
@@ -45,7 +46,7 @@ function Import() {
   }
 
   return (<>
-    <h2>Import DMP</h2>
+    <PageHead title="Import DMP" desc="Unggah file DMP (.xlsx). Outlet baru, duplikat, dan baris yang ditolak ditampilkan dulu sebelum disimpan." />
     <div className="row">
       <select value={cid} onChange={e => { setCid(e.target.value); setRes(null) }}>
         <option value="">Pilih cabang…</option>{cabang.map(c => <option key={c.id} value={c.id}>{c.kode} {c.nama}</option>)}

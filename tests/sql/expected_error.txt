@@ -1,5 +1,6 @@
 Ada N kunjungan yang masih berjalan di outlet ini. Minta frontliner check-out dulu.
 Alasan koreksi wajib diisi.
+Alasan penghapusan wajib diisi.
 Alasan perubahan wajib diisi.
 Anda tidak berwenang atas cabang ini.
 Anda tidak berwenang atas cabang ini.
@@ -13,11 +14,16 @@ Frontliner harus dari cabang yang sama dengan project.
 Hanya MDM.
 Hanya MDM.
 Hanya MDM.
+Hanya MDM.
+Hanya MDM.
 Hanya frontliner yang mengisi stok pembawaan.
 Jumlah (pcs) harus lebih dari N.
 Kode MD tujuan harus akun frontliner yang terdaftar.
+Kunjungan ini tidak punya penjualan.
+Kunjungan masih berjalan. Penjualan baru tersimpan saat check-out.
 Kunjungan tidak aktif.
 Kunjungan tidak aktif.
+Kunjungan tidak ditemukan.
 Pilih frontliner (Kode MD).
 Produk PN muncul dua kali. Gabungkan jumlahnya.
 Stok PN tidak cukup. Sisa N pcs, diminta N pcs.
@@ -44,6 +50,7 @@ permission denied for function cek_radius
 permission denied for function checkin
 permission denied for function checkout_tertunda
 permission denied for function kunjungan_edit
+permission denied for function penjualan_hapus
 permission denied for function project_set_member
 permission denied for function rekap_harian
 permission denied for function rekap_saya

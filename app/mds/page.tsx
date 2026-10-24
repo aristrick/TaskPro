@@ -4,6 +4,7 @@ import Shell from '../../components/Shell'
 import Icon from '../../components/Icon'
 import { useDialog } from '../../components/Dialog'
 import { useUndo } from '../../components/UndoToast'
+import PageHead from '../../components/PageHead'
 import { supabase } from '../../lib/supabase'
 import { loadMe } from '../../lib/auth'
 import { api } from '../../lib/api'
@@ -75,10 +76,9 @@ function Mds() {
   const tabs: [Filter, string][] = [['all', 'Semua'], ['rmdm', 'RMDM'], ['mds', 'MDS'], ...(role === 'mdm' ? [['mdm', 'MDM'] as [Filter, string]] : [])]
 
   return (<>
-    <div className="pagehead">
-      <div><h2>MDS &amp; RMDM</h2><p className="muted pgdesc">Kelola akun supervisor dan cabang yang mereka pegang.</p></div>
+    <PageHead title="MDS &amp; RMDM" desc="Kelola akun supervisor dan cabang yang mereka pegang.">
       <button onClick={() => setBuka(v => !v)} aria-expanded={buka} aria-controls="form-akun">{buka ? <><Icon name="close" size={16} /> Tutup form</> : <><Icon name="plus" size={18} /> Buat akun</>}</button>
-    </div>
+    </PageHead>
 
     {buka && <section className="card page" id="form-akun" aria-label="Buat akun baru">
       <div className="sech-in"><h3>Buat akun baru</h3>

@@ -1,6 +1,7 @@
 'use client'
 import { useEffect, useState } from 'react'
 import Shell from '../../components/Shell'
+import PageHead from '../../components/PageHead'
 import { supabase } from '../../lib/supabase'
 import Icon from '../../components/Icon'
 import { friendly } from '../../lib/friendly'
@@ -98,7 +99,7 @@ function Report() {
     setBusy(false)
   }
   return (<>
-    <h2>Report</h2>
+    <PageHead title="Report" desc="Unduh laporan kunjungan, penjualan, dan stok pembawaan ke Excel." />
     <div className="card">
       <div className="row">
         {multi && <label className="fld"><span className="label">Cabang</span>

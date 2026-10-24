@@ -6,6 +6,7 @@ import HapusMassalOutlet from '../../components/HapusMassalOutlet'
 import { loadMe } from '../../lib/auth'
 import Link from 'next/link'
 import Shell from '../../components/Shell'
+import PageHead from '../../components/PageHead'
 import { supabase } from '../../lib/supabase'
 import Icon from '../../components/Icon'
 import { useDialog } from '../../components/Dialog'
@@ -73,10 +74,10 @@ function Outlet() {
     const r = await hapusOutlet(dlg, o)
     if (r === 'deleted' || r === 'inactive') { if (ed?.id === o.id) setEd(null); load(); dlg.alert({ title: r === 'deleted' ? 'Outlet dihapus' : 'Outlet dinonaktifkan', tone: 'ok', message: <><b>{o.name}</b> {r === 'deleted' ? 'sudah dihapus.' : 'sekarang berstatus INAKTIF.'}</> }) }
   }
-  const f = (k: string, ph: string) => <input placeholder={ph} value={ed[k] ?? ''} onChange={e => setEd({ ...ed, [k]: e.target.value })} />
+  const f = (k: string, label: string) => <label className="fld" key={k}><span className="label">{label}</span><input value={ed[k] ?? ''} onChange={e => setEd({ ...ed, [k]: e.target.value })} /></label>
 
   return (<>
-    <div className="row"><h2 style={{ margin: 0 }}>Outlet</h2><div className="grow" />{mdm && <button className="ghost danger" onClick={() => setHapusMassal(p => !p)}><Icon name="trash" size={18} /> Hapus paksa outlet</button>}<button className="ghost" onClick={() => setPindah(p => !p)}><Icon name="store" size={18} /> Pindahkan outlet</button><button className="ghost" onClick={unduh}><Icon name="download" size={18} /> Download Excel</button><Link href="/import"><button>Import DMP</button></Link></div>
+    <PageHead title="Outlet" desc="Kelola outlet per cabang dan KODE MD: cari, ubah, pindahkan, unduh ke Excel, atau impor dari DMP.">{mdm && <button className="ghost danger" onClick={() => setHapusMassal(p => !p)}><Icon name="trash" size={18} /> Hapus paksa outlet</button>}<button className="ghost" onClick={() => setPindah(p => !p)}><Icon name="store" size={18} /> Pindahkan outlet</button><button className="ghost" onClick={unduh}><Icon name="download" size={18} /> Download Excel</button><Link href="/import"><button>Import DMP</button></Link></PageHead>
     {hapusMassal && <HapusMassalOutlet kmds={kmds} onDone={() => { load(); refreshKmds() }} />}
     {pindah && <PindahOutlet kmds={kmds} onDone={() => { load(); refreshKmds() }} />}
     <div className="row">
@@ -94,9 +95,9 @@ function Outlet() {
     </div>
     {ed && <div className="card">
       <b>Edit {ed.code}</b>{(ed.lat == null || ed.lat === '') && <span className="nolat-badge" style={{ marginLeft: 8 }}><Icon name="alert" size={14} /> Belum ada lokasi</span>}
-      <div className="row" style={{ marginTop: 8 }}>{f('name', 'Nama')}{f('address', 'Alamat')}{f('lat', 'Latitude')}{f('long', 'Longitude')}{f('rayon', 'Rayon (1–24)')}{f('kode_md', 'KODE MD')}
+      <div className="formgrid" style={{ marginTop: 8 }}>{f('name', 'Nama')}{f('address', 'Alamat')}{f('lat', 'Latitude')}{f('long', 'Longitude')}{f('rayon', 'Rayon (1–24)')}{f('kode_md', 'KODE MD')}
         {f('province_name', 'Provinsi')}{f('city_name', 'Kota')}{f('district', 'Kecamatan')}{f('village', 'Kelurahan')}{f('category', 'Category')}{f('account', 'Account')}{f('profile_outlet', 'Profile outlet')}
-        <select value={ed.status} onChange={e => setEd({ ...ed, status: e.target.value })}><option>AKTIF</option><option>INAKTIF</option></select></div>
+        <label className="fld"><span className="label">Status</span><select value={ed.status} onChange={e => setEd({ ...ed, status: e.target.value })}><option>AKTIF</option><option>INAKTIF</option></select></label></div>
       {err && <p className="err">{err}</p>}
       <div className="row"><button onClick={save}>Simpan</button><button className="ghost" onClick={() => { setEd(null); setErr('') }}>Batal</button><div className="grow" /><button className="ghost danger" onClick={() => hapus(ed)}><Icon name="trash" size={16} /> Hapus outlet</button></div>
     </div>}
@@ -105,7 +106,7 @@ function Outlet() {
       <thead><tr><th>Kode</th><th>Nama</th><th>Alamat</th><th>Rayon</th><th>KODE MD</th><th>Lat, Long</th><th>Status</th><th /></tr></thead>
       <tbody>{loading ? <tr><td colSpan={9}><SkelRows n={5} /></td></tr> : rows.map(r => <tr key={r.id} className={r.lat == null || r.long == null ? 'nolat-tr' : ''}><td>{r.code}</td><td>{r.name}</td><td>{r.address}</td><td>{r.rayon ? 'R' + String(r.rayon).padStart(2, '0') : '-'}</td>
         <td>{r.kode_md || '-'}</td><td>{r.lat == null || r.long == null ? <span className="nolat-badge"><Icon name="alert" size={14} /> Belum ada lokasi</span> : `${r.lat}, ${r.long}`}</td><td>{r.status}</td>
-        <td style={{ whiteSpace: 'nowrap' }}><button className="ghost" onClick={() => { setEd({ ...r }); setErr('') }}>Edit</button> <button className="ghost danger" aria-label={`Hapus ${r.name}`} onClick={() => hapus(r)}><Icon name="trash" size={16} /> Hapus</button></td></tr>)}</tbody>
+        <td><div className="aksi"><button className="ghost small" onClick={() => { setEd({ ...r }); setErr('') }}><Icon name="edit" size={16} /> Edit</button><button className="ghost danger small" aria-label={`Hapus ${r.name}`} onClick={() => hapus(r)}><Icon name="trash" size={16} /> Hapus</button></div></td></tr>)}</tbody>
     </table></div>
     <div className="row" style={{ marginTop: 12 }}>
       <button className="ghost" disabled={page === 0} onClick={() => setPage(page - 1)}>← Sebelumnya</button>
