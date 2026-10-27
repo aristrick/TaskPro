@@ -1,6 +1,7 @@
 'use client'
 import { useEffect, useState, type Dispatch, type ReactNode, type SetStateAction } from 'react'
 import Icon from '../Icon'
+import QtyInput from './QtyInput'
 import { SkelRows } from '../Loaders'
 import { rp } from '../../lib/rekap'
 import { buzz, mmss, sisaDetik } from '../../lib/hp'
@@ -15,6 +16,7 @@ export default function SellScreen({ visit, tz, anim, produk, siap, terakhir, fo
   const [pq, setPq] = useState('')
   const [pf, setPf] = useState<'all' | 'focus' | 'sel'>('all')
   const [confirmOut, setConfirmOut] = useState(false)
+  const [editId, setEditId] = useState<string | null>(null)   // produk yang jumlahnya sedang diketik: tetap tampil walau jumlahnya sementara 0
   const [, setTick] = useState(0)
   useEffect(() => { if (!minCo) return; const t = setInterval(() => setTick(x => x + 1), 1000); return () => clearInterval(t) }, [visit.id, minCo])
 
@@ -37,12 +39,11 @@ export default function SellScreen({ visit, tz, anim, produk, siap, terakhir, fo
       <div key={x.id} className={`prow ${n > 0 ? 'on' : ''}`} onClick={() => n === 0 && (!lim || s > 0) && ch(x.id, 1)}>
         <div><div className="pname2">{x.product}{fokus.has(x.id) && <span className="badge">FOKUS</span>}</div>
           <div className="pmeta">{[x.brand, rp(price)].filter(Boolean).join(' · ')}{lim && <span className={`stk ${s === 0 ? 'zero' : s <= 5 ? 'low' : ''}`}> · Sisa {s}</span>}</div></div>
-        {n === 0
+        {n === 0 && editId !== x.id
           ? <button className="addbtn" disabled={lim && s === 0} aria-label={`Tambah ${x.product}`} onClick={e => { e.stopPropagation(); ch(x.id, 1) }}><Icon name="plus" size={20} /></button>
           : <div className="stepper" onClick={e => e.stopPropagation()}>
               <button aria-label="Kurangi" onClick={() => ch(x.id, n - 1)}><Icon name="minus" size={18} /></button>
-              <input inputMode="numeric" aria-label={`Jumlah ${x.product}`} value={n} onFocus={e => e.target.select()}
-                onChange={e => { const v = e.target.value.replace(/\D/g, ''); ch(x.id, v === '' ? 1 : +v) }} />
+              <QtyInput nilai={n} maks={s} label={`Jumlah ${x.product}`} onUbah={v => ch(x.id, v)} onFokus={() => setEditId(x.id)} onSelesai={() => setEditId(null)} />
               <button aria-label="Tambah" disabled={lim && n >= s} onClick={() => ch(x.id, n + 1)}><Icon name="plus" size={18} /></button></div>}
         {n > 0 && <div className="psub"><span>{n} × {rp(price)}{lim && n >= s && <span className="stk zero"> · sesuai sisa stok</span>}</span><b key={n} className="pop">{rp(n * price)}</b></div>}
       </div>)

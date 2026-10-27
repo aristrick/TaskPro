@@ -1,6 +1,6 @@
 # TaskPro
 ## Instalasi baru
-1. Supabase → SQL Editor: jalankan `database.sql` (sudah memuat migrasi 01–15), lalu `16_migration.sql` dan `17_migration.sql`. Tabel lengkap dan cara mengecek versi: `docs/VERSI-DATABASE.md`.
+1. Supabase → SQL Editor: jalankan `database.sql` (sudah memuat migrasi 01–15), lalu `16_migration.sql`, `17_migration.sql`, dan `18_migration.sql`. Tabel lengkap dan cara mengecek versi: `docs/VERSI-DATABASE.md`.
 2. Authentication → Users → Add user `mdm01@taskpro.app` (Auto Confirm), lalu jalankan `seed_mdm.sql`.
 3. `.env.example` → `.env.local`, isi 3 nilai (Project Settings → API). Jangan di-commit.
 4. `npm install` → `npm run dev`. Login `MDM01`.
@@ -63,7 +63,8 @@ Aplikasi tetap berjalan tanpa migrasi ini (otomatis memakai cara lama), hanya le
 
 ## Keamanan sesi dan fitur admin
 - **Keluar otomatis:** akun MDS, RMDM, dan MDM yang tidak beraktivitas (klik, ketik, gulir, sentuh) selama 30 menit keluar otomatis. Satu menit sebelumnya muncul peringatan dengan hitung mundur dan tombol "Tetap masuk". Setelah keluar, halaman login menjelaskan alasannya. Waktu aktivitas disimpan di perangkat (dibagi antar tab), jadi sesi yang dibuka lagi setelah lama langsung diminta login. Frontliner, TL, dan Kormot tidak terkena. Batasnya ada di `lib/inaktif.ts` (`BATAS_MENIT`).
-- **Hapus penjualan (khusus MDM):** menu Edit Penjualan, tombol Hapus pada baris kunjungan. Butuh migrasi 17. Alasan wajib dan tercatat di Jejak Audit.
+- **Hapus (khusus MDM):** menu Edit Penjualan, tombol Hapus pada baris kunjungan, lalu pilih **penjualan saja** (kunjungan tetap ada, migrasi 17) atau **seluruh kunjungan** (kunjungan dan penjualannya hilang, termasuk yang masih berjalan, migrasi 18). Alasan wajib dan tercatat di Jejak Audit.
+- **Jumlah penjualan di HP** bisa diketik bebas ("20", "02", dikosongkan lalu ketik ulang); nilainya dirapikan saat kolom ditinggalkan dan dibatasi sisa stok.
 - **Batas minimal check-out:** diubah dari menu Frontliner lewat dialog (pilih menit, lihat ringkasan, Simpan) dan ada tombol Urungkan. Nilai 0 sampai 120 menit.
 
 ## Mode sinyal lemah (layar frontliner)
@@ -76,7 +77,10 @@ Aplikasi tetap bisa dibuka tanpa sinyal setelah pernah dibuka online sekali, dan
 | `npm run lint` | ESLint. Jumlah peringatan dibatasi (ratchet di `package.json`): boleh turun, tidak boleh naik |
 | `npm test` | Tes unit |
 | `npm run test:sql` | Tes aturan database (Postgres tertanam, tidak menyentuh Supabase Anda) |
-| `npm run test:e2e` | Aplikasi dijalankan di browser sungguhan dengan Supabase tiruan (`tests/e2e/mock.ts`). Pertama kali: `npx playwright install chromium` |
+| `npm run test:e2e` | Aplikasi dijalankan di browser sungguhan dengan Supabase tiruan (`tests/e2e/mock.ts`), termasuk pemeriksaan aksesibilitas otomatis (axe, WCAG A dan AA, nol pelanggaran). Pertama kali: `npx playwright install chromium` |
 
 ## Excel
 Impor dan ekspor memakai ExcelJS (`lib/excel.ts`), menggantikan paket `xlsx` yang punya kerentanan tanpa perbaikan di npm. File unggahan dibatasi 10 MB. `package.json` memuat `overrides` untuk `uuid` dan `postcss` agar `npm audit` bersih; jangan dihapus tanpa memeriksa ulang.
+
+## Logo dan animasi loading
+Logo dilacak dari berkas resmi `TaskPro_Logo.png` menjadi vektor (`lib/logo.ts`, jangan diedit tangan) dan dipakai lewat komponen `Logo` (`components/Logo.tsx`). Detail berkas, warna, dan cara mengganti logo: `docs/LOGO.md`.

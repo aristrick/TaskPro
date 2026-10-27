@@ -57,30 +57,64 @@ test.describe('Frontliner: batas check-out dan logout paksa', () => {
   })
 })
 
-test.describe('Edit Penjualan: hapus penjualan (khusus MDM)', () => {
-  test('MDM menghapus penjualan satu kunjungan dengan alasan; kunjungan tetap ada tanpa penjualan', async ({ page }) => {
+test.describe('Edit Penjualan: hapus penjualan atau seluruh kunjungan (khusus MDM)', () => {
+  const tombol = (page: import('@playwright/test').Page, outlet: string) => page.getByRole('button', { name: `Hapus kunjungan ${outlet}` })
+
+  test('hapus penjualan saja: pilih jenis, isi alasan; kunjungan tetap ada tanpa penjualan', async ({ page }) => {
     const m = buatMock({ role: 'mdm' }); await pasang(page, m); await page.goto('/penjualan')
     await expect(page.getByText('2 produk · 3 pcs')).toBeVisible(); await expect(page.getByText('tanpa penjualan')).toBeVisible()
-    await expect(page.getByRole('button', { name: 'Hapus penjualan Toko Berkah Jaya' })).toBeDisabled()          // tanpa penjualan: tidak ada yang dihapus
-    await page.getByRole('button', { name: 'Hapus penjualan Warung Sumber Rejeki' }).click()
-    const dlg = page.getByRole('dialog', { name: 'Hapus penjualan ini?' }); await expect(dlg).toContainText('2 produk, 3 pcs'); await expect(dlg).toContainText('Rp 41.500')
+    await tombol(page, 'Warung Sumber Rejeki').click()
+    const pilih = page.getByRole('dialog', { name: 'Apa yang ingin dihapus?' }); await expect(pilih).toContainText('2 produk, 3 pcs, Rp 41.500')
+    await pilih.getByRole('button', { name: /Hapus penjualan saja/ }).click()
+    const dlg = page.getByRole('dialog', { name: 'Hapus penjualan ini?' }); await expect(dlg).toContainText('Kunjungannya tetap ada tanpa penjualan')
     await dlg.getByRole('button', { name: 'Hapus penjualan' }).click(); await expect(dlg.getByRole('alert')).toHaveText('Alasan wajib diisi (minimal 3 huruf).'); expect(m.panggilan('penjualan_hapus')).toHaveLength(0)
     await dlg.getByRole('textbox').fill('salah input'); await dlg.getByRole('button', { name: 'Hapus penjualan' }).click()
     await expect.poll(() => m.panggilan('penjualan_hapus')[0]?.args).toEqual({ p_visit: 'v-1', p_alasan: 'salah input' })
     await expect(page.getByRole('dialog', { name: 'Penjualan dihapus' })).toBeVisible(); await page.getByRole('button', { name: 'Mengerti' }).click()
-    await expect(page.getByText('tanpa penjualan')).toHaveCount(2); await expect(page.getByText('Warung Sumber Rejeki')).toBeVisible()      // kunjungan masih tampil
+    await expect(page.getByText('tanpa penjualan')).toHaveCount(2); await expect(page.getByText('Warung Sumber Rejeki')).toBeVisible(); expect(m.panggilan('kunjungan_hapus')).toHaveLength(0)
+  })
+
+  test('hapus seluruh kunjungan: kunjungan beserta penjualannya hilang dari daftar', async ({ page }) => {
+    const m = buatMock({ role: 'mdm' }); await pasang(page, m); await page.goto('/penjualan')
+    await tombol(page, 'Warung Sumber Rejeki').click(); await page.getByRole('dialog', { name: 'Apa yang ingin dihapus?' }).getByRole('button', { name: /Hapus seluruh kunjungan/ }).click()
+    const dlg = page.getByRole('dialog', { name: 'Hapus seluruh kunjungan?' }); await expect(dlg).toContainText('beserta 2 produk penjualannya (Rp 41.500)'); await expect(dlg).toContainText('tercatat di Jejak Audit')
+    await dlg.getByRole('button', { name: 'Hapus kunjungan' }).click(); await expect(dlg.getByRole('alert')).toHaveText('Alasan wajib diisi (minimal 3 huruf).')
+    await dlg.getByRole('textbox').fill('check-in salah outlet'); await dlg.getByRole('button', { name: 'Hapus kunjungan' }).click()
+    await expect.poll(() => m.panggilan('kunjungan_hapus')[0]?.args).toEqual({ p_visit: 'v-1', p_alasan: 'check-in salah outlet' })
+    await expect(page.getByRole('dialog', { name: 'Kunjungan dihapus' })).toBeVisible(); await page.getByRole('button', { name: 'Mengerti' }).click()
+    await expect(page.getByText('Warung Sumber Rejeki')).toHaveCount(0); await expect(page.getByText('Toko Berkah Jaya')).toBeVisible(); expect(m.panggilan('penjualan_hapus')).toHaveLength(0)
+  })
+
+  test('kunjungan tanpa penjualan hanya menawarkan hapus seluruh kunjungan; Batal tidak menghapus apa pun', async ({ page }) => {
+    const m = buatMock({ role: 'mdm' }); await pasang(page, m); await page.goto('/penjualan')
+    await tombol(page, 'Toko Berkah Jaya').click(); const pilih = page.getByRole('dialog', { name: 'Apa yang ingin dihapus?' })
+    await expect(pilih).toContainText('tanpa penjualan'); await expect(pilih.getByRole('button', { name: /Hapus penjualan saja/ })).toHaveCount(0); await expect(pilih.getByRole('button', { name: /Hapus seluruh kunjungan/ })).toBeVisible()
+    await pilih.getByRole('button', { name: 'Batal' }).click(); await expect(pilih).toHaveCount(0)
+    expect(m.panggilan('penjualan_hapus')).toHaveLength(0); expect(m.panggilan('kunjungan_hapus')).toHaveLength(0)
+  })
+
+  test('kunjungan yang masih berjalan bisa dihapus (check-in salah outlet)', async ({ page }) => {
+    const m = buatMock({ role: 'mdm' })
+    m.visitAdmin.push({ id: 'v-3', checkin_at: new Date().toISOString(), checkout_at: null, effective: false, cabang: { nama: 'Pulogadung', tz: 'Asia/Jakarta' }, fl: { user_id: '0300-TMTB03', nama: 'Sari Wulandari' }, outlets: { name: 'Kios Salah Alamat', code: 'OUT-3' }, sales: [] })
+    await pasang(page, m); await page.goto('/penjualan'); await expect(page.getByText('Berjalan', { exact: true })).toBeVisible()
+    await tombol(page, 'Kios Salah Alamat').click(); const pilih = page.getByRole('dialog', { name: 'Apa yang ingin dihapus?' })
+    await expect(pilih).toContainText('frontliner bisa check-in lagi'); await pilih.getByRole('button', { name: /Hapus seluruh kunjungan/ }).click()
+    const dlg = page.getByRole('dialog', { name: 'Hapus seluruh kunjungan?' }); await dlg.getByRole('textbox').fill('kunjungan ganda'); await dlg.getByRole('button', { name: 'Hapus kunjungan' }).click()
+    await expect.poll(() => m.panggilan('kunjungan_hapus')[0]?.args).toEqual({ p_visit: 'v-3', p_alasan: 'kunjungan ganda' })
+    await page.getByRole('button', { name: 'Mengerti' }).click(); await expect(page.getByText('Kios Salah Alamat')).toHaveCount(0)
   })
 
   test('penolakan server ditampilkan apa adanya dan data tidak berubah', async ({ page }) => {
     const m = buatMock({ role: 'mdm' }); m.tolakHapus = 'Hanya MDM.'; await pasang(page, m); await page.goto('/penjualan')
-    await page.getByRole('button', { name: 'Hapus penjualan Warung Sumber Rejeki' }).click(); const dl = page.getByRole('dialog', { name: 'Hapus penjualan ini?' }); await dl.getByRole('textbox').fill('uji penolakan'); await dl.getByRole('button', { name: 'Hapus penjualan' }).click()
-    await expect(page.getByRole('dialog', { name: 'Gagal menghapus penjualan' })).toContainText('Hanya MDM.'); await page.getByRole('button', { name: 'Mengerti' }).click()
-    await expect(page.getByText('2 produk · 3 pcs')).toBeVisible()
+    await tombol(page, 'Warung Sumber Rejeki').click(); await page.getByRole('dialog', { name: 'Apa yang ingin dihapus?' }).getByRole('button', { name: /Hapus seluruh kunjungan/ }).click()
+    const dl = page.getByRole('dialog', { name: 'Hapus seluruh kunjungan?' }); await dl.getByRole('textbox').fill('uji penolakan'); await dl.getByRole('button', { name: 'Hapus kunjungan' }).click()
+    await expect(page.getByRole('dialog', { name: 'Gagal menghapus kunjungan' })).toContainText('Hanya MDM.'); await page.getByRole('button', { name: 'Mengerti' }).click()
+    await expect(page.getByText('Warung Sumber Rejeki')).toBeVisible()
   })
 
   test('halaman ini tidak tersedia untuk RMDM', async ({ page }) => {
     const m = buatMock({ role: 'rmdm' }); await pasang(page, m); await page.goto('/penjualan')
-    await expect(page.getByText('Halaman ini tidak tersedia untuk role rmdm.')).toBeVisible(); await expect(page.getByRole('button', { name: /Hapus penjualan/ })).toHaveCount(0)
+    await expect(page.getByText('Halaman ini tidak tersedia untuk role rmdm.')).toBeVisible(); await expect(page.getByRole('button', { name: /Hapus kunjungan/ })).toHaveCount(0)
   })
 })
 

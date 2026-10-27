@@ -6,13 +6,13 @@ import Empty from '../../components/Empty'
 import Icon from '../../components/Icon'
 import { SkelRows } from '../../components/Loaders'
 import { supabase } from '../../lib/supabase'
-import { useDialog } from '../../components/Dialog'
+import { useDialog, type OpsiPilih } from '../../components/Dialog'
 import { day, dt, rp, OFFSET } from '../../lib/rekap'
 import { friendly } from '../../lib/friendly'
 
 const SEL = 'id,checkin_at,checkout_at,effective,cabang(nama,tz),fl:profiles(user_id,nama),outlets(name,code),sales(id,qty,price,value,product_id)'
 const BATAS = 500   // jumlah kunjungan maksimal yang dimuat sekali (layar ini untuk mengoreksi, bukan laporan; laporan lengkap ada di menu Report)
-type BarisHapus = { id: string; outlets?: { name?: string } | null; fl?: { nama?: string } | null; sales: { qty: number; value: number | string }[] }
+type BarisHapus = { id: string; checkout_at?: string | null; outlets?: { name?: string } | null; fl?: { nama?: string } | null; sales: { qty: number; value: number | string }[] }
 type Baris = { key: string; product_id: string; qty: string; price: string }
 const lokal = (iso: string, tz: string) => new Date(iso).toLocaleString('sv-SE', { timeZone: tz }).replace(' ', 'T').slice(0, 16)   // untuk input datetime-local
 const keIso = (v: string, tz: string) => new Date(`${v}:00${OFFSET[tz] || '+07:00'}`).toISOString()
@@ -124,25 +124,35 @@ function Penjualan() {
   }, [])
   useEffect(() => { load() }, [from, to, cab, fl])
 
-  // Hapus semua penjualan satu kunjungan (khusus MDM). Kunjungannya tetap ada tanpa penjualan; alasan wajib dan tercatat di Jejak Audit.
-  async function hapusPenjualan(v: BarisHapus) {
-    const pcs = v.sales.reduce((a, s) => a + s.qty, 0), tot = v.sales.reduce((a, s) => a + Number(s.value), 0)
+  // Hapus (khusus MDM): pilih dulu apa yang dihapus, lalu isi alasan. Alasan wajib dan tercatat di Jejak Audit bersama nilai lamanya.
+  //  * penjualan saja: kunjungan tetap ada tanpa penjualan (jam check-in dan check-out utuh)  -> penjualan_hapus (migrasi 17)
+  //  * seluruh kunjungan: kunjungan beserta penjualannya hilang, termasuk yang masih berjalan -> kunjungan_hapus (migrasi 18)
+  async function hapus(v: BarisHapus) {
+    const pcs = v.sales.reduce((a, s) => a + s.qty, 0), tot = v.sales.reduce((a, s) => a + Number(s.value), 0), berjalan = !v.checkout_at
+    const opsi: OpsiPilih[] = []
+    if (v.sales.length) opsi.push({ value: 'penjualan', label: 'Hapus penjualan saja', desc: 'Kunjungan tetap ada tanpa penjualan. Jam check-in dan check-out tidak berubah.' })
+    opsi.push({ value: 'kunjungan', label: 'Hapus seluruh kunjungan', tone: 'danger', desc: berjalan ? 'Kunjungan yang masih berjalan dihapus, dan frontliner bisa check-in lagi.' : 'Check-in, check-out, dan semua penjualannya dihapus.' })
+    const jenis = await dlg.pilih({ title: 'Apa yang ingin dihapus?', icon: 'trash', tone: 'danger', message: <>Kunjungan <b>{v.outlets?.name}</b> oleh <b>{v.fl?.nama}</b>{v.sales.length ? <> ({v.sales.length} produk, {pcs} pcs, {rp(tot)})</> : <> (tanpa penjualan)</>}.</>, opsi })
+    if (!jenis) return
+    const semua = jenis === 'kunjungan'
     const x = await dlg.form({
-      title: 'Hapus penjualan ini?', tone: 'danger', okText: 'Hapus penjualan',
-      message: <>Semua penjualan pada kunjungan <b>{v.outlets?.name}</b> oleh <b>{v.fl?.nama}</b> ({v.sales.length} produk, {pcs} pcs, <b>{rp(tot)}</b>) akan dihapus. Kunjungannya tetap ada tanpa penjualan. Penghapusan tercatat di Jejak Audit.</>,
-      fields: [{ key: 'alasan', label: 'Alasan penghapusan', placeholder: 'mis. salah input, input ganda' }],
+      title: semua ? 'Hapus seluruh kunjungan?' : 'Hapus penjualan ini?', tone: 'danger', okText: semua ? 'Hapus kunjungan' : 'Hapus penjualan',
+      message: semua
+        ? <>Kunjungan <b>{v.outlets?.name}</b> oleh <b>{v.fl?.nama}</b>{v.sales.length ? <> beserta {v.sales.length} produk penjualannya ({rp(tot)})</> : null} akan dihapus. Ini tidak bisa dibatalkan, tetapi tercatat di Jejak Audit.</>
+        : <>Semua penjualan pada kunjungan <b>{v.outlets?.name}</b> oleh <b>{v.fl?.nama}</b> ({v.sales.length} produk, {pcs} pcs, <b>{rp(tot)}</b>) akan dihapus. Kunjungannya tetap ada tanpa penjualan. Penghapusan tercatat di Jejak Audit.</>,
+      fields: [{ key: 'alasan', label: 'Alasan penghapusan', placeholder: semua ? 'mis. check-in salah outlet, kunjungan ganda' : 'mis. salah input, input ganda' }],
       validate: f => (f.alasan.trim().length >= 3 ? null : 'Alasan wajib diisi (minimal 3 huruf).') })
     if (!x) return
-    const { error } = await supabase.rpc('penjualan_hapus', { p_visit: v.id, p_alasan: x.alasan.trim() })
-    if (error) { await dlg.alert({ title: 'Gagal menghapus penjualan', message: friendly(error), tone: 'danger', icon: 'close' }); return }
-    await dlg.alert({ title: 'Penjualan dihapus', tone: 'ok', message: 'Tercatat di Jejak Audit: nilai lama dan alasan.' })
+    const { error } = await supabase.rpc(semua ? 'kunjungan_hapus' : 'penjualan_hapus', { p_visit: v.id, p_alasan: x.alasan.trim() })
+    if (error) { await dlg.alert({ title: semua ? 'Gagal menghapus kunjungan' : 'Gagal menghapus penjualan', message: friendly(error), tone: 'danger', icon: 'close' }); return }
+    await dlg.alert({ title: semua ? 'Kunjungan dihapus' : 'Penjualan dihapus', tone: 'ok', message: 'Tercatat di Jejak Audit: nilai lama dan alasan.' })
     load()
   }
   const t = q.trim().toLowerCase()
   const tampil = (rows || []).filter(v => !t || `${v.outlets?.name} ${v.outlets?.code} ${v.fl?.user_id} ${v.fl?.nama}`.toLowerCase().includes(t))
   const flOpsi = fls.filter(f => !cab || f.cabang_id === cab)
   return (<>
-    <PageHead title="Edit Penjualan" desc="Koreksi tanggal, produk, jumlah, dan harga pada kunjungan, atau hapus penjualannya. Khusus MDM, wajib beralasan, dan tercatat di Jejak Audit." />
+    <PageHead title="Edit Penjualan" desc="Koreksi tanggal, produk, jumlah, dan harga pada kunjungan, atau hapus penjualan maupun seluruh kunjungannya. Khusus MDM, wajib beralasan, dan tercatat di Jejak Audit." />
     <div className="card"><div className="row" style={{ margin: 0 }}>
       <label className="fld"><span className="label">Dari tanggal</span><input type="date" value={from} onChange={e => e.target.value && setFrom(e.target.value)} /></label>
       <label className="fld"><span className="label">Sampai tanggal</span><input type="date" value={to} onChange={e => e.target.value && setTo(e.target.value)} /></label>
@@ -160,10 +170,9 @@ function Penjualan() {
           return <tr key={v.id}><td style={{ whiteSpace: 'nowrap' }}>{dt(v.checkin_at, v.cabang?.tz)}</td><td>{v.fl?.user_id} · {v.fl?.nama}</td>
             <td>{v.outlets?.name}<div className="muted" style={{ fontSize: 12 }}>{v.outlets?.code}</div></td>
             <td style={{ whiteSpace: 'nowrap' }}>{v.sales.length ? `${v.sales.length} produk · ${pcs} pcs` : <span className="muted">tanpa penjualan</span>}</td><td style={{ whiteSpace: 'nowrap' }}>{rp(tot)}</td>
-            <td>{v.checkout_at
-              ? <div className="aksi"><button className="ghost small" onClick={() => setEdit(v)}><Icon name="edit" size={16} /> Edit</button>
-                  <button className="ghost danger small" disabled={!v.sales.length} title={v.sales.length ? 'Hapus semua penjualan kunjungan ini' : 'Kunjungan ini tidak punya penjualan'} aria-label={`Hapus penjualan ${v.outlets?.name}`} onClick={() => hapusPenjualan(v)}><Icon name="trash" size={16} /> Hapus</button></div>
-              : <span className="chip warnchip" title="Frontliner belum check-out">Berjalan</span>}</td></tr>
+            <td><div className="aksi">
+              {v.checkout_at ? <button className="ghost small" onClick={() => setEdit(v)}><Icon name="edit" size={16} /> Edit</button> : <span className="chip warnchip" title="Frontliner belum check-out">Berjalan</span>}
+              <button className="ghost danger small" aria-label={`Hapus kunjungan ${v.outlets?.name}`} onClick={() => hapus(v)}><Icon name="trash" size={16} /> Hapus</button></div></td></tr>
         })}</tbody></table></div>}
     {edit && <Editor v={edit} prods={prods} onClose={() => setEdit(null)} onSaved={() => { setEdit(null); load() }} />}
   </>)

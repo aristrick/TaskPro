@@ -7,12 +7,14 @@ import Icon from './Icon'
 type Tone = 'default' | 'danger' | 'ok'
 type Base = { title: string; message?: React.ReactNode; icon?: string; tone?: Tone; okText?: string; cancelText?: string }
 export type Field = { key: string; label: string; value?: string; placeholder?: string; inputMode?: 'text' | 'numeric' | 'decimal' | 'tel'; pilihan?: { value: string; label: string }[] }   // pilihan = tombol isian cepat di bawah kolom
+export type OpsiPilih = { value: string; label: string; desc?: string; tone?: Tone }   // satu tombol besar dengan penjelasan di bawahnya
 type FormExtra = { fields: Field[]; validate?: (v: Record<string, string>) => string | null; message?: React.ReactNode | ((v: Record<string, string>) => React.ReactNode) }
-type Item = Omit<Base, 'message'> & { message?: React.ReactNode | ((v: Record<string, string>) => React.ReactNode); kind: 'confirm' | 'alert' | 'form'; fields?: Field[]; validate?: FormExtra['validate']; resolve: (v: any) => void }
+type Item = Omit<Base, 'message'> & { message?: React.ReactNode | ((v: Record<string, string>) => React.ReactNode); kind: 'confirm' | 'alert' | 'form' | 'pilih'; opsi?: OpsiPilih[]; fields?: Field[]; validate?: FormExtra['validate']; resolve: (v: any) => void }
 type Api = {
   confirm: (o: Base) => Promise<boolean>
   alert: (o: Base) => Promise<void>
   form: (o: Omit<Base, 'message'> & FormExtra) => Promise<Record<string, string> | null>
+  pilih: (o: Base & { opsi: OpsiPilih[] }) => Promise<string | null>   // memilih salah satu dari beberapa tindakan; Batal mengembalikan null
 }
 const Ctx = createContext<Api | null>(null)
 export const useDialog = () => { const c = useContext(Ctx); if (!c) throw new Error('DialogProvider belum dipasang'); return c }
@@ -25,6 +27,7 @@ export default function DialogProvider({ children }: { children: React.ReactNode
     confirm: o => push({ ...o, kind: 'confirm' }),
     alert: o => push({ ...o, kind: 'alert' }),
     form: o => push({ ...o, kind: 'form' }),
+    pilih: o => push({ ...o, kind: 'pilih' }),
   }).current
   const cur = queue[0]
   const done = (v: any) => {
@@ -42,7 +45,7 @@ function Sheet({ item, leaving, done }: { item: Item; leaving: boolean; done: (v
   const back = useRef<Element | null>(null)
   const tone = item.tone || 'default'
   const icon = item.icon || (tone === 'danger' ? 'trash' : tone === 'ok' ? 'check' : item.kind === 'alert' ? 'info' : 'info')
-  const cancel = () => done(item.kind === 'confirm' ? false : item.kind === 'form' ? null : undefined)
+  const cancel = () => done(item.kind === 'confirm' ? false : item.kind === 'form' || item.kind === 'pilih' ? null : undefined)
   const ok = () => {
     if (item.kind === 'form') { const e = item.validate?.(vals); if (e) return setGalat(e) }   // isian tidak valid: dialog tetap terbuka dengan penjelasan
     done(item.kind === 'confirm' ? true : item.kind === 'form' ? vals : undefined)
@@ -76,9 +79,10 @@ function Sheet({ item, leaving, done }: { item: Item; leaving: boolean; done: (v
           {f.pilihan && <div className="pilih" role="group" aria-label={`Pilihan cepat ${f.label}`}>{f.pilihan.map(p => <button type="button" key={p.value} className={`pill-opt ${vals[f.key] === p.value ? 'on' : ''}`} aria-pressed={vals[f.key] === p.value}
             onClick={() => { setGalat(''); setVals(v => ({ ...v, [f.key]: p.value })) }}>{p.label}</button>)}</div>}</div>)}
         {galat && <p className="err" role="alert" style={{ margin: '0 0 12px' }}>{galat}</p>}
+        {item.kind === 'pilih' && <div className="opsi-list">{(item.opsi || []).map(o => <button type="button" key={o.value} className={`opsi ${o.tone === 'danger' ? 'danger' : ''}`} onClick={() => done(o.value)}><b>{o.label}</b>{o.desc && <small>{o.desc}</small>}</button>)}</div>}
         <div className="dbtns">
           {item.kind !== 'alert' && <button className="ghost" onClick={cancel}>{item.cancelText || 'Batal'}</button>}
-          <button className={`primary ${tone === 'danger' ? 'dangerfill' : ''}`} onClick={ok}>{item.okText || (item.kind === 'alert' ? 'Mengerti' : item.kind === 'form' ? 'Simpan' : 'OK')}</button>
+          {item.kind !== 'pilih' && <button className={`primary ${tone === 'danger' ? 'dangerfill' : ''}`} onClick={ok}>{item.okText || (item.kind === 'alert' ? 'Mengerti' : item.kind === 'form' ? 'Simpan' : 'OK')}</button>}
         </div>
       </div>
     </div>)

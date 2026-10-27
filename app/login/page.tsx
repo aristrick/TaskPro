@@ -1,11 +1,11 @@
 'use client'
 import { useEffect, useState } from 'react'
-import Icon from '../../components/Icon'
 import { PageLoader } from '../../components/Loaders'
 import { useRouter } from 'next/navigation'
 import { supabase, toEmail } from '../../lib/supabase'
 import { klaim } from '../../lib/sesi'
 import { clearMe } from '../../lib/auth'
+import { Logo } from '../../components/Logo'
 import { BATAS_MENIT, KUNCI_AKTIF, KUNCI_INFO } from '../../lib/inaktif'
 
 export default function Login() {
@@ -32,8 +32,7 @@ export default function Login() {
   return (
     <div className="login-bg">
       <div className="login">
-        <div className="logo" aria-hidden="true"><Icon name="check" size={30} /></div>
-        <h1>TaskPro</h1>
+        <h1><Logo /></h1>
         <p className="sub muted">Masuk ke akun Anda</p>
         <label className="fld"><span className="label">User ID</span>
           <input value={userId} autoComplete="username" autoCapitalize="none" autoCorrect="off" onChange={e => setUserId(e.target.value)} /></label>

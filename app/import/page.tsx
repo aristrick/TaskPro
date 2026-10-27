@@ -48,10 +48,10 @@ function Import() {
   return (<>
     <PageHead title="Import DMP" desc="Unggah file DMP (.xlsx). Outlet baru, duplikat, dan baris yang ditolak ditampilkan dulu sebelum disimpan." />
     <div className="row">
-      <select value={cid} onChange={e => { setCid(e.target.value); setRes(null) }}>
+      <select aria-label="Cabang tujuan impor" value={cid} onChange={e => { setCid(e.target.value); setRes(null) }}>
         <option value="">Pilih cabang…</option>{cabang.map(c => <option key={c.id} value={c.id}>{c.kode} {c.nama}</option>)}
       </select>
-      <input type="file" accept=".xlsx" disabled={!cid} onChange={e => e.target.files?.[0] && pick(e.target.files[0])} />
+      <input type="file" aria-label="File DMP (.xlsx)" accept=".xlsx" disabled={!cid} onChange={e => e.target.files?.[0] && pick(e.target.files[0])} />
     </div>
     {msg && <p className={msg.startsWith('Selesai') || msg.endsWith('…') ? 'muted' : 'err'}>{msg}</p>}
     {res && <div className="card">

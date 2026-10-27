@@ -81,13 +81,13 @@ function Outlet() {
     {hapusMassal && <HapusMassalOutlet kmds={kmds} onDone={() => { load(); refreshKmds() }} />}
     {pindah && <PindahOutlet kmds={kmds} onDone={() => { load(); refreshKmds() }} />}
     <div className="row">
-      <select value={cid} onChange={e => { setCid(e.target.value); setPage(0) }}>
+      <select aria-label="Filter cabang" value={cid} onChange={e => { setCid(e.target.value); setPage(0) }}>
         <option value="">Semua cabang</option>{cabang.map(c => <option key={c.id} value={c.id}>{c.kode} {c.nama}</option>)}
       </select>
-      <select value={rayon} onChange={e => { setRayon(e.target.value); setPage(0) }}>
+      <select aria-label="Filter rayon" value={rayon} onChange={e => { setRayon(e.target.value); setPage(0) }}>
         <option value="">Semua rayon</option>{Array.from({ length: 24 }, (_, i) => <option key={i} value={i + 1}>R{String(i + 1).padStart(2, '0')}</option>)}
       </select>
-      <select value={kmd} onChange={e => { setKmd(e.target.value); setPage(0) }}>
+      <select aria-label="Filter Kode MD" value={kmd} onChange={e => { setKmd(e.target.value); setPage(0) }}>
         <option value="">Semua Kode MD</option>{kmds.map(k => <option key={k} value={k}>{k}</option>)}
       </select>
       <input placeholder="Cari nama / kode / KODE MD" value={q} onChange={e => { setQ(e.target.value); setPage(0) }} />

@@ -8,6 +8,7 @@ import { logout, keluarLokal, useHeartbeat } from '../lib/sesi'
 import { useDialog } from './Dialog'
 import Icon from './Icon'
 import InaktifGuard from './InaktifGuard'
+import { Logo } from './Logo'
 import { KUNCI_INFO, perluInaktif } from '../lib/inaktif'
 
 const ALL = ['mds', 'mdm', 'rmdm', 'tl', 'kormot'], ADM = ['mds', 'mdm', 'rmdm']
@@ -60,7 +61,7 @@ export default function Shell({ roles, children }: { roles: string[]; children: 
     <div className="shell">
       {perluInaktif(me.role) && <InaktifGuard onHabis={habisInaktif} />}
       <nav>
-        <h1>TaskPro</h1>
+        <h1><Logo /></h1>
         {MAIN.filter(x => x[2].includes(me.role)).map(link)}
         {['mdm', 'rmdm'].includes(me.role) && <><small className="sep">Pengaturan</small>{ADMIN.filter(x => x[2].includes(me.role)).map(link)}</>}
         <div className="grow" />

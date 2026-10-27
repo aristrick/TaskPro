@@ -65,7 +65,7 @@ function Cabang() {
         <td>{r.kode}</td><td>{r.nama}</td><td>{r.alamat}</td>
         <td><select value={r.tz || 'Asia/Jakarta'} aria-label={`Zona waktu ${r.kode}`} onChange={e => ubahTz(r, e.target.value)}>{ZONA.map(([v, t]) => <option key={v} value={v}>{t}</option>)}</select></td><td>{nm(r.mds_id)}</td>
         <td>{me?.role === 'mdm'
-          ? <select value={r.rmdm_id || ''} onChange={e => setRmdm(r.id, e.target.value)}><option value="">-</option>{ppl.filter(x => x.role === 'rmdm').map(x => <option key={x.id} value={x.id}>{x.nama}</option>)}</select>
+          ? <select aria-label={`RMDM untuk cabang ${r.kode}`} value={r.rmdm_id || ''} onChange={e => setRmdm(r.id, e.target.value)}><option value="">-</option>{ppl.filter(x => x.role === 'rmdm').map(x => <option key={x.id} value={x.id}>{x.nama}</option>)}</select>
           : nm(r.rmdm_id)}</td>
         <td><div className="aksi"><button className="ghost small" onClick={() => edit(r)}><Icon name="edit" size={16} /> Edit</button><button className="ghost danger small" onClick={() => del(r)}><Icon name="trash" size={16} /> Hapus</button></div></td>
       </tr>)}</tbody>

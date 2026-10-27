@@ -47,9 +47,9 @@ export default function OutletList({ me, rayon, setRayon, rows, loading, visited
           : <>          <button className="icon" aria-label="Refresh lokasi" onClick={() => { setSpin(true); setTimeout(() => setSpin(false), 700); getPos(); buzz(10) }}><Icon name="refresh" className={spin ? 'spin' : ''} /></button>
           <button className="icon" aria-label="Tambah outlet" onClick={() => setForm('new')}><Icon name="plus" /></button></>}</div>
       <div className="hrow"><input placeholder="Cari outlet…" value={q} onChange={e => setQ(e.target.value)} style={{ flex: 1 }} />
-        <select value={rayon} style={{ width: 92 }} onChange={e => { setRayon(+e.target.value); localStorage.setItem('rayon', e.target.value) }}>
+        <select aria-label="Rayon" value={rayon} style={{ width: 92 }} onChange={e => { setRayon(+e.target.value); localStorage.setItem('rayon', e.target.value) }}>
           {Array.from({ length: 24 }, (_, i) => <option key={i} value={i + 1}>R{String(i + 1).padStart(2, '0')}</option>)}</select></div>
-      {!editMode && <div className="progress" aria-label="Progres kunjungan"><div className="bar" style={{ width: rows.length ? `${(done / rows.length) * 100}%` : 0 }} /></div>}
+      {!editMode && <div className="progress" role="progressbar" aria-label="Progres kunjungan" aria-valuemin={0} aria-valuemax={rows.length} aria-valuenow={done}><div className="bar" style={{ width: rows.length ? `${(done / rows.length) * 100}%` : 0 }} /></div>}
       <div className="hint">{editMode ? 'Ketuk outlet yang ingin diubah. Check-in dinonaktifkan sampai Anda menekan Selesai.' : `${done} dari ${rows.length} outlet sudah dikunjungi hari ini`}</div>
     </div>
     {bar}

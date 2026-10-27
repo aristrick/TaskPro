@@ -8,6 +8,7 @@ const uuid = () => crypto.randomUUID()
 
 export type Produk = { id: string; product: string; brand: string; price: number; active: boolean }
 export type Kunjungan = { id: string; outlet_id: number; checkin_at: string; checkout_at: string | null; project_id: string; items: { product_id: string; qty: number }[]; at_klien?: string }
+export type VisitAdmin = { id: string; checkin_at: string; checkout_at: string | null; effective: boolean; cabang: { nama: string; tz: string }; fl: { user_id: string; nama: string }; outlets: { name: string; code: string }; sales: { id: string; qty: number; price: number; value: number; product_id: string }[] }
 export type Mock = ReturnType<typeof buatMock>
 
 export function buatMock(opsi: { role?: string } = {}) {
@@ -29,10 +30,10 @@ export function buatMock(opsi: { role?: string } = {}) {
     { id: 'u-fl-1', user_id: '0300-TMTB01', nama: 'Adin Shandi', role: 'frontliner', atasan_id: 'tl-1', gps_required: true, min_checkout_menit: 5 },
     { id: 'u-fl-2', user_id: '0300-TMTB02', nama: 'Budi Santoso', role: 'frontliner', atasan_id: 'tl-1', gps_required: true, min_checkout_menit: 0 }]
   const sekarang = new Date().toISOString()
-  const visitAdmin = [
+  const visitAdmin: VisitAdmin[] = [
     { id: 'v-1', checkin_at: sekarang, checkout_at: sekarang, effective: true, cabang: { nama: 'Pulogadung', tz: 'Asia/Jakarta' }, fl: { user_id: '0300-TMTB01', nama: 'Adin Shandi' }, outlets: { name: 'Warung Sumber Rejeki', code: 'OUT-1' },
       sales: [{ id: 's1', qty: 2, price: 19500, value: 39000, product_id: 'pr-1' }, { id: 's2', qty: 1, price: 2500, value: 2500, product_id: 'pr-3' }] },
-    { id: 'v-2', checkin_at: sekarang, checkout_at: sekarang, effective: false, cabang: { nama: 'Pulogadung', tz: 'Asia/Jakarta' }, fl: { user_id: '0300-TMTB02', nama: 'Budi Santoso' }, outlets: { name: 'Toko Berkah Jaya', code: 'OUT-2' }, sales: [] as { id: string; qty: number; price: number; value: number; product_id: string }[] }]
+    { id: 'v-2', checkin_at: sekarang, checkout_at: sekarang, effective: false, cabang: { nama: 'Pulogadung', tz: 'Asia/Jakarta' }, fl: { user_id: '0300-TMTB02', nama: 'Budi Santoso' }, outlets: { name: 'Toko Berkah Jaya', code: 'OUT-2' }, sales: [] }]
   const s = {
     me, outlets, produk, frontliners, projects, akunCabang, visitAdmin, aktifIds: ['u-fl-1'] as string[], akunPanggilan: [] as { method: string; body: Record<string, unknown> }[], sesiPanggilan: [] as Record<string, unknown>[], tolakHapus: '' as string, fokus: ['pr-1'], kunjungan: [] as Kunjungan[], online: true, passwordBenar: 'rahasia',
     rpc: [] as { fn: string; args: any }[], stokDibawa: 50, tolakSaveSales: '' as string, tanpaFungsiTertunda: false,
@@ -57,6 +58,12 @@ function rpc(m: Mock, fn: string, a: any, route: Route) {
     case 'sesi_detak': return json(route, true)
     case 'stok_hari_ini': return json(route, m.produk.map(p => ({ product_id: p.id, dibawa: m.stokDibawa, terjual: 0 })))
     case 'rekap_saya': return json(route, {})
+    case 'kunjungan_hapus': {
+      if (m.tolakHapus) return galat(route, m.tolakHapus)
+      if (!a.p_alasan || String(a.p_alasan).trim().length < 3) return galat(route, 'Alasan penghapusan wajib diisi.')
+      const i = m.visitAdmin.findIndex(x => x.id === a.p_visit); if (i < 0) return galat(route, 'Kunjungan tidak ditemukan.')
+      m.visitAdmin.splice(i, 1); return json(route, null)
+    }
     case 'penjualan_hapus': {
       if (m.tolakHapus) return galat(route, m.tolakHapus)
       if (!a.p_alasan || String(a.p_alasan).trim().length < 3) return galat(route, 'Alasan penghapusan wajib diisi.')

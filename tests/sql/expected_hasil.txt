@@ -105,3 +105,11 @@ S7 semua baris penjualan terhapus: baris=0, effective=false
 S8 kunjungan tetap ada dengan jam check-in dan check-out utuh: true
 S9 audit HAPUS_PENJUALAN: salah input jumlah | 2 baris, total 8000 | frontliner 0300-TMTB01
 S13 jumlah catatan audit HAPUS_PENJUALAN: 1
+X1 sebelum hapus: kunjungan=1, penjualan=2
+X6 penolakan tidak mengubah data: kunjungan=1, penjualan=2
+X7 kunjungan dan penjualannya terhapus: kunjungan=0, penjualan=0
+X8 audit HAPUS_KUNJUNGAN: check-in salah outlet | 2 baris, total 6000 | berjalan false | frontliner 0300-TMTB01
+X10 kunjungan berjalan terhapus: 0
+X11 audit menandai berjalan: true
+X12 frontliner bisa check-in lagi: true
+X14 jumlah catatan audit HAPUS_KUNJUNGAN: 2
