@@ -31,20 +31,22 @@ test.describe('Frontliner: batas check-out dan logout paksa', () => {
     await expect.poll(() => m.akunPanggilan.length).toBe(1); expect(m.akunPanggilan[0].body).toEqual({ id: 'u-fl-1', min_checkout_menit: 0 }); await expect(page.getByText('Batas check-out Adin Shandi menjadi Tanpa batas.')).toBeVisible()
   })
 
-  test('tata letak tabel stabil: tombol aksi di posisi yang sama dan tinggi baris sama, aktif maupun tidak', async ({ page }) => {
+  test('tata letak tabel stabil: tombol menu ⋯ di posisi yang sama dan tinggi baris sama, aktif maupun tidak', async ({ page }) => {
     const m = buatMock({ role: 'mdm' }); await pasang(page, m); await page.goto('/frontliner'); await expect(page.getByText('Adin Shandi').first()).toBeVisible()
     const baris = page.locator('table.tfl tbody tr'); await expect(baris).toHaveCount(3)
-    const geo = async () => Promise.all([0, 1, 2].map(async i => { const r = baris.nth(i); const [b, e] = await Promise.all([r.boundingBox(), r.getByRole('button', { name: 'Edit', exact: true }).boundingBox()]); return { h: Math.round(b!.height), editX: e ? Math.round(e.x) : null } }))
+    const geo = async () => Promise.all([0, 1, 2].map(async i => { const r = baris.nth(i); const [b, e] = await Promise.all([r.boundingBox(), r.getByRole('button', { name: /^Aksi untuk/ }).boundingBox()]); return { h: Math.round(b!.height), menuX: e ? Math.round(e.x) : null } }))
     const sebelum = await geo()
-    expect(new Set(sebelum.map(x => x.h)).size).toBe(1); expect(new Set(sebelum.slice(1).map(x => x.editX)).size).toBe(1)           // baris frontliner: Edit sejajar
-    await expect(baris.nth(1).getByRole('button', { name: /Logout paksa/ })).toBeEnabled(); await expect(baris.nth(2).getByRole('button', { name: /Logout paksa/ })).toBeDisabled()
-    m.aktifIds = ['u-fl-1', 'u-fl-2']; await page.reload(); await expect(baris.nth(2).getByRole('button', { name: /Logout paksa/ })).toBeEnabled()
-    const sesudah = await geo(); expect(sesudah.map(x => x.h)).toEqual(sebelum.map(x => x.h)); expect(sesudah.map(x => x.editX)).toEqual(sebelum.map(x => x.editX))   // status berubah, tata letak tidak bergeser
+    expect(new Set(sebelum.map(x => x.h)).size).toBe(1); expect(new Set(sebelum.slice(1).map(x => x.menuX)).size).toBe(1)
+    await baris.nth(1).getByRole('button', { name: /^Aksi untuk/ }).click(); await expect(page.getByRole('menuitem', { name: 'Logout paksa' })).toBeEnabled(); await page.keyboard.press('Escape')
+    await baris.nth(2).getByRole('button', { name: /^Aksi untuk/ }).click(); await expect(page.getByRole('menuitem', { name: 'Logout paksa' })).toBeDisabled(); await page.keyboard.press('Escape')
+    m.aktifIds = ['u-fl-1', 'u-fl-2']; await page.reload()
+    await baris.nth(2).getByRole('button', { name: /^Aksi untuk/ }).click(); await expect(page.getByRole('menuitem', { name: 'Logout paksa' })).toBeEnabled(); await page.keyboard.press('Escape')
+    const sesudah = await geo(); expect(sesudah.map(x => x.h)).toEqual(sebelum.map(x => x.h)); expect(sesudah.map(x => x.menuX)).toEqual(sebelum.map(x => x.menuX))
   })
 
   test('logout paksa meminta konfirmasi lalu memanggil API sesi', async ({ page }) => {
     const m = buatMock({ role: 'mdm' }); await pasang(page, m); await page.goto('/frontliner')
-    await page.locator('table.tfl tbody tr').nth(1).getByRole('button', { name: /Logout paksa/ }).click()
+    await page.locator('table.tfl tbody tr').nth(1).getByRole('button', { name: /^Aksi untuk/ }).click(); await page.getByRole('menuitem', { name: 'Logout paksa' }).click()
     await expect(page.getByRole('alertdialog')).toContainText('akan dikeluarkan dari perangkatnya'); await page.getByRole('button', { name: 'Logout paksa' }).last().click()
     await expect.poll(() => m.sesiPanggilan).toEqual([{ id: 'u-fl-1' }]); await expect(page.locator('table.tfl tbody tr').nth(1).getByText('Tidak aktif')).toBeVisible()
   })

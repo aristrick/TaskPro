@@ -10,6 +10,7 @@ import { loadMe } from '../../lib/auth'
 import { useDialog } from '../../components/Dialog'
 import { day, fetchAll } from '../../lib/rekap'
 import { friendly } from '../../lib/friendly'
+import PintasanTanggal from '../../components/ui/Pintasan'
 
 // Pantau stok pembawaan per hari: dibawa, terjual, sisa. MDS/RMDM/MDM dapat mengoreksi (wajib beralasan, tercatat di audit).
 function Stok() {
@@ -53,11 +54,14 @@ function Stok() {
   return (<>
     <PageHead title="Stok Pembawaan" desc="Stok yang dibawa frontliner tiap hari. Penjualan tidak bisa melebihi stok ini." />
     <div className="card"><div className="row" style={{ margin: 0 }}>
+      <div className="fld"><span className="label">Hari</span><PintasanTanggal dari={tgl} onPilih={a => setTgl(a)} /></div>
       <label className="fld"><span className="label">Tanggal</span><input type="date" value={tgl} onChange={e => e.target.value && setTgl(e.target.value)} /></label>
       {cabs.length > 1 && <label className="fld"><span className="label">Cabang</span><select value={cab} onChange={e => setCab(e.target.value)}><option value="">Semua cabang</option>{cabs.map(c => <option key={c.id} value={c.id}>{c.kode} · {c.nama}</option>)}</select></label>}
       {!loading && <span className={belum.length ? 'chip warnchip' : 'chip'}>{belum.length ? `${belum.length} frontliner belum mengisi stok` : 'Semua frontliner sudah mengisi stok'}</span>}
     </div></div>
-    {loading ? <SkelRows n={4} /> : daftar.length === 0 ? <Empty icon="users" title="Belum ada frontliner di cabang ini">Tambahkan frontliner di menu Frontliner.</Empty> : daftar.map(f => {
+    {loading ? <SkelRows n={4} /> : daftar.length === 0 ? <Empty icon="users" title="Belum ada frontliner di cabang ini">Tambahkan frontliner di menu Frontliner.</Empty> : <>
+      {belum.length > 0 && <details className="card lipat"><summary><span className="chip warnchip">{belum.length} belum mengisi</span><span className="muted">Lihat daftar frontliner</span></summary><ul className="lipat-list">{belum.map(f => <li key={f.id}><b>{f.nama}</b><small>{f.user_id}</small></li>)}</ul></details>}
+      {daftar.filter(f => per(f.id).length > 0).map(f => {
       const rs = per(f.id), t = rs.reduce((a, r) => ({ d: a.d + r.dibawa, t: a.t + r.terjual }), { d: 0, t: 0 })
       return (
         <div className="card" key={f.id}>
@@ -69,7 +73,7 @@ function Stok() {
               <td className={r.dibawa - r.terjual < 0 ? 'err' : ''}>{r.dibawa - r.terjual}</td>
               {admin && <td><button className="ghost" onClick={() => koreksi(f, r)}><Icon name="edit" size={16} /> Koreksi</button></td>}</tr>)}</tbody></table></div>}
         </div>)
-    })}
+    })}</>}
     <p className="muted">Stok diisi frontliner lewat Profile di HP. Koreksi oleh MDS/RMDM/MDM wajib beralasan dan tercatat di Jejak Audit. Sisa negatif berarti ada penjualan yang melebihi stok (terjadi jika aturan batas stok dimatikan).</p>
   </>)
 }

@@ -1,6 +1,7 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { SkelRows } from '../../components/Loaders'
+import TipBantuan from '../../components/ui/TipBantuan'
 import Shell from '../../components/Shell'
 import Icon from '../../components/Icon'
 import { supabase } from '../../lib/supabase'
@@ -96,14 +97,11 @@ function Project() {
       {cabang.length > 1 && <label className="fld-inline cabpick"><span className="label">Cabang</span>
         <select value={cid} onChange={e => setCid(e.target.value)}>{cabang.map(c => <option key={c.id} value={c.id}>{c.kode} {c.nama}</option>)}</select></label>}
     </PageHead>
-    <details className="infobox">
-      <summary>Bagaimana project bekerja?</summary>
-      <ul>
+    <TipBantuan id="project" judul="Bagaimana project bekerja?"><ul>
         <li>Nama project dipakai untuk kolom <b>Project</b> pada Excel Kunjungan dan Selling.</li>
         <li>Tiap project punya <b>produk fokus</b> sendiri, berlaku untuk semua frontliner di dalamnya. Satu frontliner hanya bisa di satu project.</li>
         <li>Project dan fokus dicatat saat transaksi, jadi riwayat lama tidak berubah jika frontliner pindah project atau fokus diganti.</li>
-      </ul>
-    </details>
+      </ul></TipBantuan>
 
     <section className="card projnew" aria-label="Buat project baru">
       <label className="fld" style={{ margin: 0 }}><span className="label">Project baru{cabang.length === 1 && cid ? ` · ${cabang[0].kode} ${cabang[0].nama}` : ''}</span>
@@ -115,12 +113,12 @@ function Project() {
 
     {!ready && <SkelRows n={3} />}
     {ready && cid && inCab.length === 0 && <Empty icon="folder" title="Belum ada project di cabang ini">Buat project pertama di atas, lalu masukkan frontliner dan pilih produk fokusnya.</Empty>}
-    {inCab.map(p => {
+    <div className="projlist">{inCab.map(p => {
       const mem = flCab.filter(f => f.project_id === p.id), other = flCab.filter(f => f.project_id !== p.id)
       const fo = focus.filter(x => x.project_id === p.id).map(x => x.product_id)
       return <ProjectCard key={p.id} p={p} anggota={mem} lainnya={other} fokus={fo} prods={prods} sumber={inCab.filter(x => x.id !== p.id)} namaProject={pname}
         onGanti={() => ganti(p)} onHapus={() => hapus(p)} onAnggota={(fid, pid) => pindahAnggota(fid, pid, p)} onTambahFokus={x => tambahFokus(p.id, x)} onLepasFokus={x => lepasFokusUndo(p, x)} onSalin={from => salinFokus(from, p.id)} />
-    })}
+    })}</div>
     {cid && free.length > 0 && <section className="warnbox" aria-label="Frontliner belum masuk project">
       <h4><Icon name="alert" size={18} /> {free.length} frontliner belum masuk project</h4>
       <ul className="lrows">{free.map(f => <li className="lrow" key={f.id}><span className="lrow-ic" aria-hidden="true">{inisial(f.nama)}</span><span className="lrow-tx"><b>{f.nama}</b><small>{f.user_id}</small></span></li>)}</ul>

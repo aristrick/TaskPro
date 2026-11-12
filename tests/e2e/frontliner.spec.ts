@@ -14,10 +14,10 @@ test('login dengan User ID dan password lalu masuk ke layar frontliner', async (
 test('check-in, isi penjualan, check-out: data sampai ke server dan struk ditawarkan', async ({ page }) => {
   const m = buatMock(); await pasang(page, m)
   await page.goto('/m'); await expect(page.getByText('Warung Sumber Rejeki')).toBeVisible()
-  await expect(page.getByText('0 dari 2 outlet sudah dikunjungi hari ini')).toBeVisible()
+  await expect(page.getByRole('progressbar', { name: 'Progres kunjungan' })).toHaveText('0/2')
 
   await page.getByText('Warung Sumber Rejeki').click()
-  await expect(page.getByRole('alertdialog')).toContainText('Check-in di outlet ini?'); await page.getByRole('button', { name: 'Check-in' }).click()
+  await expect(page.getByText('Check-in di Warung Sumber Rejeki')).toBeVisible()   // outlet dalam radius: satu ketukan, tanpa dialog
   await expect(page.getByText(/Kunjungan berjalan · sejak/)).toBeVisible()
   expect(m.panggilan('checkin')[0].args).toMatchObject({ p_outlet: 1, p_lat: -6.2, p_lng: 106.8 })
 
@@ -46,4 +46,14 @@ test('draf penjualan bertahan setelah halaman dimuat ulang', async ({ page }) =>
   await expect(page.getByText('1 produk · 1 pcs')).toBeVisible()
   await page.reload(); await expect(page.getByText(/Kunjungan berjalan · sejak/)).toBeVisible()
   await expect(page.getByText('1 produk · 1 pcs')).toBeVisible()
+})
+
+test('salah ketuk check-in: tombol Batalkan menghapus kunjungan dan kembali ke daftar', async ({ page }) => {
+  const m = buatMock(); await pasang(page, m)
+  await page.goto('/m'); await expect(page.getByText('Warung Sumber Rejeki')).toBeVisible()
+  await page.getByRole('button', { name: 'Masuk' }).first().click()
+  await expect(page.getByText(/Kunjungan berjalan · sejak/)).toBeVisible()
+  await page.getByRole('button', { name: 'Batalkan' }).click()
+  await expect.poll(() => m.panggilan('batal_checkin').length).toBe(1); expect(m.aktif()).toBeNull()
+  await expect(page.getByRole('progressbar', { name: 'Progres kunjungan' })).toHaveText('0/2')
 })

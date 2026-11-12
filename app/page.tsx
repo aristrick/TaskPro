@@ -4,14 +4,13 @@ import Link from 'next/link'
 import Shell from '../components/Shell'
 import PageHead from '../components/PageHead'
 import Icon from '../components/Icon'
-import { SettingRow } from '../components/Switch'
+import CountUp from '../components/ui/CountUp'
+import { n as fmtN } from '../lib/angka'
 import SalesTrend from '../components/SalesTrend'
 import FocusProducts from '../components/FocusProducts'
-import { useDialog } from '../components/Dialog'
 import { supabase } from '../lib/supabase'
 import { loadMe } from '../lib/auth'
 import { rekap, day, rp, rpk, VSEL, fetchAll, startOfDay, tzAcuan, labelTz, jendela, tglBulanDepan, hanyaBulan } from '../lib/rekap'
-import { friendly } from '../lib/friendly'
 
 type N = number | null
 const hitung = async (t: string, f?: (q: any) => any): Promise<N> => {
@@ -22,23 +21,16 @@ const salam = (tz: string) => { const j = Number(new Date().toLocaleTimeString('
 const Skel = ({ w = 96 }: { w?: number }) => <span className="skel kpiskel" style={{ width: w }} />
 
 function Home() {
-  const dlg = useDialog()
   const [me, setMe] = useState<any>(null)
   const [rk, setRk] = useState<any>(null)            // rekap bulan ini
   const [tren, setTren] = useState<any>(null)        // rekap 7 hari terakhir
   const [d, setD] = useState<Record<string, N>>({})
-  const [radius, setRadius] = useState<boolean | null>(null)
-  const [stok, setStok] = useState<boolean | null>(null)
-  const [usage, setUsage] = useState<any>(null)
   const [tzs, setTzs] = useState<string[] | null>(null)   // zona waktu cabang yang terlihat oleh akun ini; null = belum dimuat
   const tz = tzAcuan(tzs || [])
   const role: string = me?.role || ''
-  const mdm = role === 'mdm'
 
   useEffect(() => {
     loadMe().then(({ me }) => setMe(me))
-    supabase.from('settings').select('value').eq('key', 'radius_enforced').maybeSingle().then(({ data }) => setRadius(data ? data.value === true : true))
-    supabase.from('settings').select('value').eq('key', 'stok_enforced').maybeSingle().then(({ data }) => setStok(data ? data.value === true : true))
     supabase.from('cabang').select('tz').then(({ data, error }) => setTzs(error ? [] : [...new Set((data || []).map((x: any) => x.tz as string))]))
   }, [])
   useEffect(() => {
@@ -65,15 +57,6 @@ function Home() {
       } catch { setD(x => ({ ...x, belumStok: null })) }
     })()
   }, [tzs])
-  useEffect(() => { if (mdm) supabase.rpc('db_usage').then(({ data }) => setUsage(data)) }, [mdm])
-
-  // Mematikan aturan memengaruhi semua frontliner, jadi dikonfirmasi dulu. Tampilan diperbarui langsung dan dikembalikan jika gagal.
-  async function ubah(key: string, v: boolean, set: (x: boolean) => void, matikan: { title: string; message: ReactNode }) {
-    if (!v && !(await dlg.confirm({ ...matikan, okText: 'Matikan', tone: 'danger' }))) return
-    set(v)
-    const { error } = await supabase.from('settings').update({ value: v }).eq('key', key)
-    if (error) { set(!v); dlg.alert({ title: 'Gagal menyimpan', message: friendly(error), tone: 'danger', icon: 'close' }) }
-  }
 
   const hr = day(new Date(), tz)
   const days = rk ? Object.values(rk) as any[] : []
@@ -88,8 +71,6 @@ function Home() {
     return { k, v: Number(tren?.[k]?.value || 0), today: i === 6, l: t.toLocaleDateString('id-ID', { weekday: 'short', timeZone: tz }),
       tgl: t.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', timeZone: tz }), lengkap: t.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', timeZone: tz }) }
   })
-  const BATAS = Number(process.env.NEXT_PUBLIC_DB_LIMIT_MB || 500) * 1024 * 1024   // paket gratis Supabase: 500 MB (isi NEXT_PUBLIC_DB_LIMIT_MB jika paket naik)
-  const pakai = usage ? Number(usage.bytes) / BATAS : 0
   const canSeeCabang = ['mdm', 'rmdm'].includes(role)
 
   const perhatian: { k: string; icon: string; n: N; label: string; href?: string; netral?: boolean }[] = [
@@ -115,13 +96,13 @@ function Home() {
         <section className="o1">
           <h3 className="sech">Hari ini</h3>
           <div className="kpis2">
-            {kpi('chart', 'Penjualan hari ini', rk ? rp(hari?.value || 0) : <Skel />, hari && avg > 0 ? <span className={hari.value >= avg ? 'up' : 'down'}><Icon name={hari.value >= avg ? 'up' : 'down'} size={14} /> {Math.abs(Math.round((hari.value / avg - 1) * 100))}% vs rata-rata harian</span> : undefined, 'main')}
-            {kpi('store', 'OC hari ini', rk ? (hari?.oc || 0) : <Skel w={40} />, rk ? `dari ${hari?.visits || 0} kunjungan` : undefined)}
+            {kpi('chart', 'Penjualan hari ini', rk ? <CountUp value={hari?.value || 0} format={rp} /> : <Skel />, hari && avg > 0 ? <span className={hari.value >= avg ? 'up' : 'down'}><Icon name={hari.value >= avg ? 'up' : 'down'} size={14} /> {Math.abs(Math.round((hari.value / avg - 1) * 100))}% vs rata-rata harian</span> : undefined, 'main')}
+            {kpi('store', 'OC hari ini', rk ? <CountUp value={hari?.oc || 0} /> : <Skel w={40} />, rk ? `dari ${fmtN(hari?.visits || 0)} kunjungan` : undefined)}
           </div>
           <h3 className="sech">Bulan ini</h3>
           <div className="kpis2">
-            {kpi('chart', 'Penjualan bulan ini', rk ? rp(bulan) : <Skel />, rk && days.length ? `rata-rata ${rpk(bulan / days.length)} per hari` : undefined, 'main')}
-            {kpi('store', 'OC bulan ini', rk ? ocB : <Skel w={40} />, rk ? `dari ${visB} kunjungan` : undefined)}
+            {kpi('chart', 'Penjualan bulan ini', rk ? <CountUp value={bulan} format={rp} /> : <Skel />, rk && days.length ? `rata-rata ${rpk(bulan / days.length)} per hari` : undefined, 'main')}
+            {kpi('store', 'OC bulan ini', rk ? <CountUp value={ocB} /> : <Skel w={40} />, rk ? `dari ${fmtN(visB)} kunjungan` : undefined)}
           </div>
         </section>
 
@@ -145,7 +126,7 @@ function Home() {
             const inner = <>
               <span className={`pico ${x.n ? (x.netral ? 'info' : 'warn') : ''}`}><Icon name={x.icon} size={18} /></span>
               <span className="plabel">{x.label}</span>
-              {x.n === null ? <Skel w={28} /> : <b className={`pnum ${x.n && !x.netral ? 'warn' : ''}`}>{x.n}</b>}
+              {x.n === null ? <Skel w={28} /> : <b className={`pnum ${x.n && !x.netral ? 'warn' : ''}`}>{fmtN(x.n)}</b>}
               {x.href && <Icon name="chevron" size={16} />}</>
             return x.href ? <Link className="prow2" href={x.href} key={x.k}>{inner}</Link> : <div className="prow2 static" key={x.k}>{inner}</div>
           })}
@@ -160,25 +141,6 @@ function Home() {
             })}
           </div>
         </section>
-
-        <section className="card o6">
-          <div className="sech-in"><h3>Pengaturan</h3></div>
-          <SettingRow icon="locate" title="Wajib dekat outlet saat input penjualan" checked={radius} canEdit={mdm}
-            desc={radius ? 'Aktif: check-in dan input penjualan hanya bisa maksimal 50 m dari outlet.' : 'Nonaktif: bisa input di mana saja.'}
-            onChange={v => ubah('radius_enforced', v, setRadius, { title: 'Matikan aturan 50 meter?', message: 'Semua frontliner bisa check-in dan input penjualan dari mana saja, kecuali yang GPS-nya sudah dikecualikan.' })} />
-          <SettingRow icon="basket" title="Batasi penjualan sesuai stok pembawaan" checked={stok} canEdit={mdm}
-            desc={stok ? 'Aktif: frontliner harus mengisi stok pembawaan harian, dan penjualan tidak bisa melebihi stok yang dibawa hari itu.' : 'Nonaktif: penjualan tidak dibatasi stok.'}
-            onChange={v => ubah('stok_enforced', v, setStok, { title: 'Matikan batas stok?', message: 'Penjualan tidak lagi dibatasi stok pembawaan. Frontliner bisa menjual berapa pun.' })} />
-        </section>
-
-        {mdm && <section className="card o7">
-          <div className="sech-in"><h3>Penyimpanan database</h3>{usage && <span className="muted">{(pakai * 100).toFixed(0)}%</span>}</div>
-          {!usage ? <div className="skel" style={{ height: 60 }} /> : <>
-            <p className="muted" style={{ margin: '0 0 8px' }}>{(Number(usage.bytes) / 1048576).toFixed(1)} MB dari {(BATAS / 1048576).toFixed(0)} MB</p>
-            <div className="meter" role="progressbar" aria-valuenow={Math.round(pakai * 100)} aria-valuemin={0} aria-valuemax={100}><i className={pakai >= .9 ? 'bad' : pakai >= .7 ? 'warn' : ''} style={{ width: `${Math.min(100, pakai * 100)}%` }} /></div>
-            {pakai >= .7 && <p className={pakai >= .9 ? 'err' : 'muted'} style={{ margin: '8px 0 0' }}>{pakai >= .9 ? 'Hampir penuh: database bisa menjadi hanya-baca. ' : 'Mulai terisi. '}Ekspor lalu hapus data lama, atau naikkan paket Supabase.</p>}
-            <div style={{ marginTop: 10 }}>{(usage.tabel || []).slice(0, 5).map((t: any) => <div className="line" key={t.nama}><span>{t.nama}</span><b>{(Number(t.bytes) / 1048576).toFixed(1)} MB</b></div>)}</div></>}
-        </section>}
       </div>
     </div>
   </>)

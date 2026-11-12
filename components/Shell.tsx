@@ -13,8 +13,12 @@ import { KUNCI_INFO, perluInaktif } from '../lib/inaktif'
 
 const ALL = ['mds', 'mdm', 'rmdm', 'tl', 'kormot'], ADM = ['mds', 'mdm', 'rmdm']
 type Item = [string, string, string[], string]
-const MAIN: Item[] = [['/', 'Home', ALL, 'home'], ['/frontliner', 'Frontliner', ADM, 'users'], ['/project', 'Project', ADM, 'folder'], ['/schedule', 'Schedule', ADM, 'calendar'], ['/outlet', 'Outlet', ALL, 'store'], ['/stok', 'Stok', ALL, 'basket'], ['/report', 'Report', ALL, 'chart'], ['/produk', 'Produk', ADM, 'box'], ['/pantau', 'Pantau', ALL, 'alert']]
-const ADMIN: Item[] = [['/cabang', 'Cabang', ['mdm', 'rmdm'], 'building'], ['/mds', 'MDS & RMDM', ['mdm', 'rmdm'], 'shield'], ['/penjualan', 'Edit Penjualan', ['mdm'], 'edit']]
+// Menu dikelompokkan: Operasional (kerja harian), Data (master), Pengaturan.
+const GRUP: { judul: string; item: Item[] }[] = [
+  { judul: 'Operasional', item: [['/', 'Home', ALL, 'home'], ['/schedule', 'Schedule', ADM, 'calendar'], ['/project', 'Project', ADM, 'folder'], ['/stok', 'Stok', ALL, 'basket'], ['/report', 'Report', ALL, 'chart'], ['/pantau', 'Pantau', ALL, 'alert']] },
+  { judul: 'Data', item: [['/frontliner', 'Frontliner', ADM, 'users'], ['/outlet', 'Outlet', ALL, 'store'], ['/produk', 'Produk', ADM, 'box']] },
+  { judul: 'Pengaturan', item: [['/cabang', 'Cabang', ['mdm', 'rmdm'], 'building'], ['/mds', 'MDS & RMDM', ['mdm', 'rmdm'], 'shield'], ['/penjualan', 'Edit Penjualan', ['mdm'], 'edit'], ['/pengaturan', 'Aturan & Sistem', ALL, 'settings']] },
+]
 
 export default function Shell({ roles, children }: { roles: string[]; children: React.ReactNode }) {
   const router = useRouter(), path = usePathname(), dlg = useDialog()
@@ -62,11 +66,14 @@ export default function Shell({ roles, children }: { roles: string[]; children: 
       {perluInaktif(me.role) && <InaktifGuard onHabis={habisInaktif} />}
       <nav>
         <h1><Logo /></h1>
-        {MAIN.filter(x => x[2].includes(me.role)).map(link)}
-        {['mdm', 'rmdm'].includes(me.role) && <><small className="sep">Pengaturan</small>{ADMIN.filter(x => x[2].includes(me.role)).map(link)}</>}
-        <div className="grow" />
-        <small>{me.nama}<br />{me.role.toUpperCase()}<span className="onl"><i />Aktif</span></small>
-        <button onClick={keluar}><Icon name="logout" size={18} /> Log out</button>
+        <div className="navscroll">
+          {GRUP.map(g => { const it = g.item.filter(x => x[2].includes(me.role)); return it.length ? <div className="navgrup" key={g.judul}><small className="sep">{g.judul}</small>{it.map(link)}</div> : null })}
+        </div>
+        <div className="navuser">
+          <span className="avatar-i" aria-hidden="true">{(me.nama || '?').trim().split(/\s+/).slice(0, 2).map((x: string) => x[0]).join('').toUpperCase()}</span>
+          <span className="navuser-t"><b>{me.nama}</b><small>{me.role.toUpperCase()}<span className="onl"><i />Aktif</span></small></span>
+          <button className="ghost iconbtn" onClick={keluar} aria-label="Log out" title="Log out"><Icon name="logout" size={18} /></button>
+        </div>
       </nav>
       <main><div className="page" key={path}>
         {gpsOff && <p className="notice">Lokasi belum aktif. Aplikasi tetap bisa dipakai, tetapi mengaktifkan lokasi membuat akun Anda lebih aman.</p>}

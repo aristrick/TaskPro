@@ -5,6 +5,7 @@ import PageHead from '../../components/PageHead'
 import { supabase } from '../../lib/supabase'
 import Icon from '../../components/Icon'
 import { friendly } from '../../lib/friendly'
+import PintasanTanggal from '../../components/ui/Pintasan'
 import { day, jam, hari, dt, dur, fetchAll } from '../../lib/rekap'
 
 const SEL = 'id,checkin_at,checkout_at,effective,project:projects(name),outlets(ext_id,code,name,address,province_name,city_name,district,village,category,account,created_at),fl:profiles(user_id,nama,atasan_id,project:projects(name)),cabang(nama,tz),sales(qty,price,value,products(product,sku_code,brand,category_product))'
@@ -106,6 +107,7 @@ function Report() {
           <select value={cab} onChange={e => { const c = e.target.value; setCab(c); setSel(''); if (proj && c && projs.find(p => p.id === proj)?.cabang_id !== c) setProj('') }}><option value="">Semua cabang</option>{cabs.map(c => <option key={c.id} value={c.id}>{c.kode} · {c.nama}</option>)}</select></label>}
         <label className="fld"><span className="label">Project</span>
           <select value={proj} onChange={e => { setProj(e.target.value); setSel('') }}><option value="">Semua project</option>{projOpsi.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}</select></label>
+        <div className="fld"><span className="label">Periode</span><PintasanTanggal dari={from} sampai={to} onPilih={(a, b) => { setFrom(a); setTo(b) }} /></div>
         <label className="fld"><span className="label">Dari tanggal</span><input type="date" value={from} onChange={e => setFrom(e.target.value)} /></label>
         <label className="fld"><span className="label">Sampai tanggal</span><input type="date" value={to} onChange={e => setTo(e.target.value)} /></label>
         <label className="fld"><span className="label">Frontliner</span>

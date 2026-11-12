@@ -12,6 +12,10 @@ import Icon from '../../components/Icon'
 import { useDialog } from '../../components/Dialog'
 import { hapusOutlet } from '../../lib/outlet'
 import { fetchAll, dt, day } from '../../lib/rekap'
+import MenuAksi from '../../components/ui/MenuAksi'
+import StatusChip from '../../components/ui/StatusChip'
+import SidePanel from '../../components/ui/SidePanel'
+import { n as fmtN } from '../../lib/angka'
 
 const PAGE = 50
 function Outlet() {
@@ -80,33 +84,33 @@ function Outlet() {
     <PageHead title="Outlet" desc="Kelola outlet per cabang dan KODE MD: cari, ubah, pindahkan, unduh ke Excel, atau impor dari DMP.">{mdm && <button className="ghost danger" onClick={() => setHapusMassal(p => !p)}><Icon name="trash" size={18} /> Hapus paksa outlet</button>}<button className="ghost" onClick={() => setPindah(p => !p)}><Icon name="store" size={18} /> Pindahkan outlet</button><button className="ghost" onClick={unduh}><Icon name="download" size={18} /> Download Excel</button><Link href="/import"><button>Import DMP</button></Link></PageHead>
     {hapusMassal && <HapusMassalOutlet kmds={kmds} onDone={() => { load(); refreshKmds() }} />}
     {pindah && <PindahOutlet kmds={kmds} onDone={() => { load(); refreshKmds() }} />}
-    <div className="row">
-      <select aria-label="Filter cabang" value={cid} onChange={e => { setCid(e.target.value); setPage(0) }}>
-        <option value="">Semua cabang</option>{cabang.map(c => <option key={c.id} value={c.id}>{c.kode} {c.nama}</option>)}
-      </select>
-      <select aria-label="Filter rayon" value={rayon} onChange={e => { setRayon(e.target.value); setPage(0) }}>
-        <option value="">Semua rayon</option>{Array.from({ length: 24 }, (_, i) => <option key={i} value={i + 1}>R{String(i + 1).padStart(2, '0')}</option>)}
-      </select>
-      <select aria-label="Filter Kode MD" value={kmd} onChange={e => { setKmd(e.target.value); setPage(0) }}>
-        <option value="">Semua Kode MD</option>{kmds.map(k => <option key={k} value={k}>{k}</option>)}
-      </select>
-      <input placeholder="Cari nama / kode / KODE MD" value={q} onChange={e => { setQ(e.target.value); setPage(0) }} />
-      <label className={`chipcheck ${tanpa ? 'on' : ''}`}><input type="checkbox" checked={tanpa} onChange={e => { setTanpa(e.target.checked); setPage(0) }} /><Icon name="alert" size={16} /> Tanpa koordinat</label>
+    <div className="searchbar">
+      <Icon name="search" size={18} />
+      <input type="search" aria-label="Cari outlet" placeholder="Cari nama, kode outlet, atau KODE MD" value={q} onChange={e => { setQ(e.target.value); setPage(0) }} />
     </div>
-    {ed && <div className="card">
-      <b>Edit {ed.code}</b>{(ed.lat == null || ed.lat === '') && <span className="nolat-badge" style={{ marginLeft: 8 }}><Icon name="alert" size={14} /> Belum ada lokasi</span>}
-      <div className="formgrid" style={{ marginTop: 8 }}>{f('name', 'Nama')}{f('address', 'Alamat')}{f('lat', 'Latitude')}{f('long', 'Longitude')}{f('rayon', 'Rayon (1–24)')}{f('kode_md', 'KODE MD')}
+    <div className="filterchips" role="group" aria-label="Filter outlet">
+      <label className={`fchip ${cid ? 'on' : ''}`}><Icon name="building" size={16} /><select aria-label="Filter cabang" value={cid} onChange={e => { setCid(e.target.value); setPage(0) }}>
+        <option value="">Semua cabang</option>{cabang.map(c => <option key={c.id} value={c.id}>{c.kode} {c.nama}</option>)}</select></label>
+      <label className={`fchip ${rayon ? 'on' : ''}`}><Icon name="pin" size={16} /><select aria-label="Filter rayon" value={rayon} onChange={e => { setRayon(e.target.value); setPage(0) }}>
+        <option value="">Semua rayon</option>{Array.from({ length: 24 }, (_, i) => <option key={i} value={i + 1}>R{String(i + 1).padStart(2, '0')}</option>)}</select></label>
+      <label className={`fchip ${kmd ? 'on' : ''}`}><Icon name="users" size={16} /><select aria-label="Filter Kode MD" value={kmd} onChange={e => { setKmd(e.target.value); setPage(0) }}>
+        <option value="">Semua Kode MD</option>{kmds.map(k => <option key={k} value={k}>{k}</option>)}</select></label>
+      <label className={`fchip chipcheck ${tanpa ? 'on' : ''}`}><input type="checkbox" checked={tanpa} onChange={e => { setTanpa(e.target.checked); setPage(0) }} /><Icon name="alert" size={16} /> Tanpa koordinat</label>
+    </div>
+    {ed && <SidePanel judul={`Edit ${ed.code}`} onClose={() => { setEd(null); setErr('') }}>
+      {(ed.lat == null || ed.lat === '') && <p><span className="nolat-badge"><Icon name="alert" size={14} /> Belum ada lokasi</span></p>}
+      <div className="formstack">{f('name', 'Nama')}{f('address', 'Alamat')}{f('lat', 'Latitude')}{f('long', 'Longitude')}{f('rayon', 'Rayon (1–24)')}{f('kode_md', 'KODE MD')}
         {f('province_name', 'Provinsi')}{f('city_name', 'Kota')}{f('district', 'Kecamatan')}{f('village', 'Kelurahan')}{f('category', 'Category')}{f('account', 'Account')}{f('profile_outlet', 'Profile outlet')}
         <label className="fld"><span className="label">Status</span><select value={ed.status} onChange={e => setEd({ ...ed, status: e.target.value })}><option>AKTIF</option><option>INAKTIF</option></select></label></div>
       {err && <p className="err">{err}</p>}
       <div className="row"><button onClick={save}>Simpan</button><button className="ghost" onClick={() => { setEd(null); setErr('') }}>Batal</button><div className="grow" /><button className="ghost danger" onClick={() => hapus(ed)}><Icon name="trash" size={16} /> Hapus outlet</button></div>
-    </div>}
-    <p className="muted">{total} outlet · halaman {page + 1} dari {Math.max(1, Math.ceil(total / PAGE))}</p>
+    </SidePanel>}
+    <p className="muted">{fmtN(total)} outlet · halaman {page + 1} dari {Math.max(1, Math.ceil(total / PAGE))}</p>
     <div className="scroll"><table>
       <thead><tr><th>Kode</th><th>Nama</th><th>Alamat</th><th>Rayon</th><th>KODE MD</th><th>Lat, Long</th><th>Status</th><th /></tr></thead>
-      <tbody>{loading ? <tr><td colSpan={9}><SkelRows n={5} /></td></tr> : rows.map(r => <tr key={r.id} className={r.lat == null || r.long == null ? 'nolat-tr' : ''}><td>{r.code}</td><td>{r.name}</td><td>{r.address}</td><td>{r.rayon ? 'R' + String(r.rayon).padStart(2, '0') : '-'}</td>
-        <td>{r.kode_md || '-'}</td><td>{r.lat == null || r.long == null ? <span className="nolat-badge"><Icon name="alert" size={14} /> Belum ada lokasi</span> : `${r.lat}, ${r.long}`}</td><td>{r.status}</td>
-        <td><div className="aksi"><button className="ghost small" onClick={() => { setEd({ ...r }); setErr('') }}><Icon name="edit" size={16} /> Edit</button><button className="ghost danger small" aria-label={`Hapus ${r.name}`} onClick={() => hapus(r)}><Icon name="trash" size={16} /> Hapus</button></div></td></tr>)}</tbody>
+      <tbody>{loading ? <tr><td colSpan={9}><SkelRows n={5} /></td></tr> : rows.map(r => <tr key={r.id} className={`klik ${r.lat == null || r.long == null ? 'nolat-tr' : ''}`} onClick={() => { setEd({ ...r }); setErr('') }}><td className="nowrap">{r.code}</td><td>{r.name}</td><td>{r.address}</td><td>{r.rayon ? 'R' + String(r.rayon).padStart(2, '0') : '-'}</td>
+        <td>{r.kode_md || '-'}</td><td>{r.lat == null || r.long == null ? <span className="nolat-badge"><Icon name="alert" size={14} /> Belum ada lokasi</span> : `${r.lat}, ${r.long}`}</td><td><StatusChip tone={r.status === 'AKTIF' ? 'on' : 'off'}>{r.status === 'AKTIF' ? 'Aktif' : 'Nonaktif'}</StatusChip></td>
+        <td className="td-aksi"><MenuAksi label={`Aksi untuk ${r.name}`} items={[{ label: 'Edit outlet', icon: 'edit', onClick: () => { setEd({ ...r }); setErr('') } }, { label: 'Hapus outlet', icon: 'trash', danger: true, onClick: () => hapus(r) }]} /></td></tr>)}</tbody>
     </table></div>
     <div className="row" style={{ marginTop: 12 }}>
       <button className="ghost" disabled={page === 0} onClick={() => setPage(page - 1)}>← Sebelumnya</button>

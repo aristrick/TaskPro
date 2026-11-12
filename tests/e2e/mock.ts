@@ -98,6 +98,7 @@ function rpc(m: Mock, fn: string, a: any, route: Route) {
       const baru: Kunjungan = { id: uuid(), outlet_id: a.p_outlet, checkin_at: new Date().toISOString(), checkout_at: null, project_id: m.me.project_id, items: [] }
       m.kunjungan.push(baru); return json(route, baru.id)
     }
+    case 'batal_checkin': { const i = m.kunjungan.findIndex(x => x.id === a.p_visit); if (i < 0 || m.kunjungan[i].items.length) return galat(route, 'Kunjungan ini sudah punya penjualan, jadi tidak bisa dibatalkan.'); m.kunjungan.splice(i, 1); return json(route, null) }
     case 'save_sales': {
       if (m.tolakSaveSales) return galat(route, m.tolakSaveSales)
       if (!v || v.checkout_at) return galat(route, 'Kunjungan tidak aktif.')

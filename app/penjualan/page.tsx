@@ -9,6 +9,8 @@ import { supabase } from '../../lib/supabase'
 import { useDialog, type OpsiPilih } from '../../components/Dialog'
 import { day, dt, rp, OFFSET } from '../../lib/rekap'
 import { friendly } from '../../lib/friendly'
+import PintasanTanggal from '../../components/ui/Pintasan'
+import MenuAksi from '../../components/ui/MenuAksi'
 
 const SEL = 'id,checkin_at,checkout_at,effective,cabang(nama,tz),fl:profiles(user_id,nama),outlets(name,code),sales(id,qty,price,value,product_id)'
 const BATAS = 500   // jumlah kunjungan maksimal yang dimuat sekali (layar ini untuk mengoreksi, bukan laporan; laporan lengkap ada di menu Report)
@@ -154,6 +156,7 @@ function Penjualan() {
   return (<>
     <PageHead title="Edit Penjualan" desc="Koreksi tanggal, produk, jumlah, dan harga pada kunjungan, atau hapus penjualan maupun seluruh kunjungannya. Khusus MDM, wajib beralasan, dan tercatat di Jejak Audit." />
     <div className="card"><div className="row" style={{ margin: 0 }}>
+      <div className="fld"><span className="label">Periode</span><PintasanTanggal dari={from} sampai={to} onPilih={(a, b) => { setFrom(a); setTo(b) }} /></div>
       <label className="fld"><span className="label">Dari tanggal</span><input type="date" value={from} onChange={e => e.target.value && setFrom(e.target.value)} /></label>
       <label className="fld"><span className="label">Sampai tanggal</span><input type="date" value={to} onChange={e => e.target.value && setTo(e.target.value)} /></label>
       <label className="fld"><span className="label">Cabang</span><select value={cab} onChange={e => { setCab(e.target.value); setFl('') }}><option value="">Semua cabang</option>{cabs.map(c => <option key={c.id} value={c.id}>{c.kode} · {c.nama}</option>)}</select></label>
@@ -170,9 +173,8 @@ function Penjualan() {
           return <tr key={v.id}><td style={{ whiteSpace: 'nowrap' }}>{dt(v.checkin_at, v.cabang?.tz)}</td><td>{v.fl?.user_id} · {v.fl?.nama}</td>
             <td>{v.outlets?.name}<div className="muted" style={{ fontSize: 12 }}>{v.outlets?.code}</div></td>
             <td style={{ whiteSpace: 'nowrap' }}>{v.sales.length ? `${v.sales.length} produk · ${pcs} pcs` : <span className="muted">tanpa penjualan</span>}</td><td style={{ whiteSpace: 'nowrap' }}>{rp(tot)}</td>
-            <td><div className="aksi">
-              {v.checkout_at ? <button className="ghost small" onClick={() => setEdit(v)}><Icon name="edit" size={16} /> Edit</button> : <span className="chip warnchip" title="Frontliner belum check-out">Berjalan</span>}
-              <button className="ghost danger small" aria-label={`Hapus kunjungan ${v.outlets?.name}`} onClick={() => hapus(v)}><Icon name="trash" size={16} /> Hapus</button></div></td></tr>
+            <td className="td-aksi">{v.checkout_at ? <MenuAksi label={`Aksi untuk kunjungan ${v.outlets?.name}`} items={[{ label: 'Edit penjualan', icon: 'edit', onClick: () => setEdit(v) }, { label: `Hapus kunjungan`, icon: 'trash', danger: true, onClick: () => hapus(v) }]} />
+              : <div className="aksi"><span className="chip warnchip" title="Frontliner belum check-out">Berjalan</span><button className="ghost danger small" aria-label={`Hapus kunjungan ${v.outlets?.name}`} onClick={() => hapus(v)}><Icon name="trash" size={16} /> Hapus</button></div>}</td></tr>
         })}</tbody></table></div>}
     {edit && <Editor v={edit} prods={prods} onClose={() => setEdit(null)} onSaved={() => { setEdit(null); load() }} />}
   </>)

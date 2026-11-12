@@ -56,6 +56,7 @@ export function useOutlets(me: Me | null, visitId: string | undefined, tz: strin
   const [rows, setRows] = useState<Outlet[]>([])
   const [loading, setLoading] = useState(true)
   const [visited, setVisited] = useState<Set<number>>(new Set())
+  const [perRayon, setPerRayon] = useState<Record<number, number>>({})   // jumlah outlet yang sudah dikunjungi hari ini, per rayon
   const load = useCallback((keep?: boolean) => {
     if (!me || kunci === undefined) return
     if (keep !== true) setLoading(true)
@@ -75,9 +76,16 @@ export function useOutlets(me: Me | null, visitId: string | undefined, tz: strin
   useEffect(() => { load() }, [load])
   useEffect(() => {
     if (me) supabase.from('visits').select('outlet_id').eq('frontliner_id', me.id).gte('checkin_at', startOfDay(tz))
-      .then(({ data }) => setVisited(new Set((data || []).map((x: { outlet_id: number }) => x.outlet_id))))
+      .then(async ({ data }) => {
+        const ids = [...new Set((data || []).map((x: { outlet_id: number }) => x.outlet_id))]
+        setVisited(new Set(ids))
+        if (!ids.length) return setPerRayon({})
+        const { data: o } = await supabase.from('outlets').select('id,rayon').in('id', ids)
+        const c: Record<number, number> = {}; (o || []).forEach((r: { rayon: number | null }) => { if (r.rayon) c[r.rayon] = (c[r.rayon] || 0) + 1 })
+        setPerRayon(c)
+      })
   }, [me, visitId, tz])
-  return { rayon, setRayon, rows, loading, load, visited }
+  return { rayon, setRayon, rows, loading, load, visited, perRayon }
 }
 
 // Stok pembawaan hari ini. Penjualan tidak boleh melebihi stok (dijaga juga di database). `cadangan`: salinan terakhir jika sedang offline.

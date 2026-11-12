@@ -29,11 +29,11 @@ test('Rekap: kondisi memuat dan kosong', () => {
 })
 
 test('Profile: nama, User ID, ringkasan stok, dan tombol LOG OUT', () => {
-  const html = renderToStaticMarkup(h(ProfileTab, { nama: 'AMIRUDDIN', userId: '0300-TMTB01', stokSum: { n: 2, pcs: 30, sisa: 12 }, onStok: () => {}, onLogout: () => {}, onPrinter: () => {}, onReprint: () => {}, printerInfo: 'RawBT · 58 mm', strukInfo: 'Wr Sambel · 05/10/2026 09.12' }))
-  assert.match(html, /AMIRUDDIN/); assert.match(html, /0300-TMTB01/); assert.match(html, /2 produk · 30 pcs \(sisa 12\)/); assert.match(html, /LOG OUT/)
+  const html = renderToStaticMarkup(h(ProfileTab, { nama: 'AMIRUDDIN', userId: '0300-TMTB01', stokSum: { n: 2, pcs: 30, sisa: 12 }, rayonHariIni: 'R03', kunjunganHariIni: 4, penjualanHariIni: 125000, onStok: () => {}, onLogout: () => {}, onPrinter: () => {}, onReprint: () => {}, printerInfo: 'RawBT · 58 mm', strukInfo: 'Wr Sambel · 05/10/2026 09.12' }))
+  assert.match(html, /AMIRUDDIN/); assert.match(html, /0300-TMTB01/); assert.match(html, /2 produk · 30 pcs \(sisa 12\)/); assert.match(html, /Log out/); assert.match(html, />AM</); assert.match(html, /Hari ini/); assert.match(html, /R03/); assert.match(html, /Rp 125\.000/)
   assert.match(html, /Printer dan struk/); assert.match(html, /RawBT · 58 mm/); assert.match(html, /Cetak ulang struk terakhir/); assert.match(html, /Wr Sambel/)
-  assert.match(renderToStaticMarkup(h(ProfileTab, { nama: 'X', userId: 'Y', stokSum: { n: 0, pcs: 0, sisa: 0 }, onStok: () => {}, onLogout: () => {}, onPrinter: () => {}, onReprint: () => {}, printerInfo: '', strukInfo: null })), /Belum ada stok hari ini/)
-  assert.match(renderToStaticMarkup(h(ProfileTab, { nama: 'X', userId: 'Y', stokSum: { n: 0, pcs: 0, sisa: 0 }, onStok: () => {}, onLogout: () => {}, onPrinter: () => {}, onReprint: () => {}, printerInfo: '', strukInfo: null })), /Belum ada struk/)
+  assert.match(renderToStaticMarkup(h(ProfileTab, { nama: 'X', userId: 'Y', stokSum: { n: 0, pcs: 0, sisa: 0 }, rayonHariIni: null, kunjunganHariIni: 0, penjualanHariIni: null, onStok: () => {}, onLogout: () => {}, onPrinter: () => {}, onReprint: () => {}, printerInfo: '', strukInfo: null })), /Belum ada stok hari ini/)
+  assert.match(renderToStaticMarkup(h(ProfileTab, { nama: 'X', userId: 'Y', stokSum: { n: 0, pcs: 0, sisa: 0 }, rayonHariIni: null, kunjunganHariIni: 0, penjualanHariIni: null, onStok: () => {}, onLogout: () => {}, onPrinter: () => {}, onReprint: () => {}, printerInfo: '', strukInfo: null })), /Belum ada struk/)
 })
 
 test('jarak: 0,01 derajat bujur di lintang -6,2 sekitar 1,1 km', () => {

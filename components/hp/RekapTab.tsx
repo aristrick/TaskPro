@@ -10,6 +10,8 @@ export default function RekapTab({ rk, sel, sub, tz, onPick }: { rk: Record<stri
   const tgl = (d: string, o: Intl.DateTimeFormatOptions) => new Date(d + 'T00:00:00' + (OFFSET[tz] || '+07:00')).toLocaleDateString('id-ID', { ...o, timeZone: tz })
   const bulanDays = rk ? days.filter(x => x.startsWith(day(new Date(), tz).slice(0, 7))) : []
   const bulanVal = bulanDays.reduce((a, x) => a + (rk as any)[x].value, 0), bulanOc = bulanDays.reduce((a, x) => a + (rk as any)[x].oc, 0)
+  const tujuh = Array.from({ length: 7 }, (_, i) => { const t = new Date(Date.now() - (6 - i) * 864e5), k = day(t, tz); return { k, v: Number(rk?.[k]?.value || 0), l: t.toLocaleDateString('id-ID', { weekday: 'short', timeZone: tz }) } })
+  const maxTujuh = Math.max(1, ...tujuh.map(x => x.v))
   const others = days.filter(x => x !== sel).map(x => (rk as any)[x].value).filter((v: number) => v > 0)
   const avg = others.length ? others.reduce((a: number, b: number) => a + b, 0) / others.length : 0
   return (
@@ -38,7 +40,7 @@ export default function RekapTab({ rk, sel, sub, tz, onPick }: { rk: Record<stri
             {prods.length === 0 ? <p className="rk-empty">Belum ada penjualan.</p>
               : prods.map((p: any) => <div className="rk-row" key={p.n}>
                 <div><div className="rk-name">{p.n}</div><div className="rk-meta">{p.qty} pcs</div></div><div className="rk-val">{rp(p.value)}</div>
-                <div className="rk-bar" aria-hidden="true"><i style={{ width: `${dd.value ? Math.max(3, (p.value / dd.value) * 100) : 0}%` }} /></div></div>)}</section>
+                <div className="rk-bar" aria-hidden="true"><i style={{ width: `${prods[0]?.value ? Math.max(3, (p.value / prods[0].value) * 100) : 0}%` }} /></div></div>)}</section>
           <section className="rk-card"><header><h4>Outlet bertransaksi</h4><small>{dd.outlets.length} outlet</small></header>
             {dd.outlets.length === 0 ? <p className="rk-empty">Belum ada outlet bertransaksi.</p>
               : dd.outlets.map((o: any, i: number) => <div className="rk-row rank" key={i}><span className="rk-rank">{i + 1}</span><div className="rk-name">{o.name}</div><div className="rk-val">{rp(o.value)}</div></div>)}</section>
@@ -47,10 +49,18 @@ export default function RekapTab({ rk, sel, sub, tz, onPick }: { rk: Record<stri
         : <div className={`rk ${sub}`}>
             <section className="rk-hero"><div className="rk-eyebrow">Bulan ini</div><div className="rk-total num">{rp(bulanVal)}</div>
               <div className="rk-sub">{bulanDays.length} hari kunjungan · {bulanOc} OC</div></section>
-            <div className="rk-list">{days.map(x => <div className="rk-day" role="button" tabIndex={0} key={x} onClick={() => onPick(x)} onKeyDown={e => e.key === 'Enter' && onPick(x)}>
-              <div className="rk-dt"><b>{tgl(x, { day: 'numeric' })}</b><span>{tgl(x, { month: 'short' })}</span></div>
-              <div className="grow"><div className="rk-name">{tgl(x, { weekday: 'long' })}</div><div className="rk-meta">{rk[x].oc} OC · {rk[x].visits} kunjungan</div></div>
-              <div className="rk-val">{rp(rk[x].value)}</div><Icon name="chevron" size={18} /></div>)}</div>
+            <section className="rk-card mini" aria-label="Penjualan 7 hari terakhir"><header><h4>7 hari terakhir</h4><small>{rp(tujuh.reduce((a, x) => a + x.v, 0))}</small></header>
+              <div className="minibars" role="img" aria-label={`Penjualan 7 hari terakhir: ${tujuh.map(x => `${x.l} ${rp(x.v)}`).join(', ')}`}>
+                {tujuh.map((x, i) => <div className={`mb ${i === 6 ? 'today' : ''}`} key={x.k}><i style={{ height: `${x.v > 0 ? Math.max(8, (x.v / maxTujuh) * 100) : 4}%`, animationDelay: `${i * 30}ms` }} /><span>{x.l}</span></div>)}</div></section>
+            <div className="rk-list">{days.map((x, i) => {
+              const bln = x.slice(0, 7), baru = i === 0 || days[i - 1].slice(0, 7) !== bln, kosong = !(rk[x].value > 0)
+              return <div key={x} style={{ display: 'contents' }}>
+                {baru && <h4 className="rk-month">{tgl(x, { month: 'long', year: 'numeric' })}</h4>}
+                <div className={`rk-day ${kosong ? 'kosong' : ''}`} role="button" tabIndex={0} onClick={() => onPick(x)} onKeyDown={e => e.key === 'Enter' && onPick(x)}>
+                  <div className="rk-dt"><b>{tgl(x, { day: 'numeric' })}</b><span>{tgl(x, { month: 'short' })}</span></div>
+                  <div className="grow"><div className="rk-name">{tgl(x, { weekday: 'long' })}</div><div className="rk-meta">{rk[x].oc} OC · {rk[x].visits} kunjungan</div></div>
+                  <div className="rk-val">{rp(rk[x].value)}</div><Icon name="chevron" size={18} /></div></div>
+            })}</div>
           </div>}
     </>
   )

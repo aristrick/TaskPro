@@ -16,7 +16,7 @@ test('dialog struk: pratinjau, tombol Cetak dan Tidak cetak (batal), serta jalan
 
 test('pengaturan printer: pilihan cara cetak, kertas, saklar tanya, dan tes cetak', () => {
   const html = renderToStaticMarkup(h(PrinterSettings, { pref: prefBawaan(), onChange: noop, onClose: noop, onToast: noop }))
-  assert.match(html, /Bluetooth langsung/); assert.match(html, /RawBT \(Android\)/); assert.match(html, /Dialog cetak sistem/)
+  assert.match(html, /Dialog cetak sistem/); assert.doesNotMatch(html, /Tidak tersedia/)   // pilihan yang tidak ada di perangkat disembunyikan, bukan ditampilkan redup
   assert.match(html, /58 mm/); assert.match(html, /80 mm/); assert.match(html, /role="switch"/); assert.match(html, /Tes cetak/)
 })
 

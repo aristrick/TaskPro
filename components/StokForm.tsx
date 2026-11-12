@@ -4,6 +4,7 @@ import { SkelRows } from './Loaders'
 import { supabase } from '../lib/supabase'
 import { useDialog } from './Dialog'
 import Icon from './Icon'
+import SwipeHandle from './ui/SwipeHandle'
 
 // Stok pembawaan hari ini (WIB). "Tambahkan" bersifat kumulatif (boleh isi ulang siang hari).
 // "Koreksi" mengganti total satu produk, tidak boleh di bawah yang sudah terjual. Aturan dijaga di database.
@@ -51,29 +52,33 @@ export default function StokForm({ onClose, onSaved, focusIds }: { onClose: () =
 
   return (
     <div className={`modal ${out ? 'out' : ''}`}><div>
+      <SwipeHandle onClose={close} />
       <div className="row"><h3 style={{ margin: 0 }}>Stok Pembawaan</h3><div className="grow" /><button className="ghost" onClick={close}><Icon name="close" size={16} /> Tutup</button></div>
       <p className="muted" style={{ margin: '0 0 4px', fontSize: 13 }}>{new Date().toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'Asia/Jakarta' })} · berlaku untuk hari ini saja</p>
       <div className="stkbar"><div><b>{tot.d}</b><span>Dibawa</span></div><div><b>{tot.t}</b><span>Terjual</span></div><div><b>{tot.d - tot.t}</b><span>Sisa</span></div></div>
       <div className="searchbox"><Icon name="search" size={18} /><input placeholder="Cari produk…" aria-label="Cari produk" value={q} onChange={e => setQ(e.target.value)} /></div>
-      <span className="label sec">Ketuk ＋ pada produk yang Anda bawa</span>
+      {ready && tot.d === 0 && <p className="notice">Belum ada stok hari ini. Ketuk ＋ pada produk yang Anda bawa.</p>}
       {!ready && <SkelRows n={4} />}
-      {shown.map(x => {
-        const s = st[x.id], n = add[x.id] || 0
-        return (
-          <div key={x.id} className={`prow ${n > 0 ? 'on' : ''}`} onClick={() => n === 0 && setN(x.id, 1)}>
-            <div><div className="pname2">{x.product}{focusIds.has(x.id) && <span className="badge">FOKUS</span>}</div>
-              <div className="pmeta">{s ? `Dibawa ${s.dibawa} · Terjual ${s.terjual} · Sisa ${s.dibawa - s.terjual}` : 'Belum ada stok hari ini'}</div>
-              {s && s.dibawa > 0 && <button className="linkbtn" onClick={e => { e.stopPropagation(); koreksi(x) }}>Koreksi total</button>}</div>
-            {n === 0
-              ? <button className="addbtn" aria-label={`Tambah stok ${x.product}`} onClick={e => { e.stopPropagation(); setN(x.id, 1) }}><Icon name="plus" size={20} /></button>
-              : <div className="stepper" onClick={e => e.stopPropagation()}>
-                  <button aria-label="Kurangi" onClick={() => setN(x.id, n - 1)}><Icon name="minus" size={18} /></button>
-                  <input inputMode="numeric" aria-label={`Tambahan stok ${x.product}`} value={n} onFocus={e => e.target.select()}
-                    onChange={e => { const v = e.target.value.replace(/\D/g, ''); setN(x.id, v === '' ? 1 : +v) }} />
-                  <button aria-label="Tambah" onClick={() => setN(x.id, n + 1)}><Icon name="plus" size={18} /></button></div>}
-            {n > 0 && <div className="psub"><span>Tambah {n} pcs</span><b>Total jadi {(s?.dibawa || 0) + n}</b></div>}
-          </div>)
-      })}
+      {[['Produk fokus', shown.filter(x => focusIds.has(x.id))], ['Produk lain', shown.filter(x => !focusIds.has(x.id))]].map(([judul, daftar]) => (daftar as any[]).length > 0 && <section key={judul as string} aria-label={judul as string}>
+        <h4 className="listhead">{judul as string}<span className="cnt">{(daftar as any[]).length}</span></h4>
+        {(daftar as any[]).map(x => {
+          const s = st[x.id], n = add[x.id] || 0
+          return (
+            <div key={x.id} className={`prow ${n > 0 ? 'on' : ''}`} onClick={() => n === 0 && setN(x.id, 1)}>
+              <div><div className="pname2">{x.product}{focusIds.has(x.id) && <span className="badge">FOKUS</span>}</div>
+                {s && s.dibawa > 0 && <div className="pmeta">{`Dibawa ${s.dibawa} · Terjual ${s.terjual} · Sisa ${s.dibawa - s.terjual}`}</div>}
+                {s && s.dibawa > 0 && <button className="linkbtn" onClick={e => { e.stopPropagation(); koreksi(x) }}>Koreksi total</button>}</div>
+              {n === 0
+                ? <button className="addbtn" aria-label={`Tambah stok ${x.product}`} onClick={e => { e.stopPropagation(); setN(x.id, 1) }}><Icon name="plus" size={20} /></button>
+                : <div className="stepper" onClick={e => e.stopPropagation()}>
+                    <button aria-label="Kurangi" onClick={() => setN(x.id, n - 1)}><Icon name="minus" size={18} /></button>
+                    <input inputMode="numeric" aria-label={`Tambahan stok ${x.product}`} value={n} onFocus={e => e.target.select()}
+                      onChange={e => { const v = e.target.value.replace(/\D/g, ''); setN(x.id, v === '' ? 1 : +v) }} />
+                    <button aria-label="Tambah" onClick={() => setN(x.id, n + 1)}><Icon name="plus" size={18} /></button></div>}
+              {n > 0 && <div className="psub"><span>Tambah {n} pcs</span><b>Total jadi {(s?.dibawa || 0) + n}</b></div>}
+            </div>)
+        })}</section>)}
+      <div className="bar-spacer" aria-hidden="true" />
       {err && <p className="err" role="alert">{err}</p>}
       <div className="stickybar"><button disabled={busy || !items.length} aria-busy={busy} style={{ width: '100%' }} onClick={simpan}>
         {busy ? 'Menyimpan…' : items.length ? `Tambahkan ${pcsAdd} pcs ke stok` : 'Pilih produk yang dibawa'}</button></div>

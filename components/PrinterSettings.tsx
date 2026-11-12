@@ -1,14 +1,15 @@
 'use client'
 import { useState } from 'react'
 import Icon from './Icon'
+import SwipeHandle from './ui/SwipeHandle'
 import { SettingRow } from './Switch'
 import { Spinner } from './Loaders'
 import { friendly } from '../lib/friendly'
 import { adaAndroid, adaIOS, btTerpasang, cetak, dukungBluetooth, pasangBt, simpanPref, strukContoh, type Metode, type Pref } from '../lib/printer'
 
 const METODE: { k: Metode; judul: string; desk: string }[] = [
-  { k: 'bt', judul: 'Bluetooth langsung', desk: 'Printer Bluetooth LE. Chrome di Android atau laptop.' },
-  { k: 'rawbt', judul: 'RawBT (Android)', desk: 'Lewat aplikasi RawBT; mendukung printer Bluetooth klasik.' },
+  { k: 'bt', judul: 'Printer Bluetooth', desk: 'Hubungkan printer langsung dari HP ini. Cara termudah di Android.' },
+  { k: 'rawbt', judul: 'Lewat aplikasi RawBT', desk: 'Untuk printer Bluetooth jenis lama. Perlu aplikasi RawBT dari Play Store.' },
   { k: 'system', judul: 'Dialog cetak sistem', desk: 'Printer yang terdaftar di perangkat, mis. AirPrint di iPhone.' },
 ]
 
@@ -30,23 +31,28 @@ export default function PrinterSettings({ pref, onChange, onClose, onToast }: { 
   }
   return (
     <div className={`modal ${out ? 'out' : ''}`}><div>
+      <SwipeHandle onClose={tutup} />
       <div className="row"><h3 style={{ margin: 0 }}>Printer dan struk</h3><div className="grow" /><button className="ghost" onClick={tutup}><Icon name="close" size={16} /> Tutup</button></div>
       <p className="muted" style={{ margin: '0 0 12px', fontSize: 13 }}>Pengaturan ini tersimpan di perangkat ini saja.</p>
 
       <section className="fsec">
         <div className="fsec-t">Cara mencetak</div>
-        {METODE.map(m => <button key={m.k} className={`opt ${pref.metode === m.k ? 'on' : ''}`} disabled={!ada(m.k)} onClick={() => ubah({ metode: m.k })} role="radio" aria-checked={pref.metode === m.k}>
-          <span className="optdot" aria-hidden="true" /><span><b>{m.judul}</b><small>{ada(m.k) ? m.desk : 'Tidak tersedia di perangkat/browser ini.'}</small></span></button>)}
+        {METODE.filter(m => ada(m.k)).map(m => <button key={m.k} className={`opt ${pref.metode === m.k ? 'on' : ''}`} onClick={() => ubah({ metode: m.k })} role="radio" aria-checked={pref.metode === m.k}>
+          <span className="optdot" aria-hidden="true" /><span><b>{m.judul}</b><small>{m.desk}</small></span></button>)}
         {adaIOS() && <p className="hint-box" style={{ margin: '4px 0 0' }}>iPhone/iPad (Safari) tidak mendukung Bluetooth langsung. Pakai dialog cetak sistem dengan printer AirPrint.</p>}
       </section>
 
       {pref.metode === 'bt' && <section className="fsec">
-        <div className="fsec-t">Printer Bluetooth</div>
-        <div className="row" style={{ margin: 0, flexWrap: 'nowrap' }}>
-          <div className="grow"><b>{btTerpasang() ? `Terhubung: ${pref.btNama || 'Printer'}` : 'Belum dipasangkan'}</b>
-            <div className="muted" style={{ fontSize: 13 }}>Nyalakan printer, lalu pilih dari daftar. Pasangkan ulang jika halaman dimuat ulang.</div></div>
-          <button disabled={!!busy} onClick={pasang}>{busy === 'pasang' ? <Spinner size={16} /> : <Icon name="locate" size={18} />} Pasangkan</button>
-        </div></section>}
+        <div className="fsec-t">Hubungkan printer</div>
+        <p className={`conn ${btTerpasang() ? 'ok' : ''}`}><Icon name={btTerpasang() ? 'check' : 'info'} size={16} /> <b>{btTerpasang() ? `Terhubung: ${pref.btNama || 'Printer'}` : 'Belum terhubung'}</b></p>
+        <ol className="langkah">
+          <li>Nyalakan printer dan dekatkan ke HP.</li>
+          <li>Ketuk <b>Hubungkan printer</b> di bawah.</li>
+          <li>Pilih nama printer dari daftar yang muncul.</li>
+        </ol>
+        <button disabled={!!busy} onClick={pasang}>{busy === 'pasang' ? <Spinner size={16} /> : <Icon name="locate" size={18} />} {btTerpasang() ? 'Hubungkan ulang' : 'Hubungkan printer'}</button>
+        <p className="muted" style={{ fontSize: 13, margin: '8px 0 0' }}>Jika halaman dimuat ulang, hubungkan printer sekali lagi.</p>
+      </section>}
 
       <section className="fsec">
         <div className="fsec-t">Kertas</div>
@@ -65,6 +71,7 @@ export default function PrinterSettings({ pref, onChange, onClose, onToast }: { 
       </section>
 
       {err && <p className="err" role="alert">{err}</p>}
+      <div className="bar-spacer" aria-hidden="true" />
       <div className="stickybar"><button style={{ width: '100%' }} disabled={!!busy} aria-busy={busy === 'tes'} onClick={tes}><Icon name="printer" size={18} /> Tes cetak</button></div>
     </div></div>)
 }

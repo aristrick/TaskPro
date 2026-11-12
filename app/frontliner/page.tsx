@@ -11,6 +11,9 @@ import { loadMe } from '../../lib/auth'
 import { api as call } from '../../lib/api'
 import { useAktif } from '../../lib/sesi'
 import { jam } from '../../lib/rekap'
+import MenuAksi from '../../components/ui/MenuAksi'
+import StatusChip from '../../components/ui/StatusChip'
+import SidePanel from '../../components/ui/SidePanel'
 
 const api = (method: string, body: any) => call('/api/akun', method, body)
 
@@ -81,9 +84,8 @@ function Frontliner() {
       {tampil && !buka && <button onClick={() => { setBuka(true); setEditId(''); setF(EMPTY); setErr('') }}><Icon name="plus" size={18} /> Tambah akun</button>}
     </PageHead>
     {!tampil && <Empty icon="building" title="Pilih cabang dulu">Daftar akun ditampilkan per cabang.</Empty>}
-    {tampil && buka && <section className="card page" aria-label={editId ? 'Edit akun' : 'Tambah akun'}>
-      <div className="sech-in"><h3>{editId ? `Edit akun ${f.user_id}` : 'Tambah akun'}</h3></div>
-      <div className="formgrid">
+    {tampil && buka && <SidePanel judul={editId ? `Edit akun ${f.user_id}` : 'Tambah akun'} onClose={() => { setBuka(false); setEditId(''); setF(EMPTY); setErr('') }}>
+      <div className="formstack">
         <label className="fld"><span className="label">Role</span><select value={f.role} disabled={!!editId} onChange={e => setF({ ...f, role: e.target.value })}>
           {Object.entries(LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></label>
         <label className="fld"><span className="label">User ID</span><input placeholder={`mis. ${kode}-TMTB01`} disabled={!!editId} value={f.user_id} onChange={e => setF({ ...f, user_id: e.target.value })} /><small className="fhint">Dipakai untuk login</small></label>
@@ -96,26 +98,27 @@ function Frontliner() {
       <div className="row" style={{ justifyContent: 'flex-end', margin: 0 }}>
         <button className="ghost" onClick={() => { setBuka(false); setEditId(''); setF(EMPTY); setErr('') }}>Batal</button>
         <button onClick={submit}>{editId ? 'Simpan perubahan' : 'Tambah akun'}</button></div>
-    </section>}
+    </SidePanel>}
     {tampil && !buka && err && <p className="err" role="alert">{err}</p>}
     {tampil && (list.length === 0
       ? <Empty icon="users" title="Belum ada akun di cabang ini">Tambahkan TL atau Kormot lebih dulu, lalu frontliner.</Empty>
       : <div className="scroll"><table className="tfl">
         <colgroup><col /><col className="c-atasan" /><col className="c-gps" /><col className="c-menit" /><col className="c-status" /><col className="c-aksi" /></colgroup>
         <thead><tr><th>Akun</th><th>Atasan</th><th>GPS wajib</th><th title="Jarak waktu minimal dari check-in sampai frontliner boleh check-out. 0 = tanpa batas.">Check-out min.</th><th>Status</th><th><span className="sr-only">Aksi</span></th></tr></thead>
-        <tbody>{list.map(x => <tr key={x.id}>
+        <tbody>{list.map(x => <tr key={x.id} className={LABEL[x.role] ? 'klik' : ''} onClick={() => LABEL[x.role] && edit(x)}>
           <td><div className="akun-nama"><b title={x.nama}>{x.nama}</b><span className="akun-sub"><span className={`rb ${x.role}`}>{LABEL[x.role] || x.role.toUpperCase()}</span><small>{x.user_id}</small></span></div></td>
           <td>{x.atasan_id ? nama(x.atasan_id) : <span className="muted">-</span>}</td>
           <td>{x.role !== 'frontliner' ? <span className="muted">-</span> : role === 'mdm'
-            ? <label className="switch" title="Matikan untuk mengecualikan frontliner ini dari GPS wajib dan batas 50 m"><input type="checkbox" aria-label={`GPS wajib untuk ${x.nama}`} checked={x.gps_required !== false} onChange={e => setGps(x.id, e.target.checked)} /><span /></label>
+            ? <label className="switch" onClick={e => e.stopPropagation()} title="Matikan untuk mengecualikan frontliner ini dari GPS wajib dan batas 50 m"><input type="checkbox" aria-label={`GPS wajib untuk ${x.nama}`} checked={x.gps_required !== false} onChange={e => setGps(x.id, e.target.checked)} /><span /></label>
             : (x.gps_required === false ? 'Dikecualikan' : 'Wajib')}</td>
           <td>{x.role === 'frontliner'
-            ? <button className="menit-btn" onClick={() => ubahMenit(x)} aria-label={`Ubah batas check-out ${x.nama}, sekarang ${labelMenit(Number(x.min_checkout_menit) || 0)}`}><span>{labelMenit(Number(x.min_checkout_menit) || 0)}</span><Icon name="edit" size={14} /></button>
+            ? <button className="menit-btn" onClick={e => { e.stopPropagation(); ubahMenit(x) }} aria-label={`Ubah batas check-out ${x.nama}, sekarang ${labelMenit(Number(x.min_checkout_menit) || 0)}`}><span>{labelMenit(Number(x.min_checkout_menit) || 0)}</span><Icon name="edit" size={14} /></button>
             : <span className="muted">-</span>}</td>
-          <td className="stat">{aktif[x.id] ? <><span className="on-badge">Aktif</span><small className="off-badge">{jam(aktif[x.id]).slice(0, 5)}</small></> : <span className="off-badge">Tidak aktif</span>}</td>
-          <td><div className="aksi">
-            {LABEL[x.role] && <button className="ghost danger small" disabled={!aktif[x.id]} title={aktif[x.id] ? 'Keluarkan akun ini dari perangkatnya' : 'Akun sedang tidak aktif'} onClick={() => paksa(x)}><Icon name="logout" size={16} /> Logout paksa</button>}
-            {LABEL[x.role] && <><button className="ghost small" onClick={() => edit(x)}>Edit</button><button className="ghost danger small" onClick={() => remove(x)}>Hapus</button></>}</div></td></tr>)}</tbody>
+          <td className="stat">{aktif[x.id] ? <StatusChip tone="on">Aktif <small>{jam(aktif[x.id]).slice(0, 5)}</small></StatusChip> : <StatusChip tone="off">Tidak aktif</StatusChip>}</td>
+          <td className="td-aksi">{LABEL[x.role] && <MenuAksi label={`Aksi untuk ${x.nama}`} items={[
+            { label: 'Edit akun', icon: 'edit', onClick: () => edit(x) },
+            { label: 'Logout paksa', icon: 'logout', danger: true, disabled: !aktif[x.id], onClick: () => paksa(x) },
+            { label: 'Hapus akun', icon: 'trash', danger: true, onClick: () => remove(x) }]} />}</td></tr>)}</tbody>
       </table></div>)}
     {undo.node}
   </>)

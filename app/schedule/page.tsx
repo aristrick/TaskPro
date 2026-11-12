@@ -1,5 +1,6 @@
 'use client'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import TipBantuan from '../../components/ui/TipBantuan'
 import Shell from '../../components/Shell'
 import PageHead from '../../components/PageHead'
 import Empty from '../../components/Empty'
@@ -155,14 +156,11 @@ function Schedule() {
 
   return (<>
     <PageHead title="Schedule Taskforce" desc="Jadwal rayon kunjungan per frontliner: Senin sampai Sabtu selama 4 minggu (24 rayon).">{ready && fls.length > 0 && pilihFl}</PageHead>
-    <details className="infobox">
-      <summary>Bagaimana jadwal bekerja?</summary>
-      <ul>
+    <TipBantuan id="jadwal" judul="Bagaimana jadwal bekerja?"><ul>
         <li>Pilih frontliner, lalu tekan <b>+</b> pada sebuah hari untuk memilih <b>rayon</b> yang dikunjungi hari itu. Daftar outlet (nama dan Outlet ID) mengikuti rayon tersebut.</li>
         <li>Siklus berputar: Minggu ke 1 → 4, lalu kembali ke 1. Posisi hari ini ditandai <b>Hari ini</b>.</li>
         <li><b>Kunci jadwal</b> (MDM dan RMDM): jika menyala, frontliner tidak bisa memilih rayon di HP. Layarnya mengikuti jadwal dan check-in di luar rayon hari itu ditolak. Jika mati, jadwal hanya menjadi petunjuk.</li>
-      </ul>
-    </details>
+      </ul></TipBantuan>
 
     {!ready && <SkelRows n={3} />}
     {ready && belumMigrasi && <Empty icon="alert" title="Database belum siap untuk Schedule">Jalankan <b>19_migration.sql</b> sekali di Supabase &gt; SQL Editor, lalu muat ulang halaman ini.</Empty>}

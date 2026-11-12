@@ -9,7 +9,8 @@ s.psql(f"\\set ON_ERROR_STOP on\n\\i {root}/database.sql")
 s.psql(f"\\set ON_ERROR_STOP on\n\\i {root}/16_migration.sql")
 s.psql(f"\\set ON_ERROR_STOP on\n\\i {root}/17_migration.sql")
 s.psql(f"\\set ON_ERROR_STOP on\n\\i {root}/18_migration.sql")
-s.psql(f"\\set ON_ERROR_STOP on\n\\i {root}/19_migration.sql")   # migrasi 16 sampai 19 dijalankan di atas database.sql, seperti di database sungguhan
+s.psql(f"\\set ON_ERROR_STOP on\n\\i {root}/19_migration.sql")
+s.psql(f"\\set ON_ERROR_STOP on\n\\i {root}/20_migration.sql")   # migrasi 16 sampai 19 dijalankan di atas database.sql, seperti di database sungguhan
 print(s.psql(f"\\i {here}/10_test.sql"))
 print(s.psql(f"\\i {here}/20_project_test.sql"))
 print(s.psql(f"\\i {here}/30_focus_test.sql"))

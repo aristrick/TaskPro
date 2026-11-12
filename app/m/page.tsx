@@ -7,7 +7,8 @@ import { supabase } from '../../lib/supabase'
 import { loadMe } from '../../lib/auth'
 import { logout, keluarLokal, useHeartbeat } from '../../lib/sesi'
 import { useDialog } from '../../components/Dialog'
-import { rekap, VSEL, startOfDay, fetchAll } from '../../lib/rekap'
+import { rekap, VSEL, startOfDay, fetchAll, day } from '../../lib/rekap'
+import { ringkasRayon } from '../../lib/jadwal'
 import { friendly } from '../../lib/friendly'
 import StokForm from '../../components/StokForm'
 import RekapTab from '../../components/hp/RekapTab'
@@ -23,7 +24,7 @@ import { muatPref, prefBawaan, simpanTerakhir, muatTerakhir, type Pref } from '.
 import type { Struk } from '../../lib/escpos'
 import { PageLoader } from '../../components/Loaders'
 import Icon from '../../components/Icon'
-import { fresh, payload, buzz, sisaDetik, mmss } from '../../lib/hp'
+import { fresh, payload, buzz, sisaDetik, mmss, meters } from '../../lib/hp'
 import { susunStruk } from '../../lib/struk'
 import { antre, adaUntuk, galatJaringan, muat, type Hasil } from '../../lib/outbox'
 import { hapusSnap, muatSnap, simpanSnap, type Snap } from '../../lib/snapshot'
@@ -46,6 +47,7 @@ export default function Frontliner() {
   const [busy, setBusy] = useState(false)
   const [busyId, setBusyId] = useState<number | null>(null)
   const [toast, setToast] = useState('')
+  const [toastAksi, setToastAksi] = useState<{ label: string; fn: () => void } | null>(null)   // mis. "Batalkan" setelah check-in satu ketukan
   const [far, setFar] = useState<Jauh | null>(null)
   const [loadErr, setLoadErr] = useState('')
   const [tz, setTz] = useState('Asia/Jakarta')                // zona waktu cabang frontliner (WIB/WITA/WIT)
@@ -63,7 +65,7 @@ export default function Frontliner() {
   const ctx = useKonteks(me, visit, snap)
   useDraft(visit?.id, qty, setQty)
 
-  const say = (t: string) => { buzz(18); setTimeout(() => { setToast(t); setTimeout(() => setToast(''), 2200) }, 350) }
+  const say = (t: string, aksi?: { label: string; fn: () => void }) => { buzz(18); setTimeout(() => { setToast(t); setToastAksi(aksi || null); setTimeout(() => { setToast(''); setToastAksi(null) }, aksi ? 6000 : 2200) }, 350) }
   const loadVisit = async (uid: string, a = '') => {
     const { data, error } = await supabase.from('visits').select(VISIT_SEL).eq('frontliner_id', uid).is('checkout_at', null).maybeSingle()
     if (error) return false                                  // gangguan jaringan: jangan menghapus kunjungan yang sedang tampil
@@ -126,12 +128,12 @@ export default function Frontliner() {
 
   // Rekap 35 hari. Cara baru: ringkasan dihitung di database. Cadangan jika migrasi 15 belum dijalankan: unduh baris kunjungan (berhalaman) dan hitung di HP.
   useEffect(() => {
-    if (tab !== 'rekap' || !me) return
+    if ((tab !== 'rekap' && tab !== 'profile') || !me) return   // Profile ikut memuat rekap untuk kartu "Hari ini"
     supabase.rpc('rekap_saya', { p_from: startOfDay(tz, 35) }).then(async ({ data, error }) => {
       if (!error && data) return setRk(data)
       try { setRk(rekap(await fetchAll((a, b) => supabase.from('visits').select(VSEL).eq('frontliner_id', me.id).gte('checkin_at', startOfDay(tz, 35)).order('checkin_at').range(a, b)))) } catch { setRk({}) }
     })
-  }, [tab, me, tz])
+  }, [tab, me, tz])   // eslint-disable-line react-hooks/exhaustive-deps
 
   // ---- Check-in dan check-out ----
   // Frontliner yang dikecualikan MDM boleh tanpa GPS: posisi kosong dan server tidak menerapkan batas 50 m
@@ -140,9 +142,18 @@ export default function Frontliner() {
     const m = /Anda (\d+) m dari outlet/.exec(e?.message || ''); if (!m) return false
     setFar({ name, d: +m[1], lat, long }); return true
   }
+  // Check-in satu ketukan untuk outlet di dalam radius (<= 50 m). Dialog konfirmasi hanya untuk outlet yang jauh atau tanpa lokasi.
+  // Salah ketuk bisa dibatalkan lewat toast "Batalkan" (kunjungan baru tanpa penjualan dihapus di server).
+  async function batalCheckin(id: string) {
+    const { error } = await supabase.rpc('batal_checkin', { p_visit: id })
+    if (error) return void dlg.alert({ title: 'Check-in tidak bisa dibatalkan', icon: 'alert', tone: 'danger', message: friendly(error, 'Pembatalan hanya bisa beberapa saat setelah check-in dan sebelum ada penjualan.') })
+    setToast(''); setToastAksi(null); setAnim('back'); setVisit(null); setQty({}); if (me) await loadVisit(me.id, 'back'); buzz(14); say('Check-in dibatalkan')
+  }
   async function masuk(r: Outlet) {
     if (!me) return
-    if (!(await dlg.confirm({ title: 'Check-in di outlet ini?', icon: 'pin', okText: 'Check-in', message: <>Mulai kunjungan di <b>{r.name}</b>.</> }))) return
+    const jarak = r.lat != null && r.long != null && pos ? meters(pos.lat, pos.lng, r.lat, r.long) : null
+    const dekat = jarak != null && jarak <= 50
+    if (!dekat && !(await dlg.confirm({ title: 'Check-in di outlet ini?', icon: 'pin', okText: 'Check-in', message: <>Mulai kunjungan di <b>{r.name}</b>.</> }))) return
     setBusy(true); setBusyId(r.id); setErr('')
     try {
       if (muat().length) {   // kunjungan sebelumnya masih mengantre: kirim dulu, karena server hanya mengizinkan satu kunjungan berjalan
@@ -150,8 +161,9 @@ export default function Frontliner() {
         if (muat().length) throw new Error('Masih ada kunjungan yang menunggu dikirim. Check-in baru bisa setelah terkirim. Pastikan ada sinyal, lalu coba lagi.')
       }
       const p = await geo(); if (p) setPos({ lat: p.coords.latitude, lng: p.coords.longitude })
-      const { error } = await supabase.rpc('checkin', { p_outlet: r.id, ...payload(p) }); if (error) throw error
+      const { data: vid, error } = await supabase.rpc('checkin', { p_outlet: r.id, ...payload(p) }); if (error) throw error
       setQty({}); await loadVisit(me.id, 'fwd'); buzz()
+      if (dekat && typeof vid === 'string') say(`Check-in di ${r.name}`, { label: 'Batalkan', fn: () => batalCheckin(vid) })
     } catch (e: any) { if (!jauh(e, r.name, r.lat, r.long)) setErr(friendly(e, 'Gagal membaca lokasi')) }
     setBusy(false); setBusyId(null)
   }
@@ -188,6 +200,7 @@ export default function Frontliner() {
 
   // ---- Tampilan ----
   const stokSum = Object.values(stokH.stok).reduce((a, x) => (x.dibawa > 0 ? { n: a.n + 1, pcs: a.pcs + x.dibawa, sisa: a.sisa + x.dibawa - x.terjual } : a), { n: 0, pcs: 0, sisa: 0 })
+  const hariIni = rk ? Number((rk[day(new Date(), tz)] || {}).value || 0) : null   // penjualan hari ini (dari rekap bila sudah dimuat)
   const backRekap = () => { if (sel) { setSub('back'); setSel('') } else { setSub(''); setTab('sell') } }
 
   if (loadErr) return <div className="gate"><h2>Gagal memuat akun</h2><p className="muted">{loadErr}</p><button onClick={() => location.reload()}>Coba lagi</button></div>
@@ -204,7 +217,7 @@ export default function Frontliner() {
   const overlays = <>
     <FarDialog far={far} onClose={() => setFar(null)} />
     {stokOpen && <StokForm focusIds={ctx.focusIds} onClose={() => setStokOpen(false)} onSaved={() => { stokH.segarkan(); say('Stok tersimpan') }} />}
-    {toast && <div className="toast" role="status"><Icon name="check" size={18} /> {toast}</div>}
+    {toast && <div className="toast" role="status"><Icon name="check" size={18} /> <span>{toast}</span>{toastAksi && <button type="button" className="toast-act" onClick={() => { const f = toastAksi.fn; setToast(''); setToastAksi(null); f() }}>{toastAksi.label}</button>}</div>}
   </>
   const barOffline = snap ? <OfflineBar onMuat={() => location.reload()} /> : null
 
@@ -219,19 +232,20 @@ export default function Frontliner() {
       {prefOpen && <PrinterSettings pref={pref} onChange={setPref} onClose={() => setPrefOpen(false)} onToast={say} />}
       {overlays}
       {tab === 'sell'
-        ? <OutletList me={me} rayon={o.rayon} setRayon={o.setRayon} rows={o.rows} loading={o.loading} visited={o.visited} pos={pos} getPos={getPos}
+        ? <OutletList me={me} rayon={o.rayon} setRayon={o.setRayon} rows={o.rows} loading={o.loading} visited={o.visited} perRayon={o.perRayon} pos={pos} getPos={getPos}
             busy={busy} busyId={busyId} err={err} onMasuk={masuk} onReload={o.load} onToast={say} luring={!!snap} jadwal={jd.jadwal}
             bar={<>{barOffline}<OutboxBar n={antrean.n} mengirim={antrean.mengirim} onKirim={antrean.kirim} /></>} />
-        : <div className="ph-head">
-            {tab === 'rekap' && <div className="hrow">
-              <button className="back" aria-label={sel ? 'Kembali ke daftar tanggal' : 'Kembali ke Input'} onClick={backRekap}><Icon name="back" /></button>
-              <h3 className="htitle">{sel ? 'Detail Harian' : 'Rekap'}</h3></div>}
-            {tab === 'profile' && <div className="hrow"><h3 className="htitle">Profile</h3></div>}
-          </div>}
+        : <>
+            {tab === 'rekap' && sel && <div className="ph-head light"><div className="hrow">
+              <button className="back" aria-label="Kembali ke daftar tanggal" onClick={backRekap}><Icon name="back" /></button>
+              <h3 className="htitle">Detail Harian</h3></div></div>}
+            {tab === 'rekap' && !sel && <div className="bigtitle"><h1>Rekap</h1></div>}
+            {tab === 'profile' && <div className="bigtitle"><h1>Profile</h1></div>}
+          </>}
       {tab === 'rekap' && <RekapTab rk={rk} sel={sel} sub={sub} tz={tz} onPick={x => { setSub('fwd'); setSel(x) }} />}
-      {tab === 'profile' && <ProfileTab nama={me.nama} userId={me.user_id} stokSum={stokSum} onStok={() => setStokOpen(true)} onLogout={keluarAkun} onPrinter={() => setPrefOpen(true)}
+      {tab === 'profile' && <ProfileTab nama={me.nama} userId={me.user_id} stokSum={stokSum} rayonHariIni={jd.jadwal?.rayon?.length ? ringkasRayon(jd.jadwal.rayon) : null} kunjunganHariIni={o.visited.size} penjualanHariIni={hariIni} onStok={() => setStokOpen(true)} onLogout={keluarAkun} onPrinter={() => setPrefOpen(true)}
         onReprint={() => { const s = muatTerakhir(); if (s) setStruk(s) }}
-        printerInfo={`${pref.metode === 'bt' ? 'Bluetooth langsung' : pref.metode === 'rawbt' ? 'RawBT' : 'Dialog cetak sistem'} · ${pref.lebar === 32 ? '58' : '80'} mm`}
+        printerInfo={`${pref.metode === 'bt' ? 'Printer Bluetooth' : pref.metode === 'rawbt' ? 'RawBT' : 'Dialog cetak sistem'} · ${pref.lebar === 32 ? '58' : '80'} mm`}
         strukInfo={terakhir ? `${terakhir.outlet} · ${terakhir.waktu}` : null} />}
       <div className="tabbar">
         <button className={tab === 'profile' ? 'on' : ''} onClick={() => setTab('profile')}><span className="pill"><Icon name="user" /></span>Profile</button>
