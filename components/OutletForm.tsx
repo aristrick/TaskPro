@@ -124,10 +124,12 @@ export default function OutletForm({ me, rayon, rayonKunci, pos, outlet, onClose
         {!baru && fld('Status', <select value={f.status} onChange={e => set('status', e.target.value)}><option>AKTIF</option><option>INAKTIF</option></select>)}
       </section>
       {err && <p className="err" role="alert">{err}</p>}
-      {!baru && <button className="ghost danger" style={{ width: '100%', marginTop: 8, minHeight: 48 }} onClick={hapus}><Icon name="trash" size={18} /> Hapus outlet</button>}
       <div className="stickybar">
         <div className={`fstat ${masalah.length ? '' : 'ok'}`} aria-live="polite">{masalah.length ? <>Lengkapi: <b>{masalah.map(x => x.label).join(', ')}</b></> : <><Icon name="check" size={14} /> Semua data wajib sudah terisi</>}</div>
-        <button disabled={busy} aria-busy={busy} style={{ width: '100%' }} onClick={simpan}>{busy ? 'Menyimpan…' : baru ? 'Simpan Outlet Baru' : 'Simpan Perubahan'}</button>
+        <div className="fbtns">
+          {!baru && <button type="button" className="ghost danger fhapus" disabled={busy} onClick={hapus}><Icon name="trash" size={18} /> Hapus</button>}
+          <button className={masalah.length ? 'belum' : ''} aria-disabled={masalah.length > 0} disabled={busy} aria-busy={busy} style={{ flex: 1 }} onClick={simpan}>{busy ? 'Menyimpan…' : baru ? 'Simpan Outlet Baru' : 'Simpan Perubahan'}</button>
+        </div>
       </div>
     </div></div>)
 }

@@ -116,7 +116,7 @@ nav button{width:100%}
 .stickybar{position:sticky;bottom:0;left:auto;transform:none;width:100%;max-width:none;margin-top:auto;z-index:6}
 /* Tab bawah HP: selalu menempel di dasar layar saat scroll, dan halaman tidak bisa bergeser ke samping */
 .phone{overflow-x:clip;min-height:100dvh;padding-bottom:calc(80px + env(safe-area-inset-bottom,0px))}
-.phone>.tabbar{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:480px;margin-top:0;z-index:20}
+.phone>.tabbar{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:480px;margin-top:0;z-index:6}
 .sheet{flex:1;padding-bottom:24px}
 .modal>div{display:flex;flex-direction:column;padding-bottom:16px;border-radius:24px 24px 0 0}
 .modal>div>.stickybar{margin:auto -16px 0;padding:12px 16px calc(12px + env(safe-area-inset-bottom,0px))}
@@ -956,3 +956,10 @@ input,select{min-height:44px;border-color:#D5DCEA}
 
 /* Mode "kurangi gerakan" tetap dihormati */
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
+
+/* Form outlet: tombol Hapus dan Simpan mengambang di bawah. Simpan baru menyala setelah data wajib lengkap (klik saat belum lengkap tetap mengarahkan ke isian yang kurang) */
+.fbtns{display:flex;gap:10px;align-items:stretch}
+.fbtns button{min-height:48px}
+.fbtns .fhapus{flex:none;padding:0 18px}
+.fbtns button.belum{background:#C9D1E0;color:#fff}
+.fbtns button.belum:hover:not(:disabled){background:#C9D1E0}
