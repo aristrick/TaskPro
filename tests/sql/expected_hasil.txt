@@ -113,3 +113,31 @@ X10 kunjungan berjalan terhapus: 0
 X11 audit menandai berjalan: true
 X12 frontliner bisa check-in lagi: true
 X14 jumlah catatan audit HAPUS_KUNJUNGAN: 2
+W1a patokan bawaan 2024-01-01 Senin: 1/1
+W1b Sabtu minggu 1: 1/6
+W1c Minggu = hari 7: 1/7
+W1d Senin minggu 2: 2/1
+W1e kembali ke minggu 1 setelah 4 minggu: 1/1
+W1f sebelum patokan (mundur) minggu 4: 4/1
+W5 awal siklus 2026-11-02: Rabu 11 Nov = 2/3
+W6 audit ATUR_SIKLUS_JADWAL: 1
+W13 jadwal F1 (rayon yang sama di hari yang sama tidak digandakan): 3
+W17 F1 terkunci: true
+W18 audit KUNCI_JADWAL (mengunci dua kali hanya tercatat sekali): 1
+W19 jadwal_hari_ini F1: {"hari": 2, "rayon": [1], "locked": true, "minggu": 1}
+W20 F1 hanya melihat jadwalnya sendiri: 3 baris, 1 frontliner
+W22 kunjungan F1 tercatat hanya yang di rayon jadwal: 0
+W23 jadwal_hari_ini F1 saat tidak ada jadwal: {"hari": 5, "rayon": [], "locked": true, "minggu": 1}
+W26 RMDM mengunci lalu membuka kunci F2, jadwal F2 kosong lagi: 0, terkunci=false
+W27 audit BUKA_KUNCI_JADWAL: 1
+W28 frontliner tanpa kunci bebas memilih rayon (jadwal kosong, tetap bisa check-in): 1
+W29 isi urut untuk F2 kosong: 24 hari
+W30 isi urut ulang (tidak ada yang kosong): 0 hari
+W31 isi urut untuk F1 yang sebagian terisi: 20 hari
+W32 R24 jatuh di Minggu 4 Sabtu: 4/6
+W33 tiap rayon hanya sekali pada F2: 24 baris, 24 rayon berbeda
+W34 F2 melihat: 24 baris dari 1 frontliner
+W35 TL melihat bawahannya: 2 frontliner
+W36 RMDM cabang lain melihat: 0
+W37 outlet tetap di R2, alamat boleh diubah: alamat baru
+W38 MDM boleh memindahkan rayon: R4

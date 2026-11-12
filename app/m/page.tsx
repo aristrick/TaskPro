@@ -18,7 +18,7 @@ import SellScreen from '../../components/hp/SellScreen'
 import OutletList from '../../components/hp/OutletList'
 import FarDialog, { type Jauh } from '../../components/hp/FarDialog'
 import { OfflineBar, OutboxBar } from '../../components/hp/Bars'
-import { draftKey, useAntrean, useDraft, useGps, useKonteks, useOutlets, useStok, type Qty } from '../../components/hp/hooks'
+import { draftKey, useAntrean, useDraft, useGps, useJadwal, useKonteks, useOutlets, useStok, type Qty } from '../../components/hp/hooks'
 import { muatPref, prefBawaan, simpanTerakhir, muatTerakhir, type Pref } from '../../lib/printer'
 import type { Struk } from '../../lib/escpos'
 import { PageLoader } from '../../components/Loaders'
@@ -57,7 +57,8 @@ export default function Frontliner() {
   const [snap, setSnap] = useState<Snap | null>(null)         // terisi jika aplikasi dibuka tanpa sinyal memakai salinan terakhir
 
   const { pos, setPos, gps, getPos } = useGps()
-  const o = useOutlets(me, visit?.id, tz)
+  const jd = useJadwal(me, !!snap)
+  const o = useOutlets(me, visit?.id, tz, jd.siap ? (jd.jadwal?.locked ? jd.jadwal.rayon.join(',') : null) : undefined)
   const stokH = useStok(me, visit?.id, snap)
   const ctx = useKonteks(me, visit, snap)
   useDraft(visit?.id, qty, setQty)
@@ -219,7 +220,7 @@ export default function Frontliner() {
       {overlays}
       {tab === 'sell'
         ? <OutletList me={me} rayon={o.rayon} setRayon={o.setRayon} rows={o.rows} loading={o.loading} visited={o.visited} pos={pos} getPos={getPos}
-            busy={busy} busyId={busyId} err={err} onMasuk={masuk} onReload={o.load} onToast={say} luring={!!snap}
+            busy={busy} busyId={busyId} err={err} onMasuk={masuk} onReload={o.load} onToast={say} luring={!!snap} jadwal={jd.jadwal}
             bar={<>{barOffline}<OutboxBar n={antrean.n} mengirim={antrean.mengirim} onKirim={antrean.kirim} /></>} />
         : <div className="ph-head">
             {tab === 'rekap' && <div className="hrow">

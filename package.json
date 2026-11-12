@@ -9,7 +9,7 @@
     "test": "tsx --tsconfig tests/tsconfig.json --test \"tests/unit/*.test.ts\"",
     "test:sql": "python tests/sql/verify.py",
     "test:e2e": "playwright test",
-    "lint": "eslint . --max-warnings=174"
+    "lint": "eslint . --max-warnings=171"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.117.2",

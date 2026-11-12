@@ -10,7 +10,7 @@ import { hapusOutlet } from '../lib/outlet'
 import { KATEGORI, ACCOUNTS, PREFIX } from '../lib/const'
 
 // Tambah/Edit outlet di HP. Nilai awal diisi otomatis (lokasi, alamat, kota/kecamatan/kelurahan, rayon aktif).
-export default function OutletForm({ me, rayon, pos, outlet, onClose, onSaved, onDeleted }: any) {
+export default function OutletForm({ me, rayon, rayonKunci, pos, outlet, onClose, onSaved, onDeleted }: any) {
   const dlg = useDialog()
   const baru = !outlet
   const wilayah = { province_name: '', city_name: '', district: '', village: '' }
@@ -79,8 +79,8 @@ export default function OutletForm({ me, rayon, pos, outlet, onClose, onSaved, o
       <div className="row"><h3 style={{ margin: 0 }}>{baru ? 'Tambah Outlet' : 'Edit Outlet'}</h3><div className="grow" /><button className="ghost" onClick={close}><Icon name="close" size={16} /> Tutup</button></div>
       <p className="muted" style={{ margin: '0 0 12px', fontSize: 13 }}>{baru ? 'Outlet ID dan kode outlet dibuat otomatis saat disimpan.' : `Kode ${outlet.code} · Outlet ID ${outlet.ext_id || '-'}`} · <i className="req">*</i> wajib diisi</p>
       <section className="fsec rayon">
-        <div className="fsec-h"><span className="fico"><Icon name="list" size={18} /></span><div><b>Rayon kunjungan</b><small>Outlet ini masuk ke rayon yang dipilih</small></div></div>
-        <select data-f="rayon" className="bigsel" aria-label="Rayon" value={f.rayon} onChange={e => set('rayon', e.target.value)}>
+        <div className="fsec-h"><span className="fico"><Icon name="list" size={18} /></span><div><b>Rayon kunjungan</b><small>{rayonKunci ? 'Jadwal dikunci: rayon outlet hanya bisa diubah admin' : 'Outlet ini masuk ke rayon yang dipilih'}</small></div></div>
+        <select data-f="rayon" className="bigsel" aria-label="Rayon" value={f.rayon} disabled={!!rayonKunci} onChange={e => set('rayon', e.target.value)}>
           {Array.from({ length: 24 }, (_, i) => <option key={i} value={i + 1}>R{String(i + 1).padStart(2, '0')}</option>)}</select>
       </section>
 

@@ -34,6 +34,7 @@ const P: Record<string, React.ReactNode> = {
   up: <path d="m4 16 6-6 4 4 6-7M15 7h5v5" />,
   down: <path d="m4 8 6 6 4-4 6 7M15 17h5v-5" />,
   alert: <><path d="M12 4 3 19.500h18z" /><path d="M12 10v4.500M12 17.500h.01" /></>,
+  calendar: <><rect x="4" y="5.500" width="16" height="14.500" rx="2" /><path d="M4 10h16M8.500 3.500v4M15.500 3.500v4" /></>,
   info: <><circle cx="12" cy="12" r="9" /><path d="M12 11v5M12 8h.01" /></>,
 }
 export default function Icon({ name, size = 22, className }: { name: string; size?: number; className?: string }) {

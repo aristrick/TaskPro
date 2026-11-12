@@ -6,6 +6,7 @@ import { startOfDay } from '../../lib/rekap'
 import { kirimSemua, muat, type Hasil } from '../../lib/outbox'
 import type { Kunjungan, Me, Outlet, Posisi, Produk, StokMap } from '../../lib/types'
 import type { Snap } from '../../lib/snapshot'
+import { bacaJadwalHariIni, type JadwalHariIni } from '../../lib/jadwal'
 
 export type Qty = Record<string, number>
 const draftKey = (id: string) => `taskpro-draft-${id}`
@@ -25,25 +26,52 @@ export function useGps() {
   return { pos, setPos, gps, getPos }
 }
 
+// Jadwal rayon hari ini (Schedule Taskforce, migrasi 19). Dibaca ulang tiap aplikasi kembali ke layar dan tiap 5 menit, supaya
+// perubahan jadwal atau kunci dari MDM/RMDM sampai ke HP tanpa harus login ulang. Tanpa migrasi 19 atau tanpa sinyal: nilai terakhir
+// dipakai (awalnya "tidak terkunci"), jadi aplikasi tidak pernah macet karena jadwal. Server tetap menjaga aturannya sendiri.
+export function useJadwal(me: Me | null, offline: boolean) {
+  const [jadwal, setJadwal] = useState<JadwalHariIni | null>(null)
+  const [siap, setSiap] = useState(false)
+  const muat = useCallback(async () => {
+    const { data, error } = await supabase.rpc('jadwal_hari_ini')
+    if (!error) setJadwal(bacaJadwalHariIni(data))
+    setSiap(true)
+  }, [])
+  useEffect(() => {
+    if (!me || offline) return
+    muat()
+    const batas = setTimeout(() => setSiap(true), 4000)   // sinyal sangat lemah: jangan menahan daftar outlet terlalu lama
+    const vis = () => { if (document.visibilityState === 'visible') muat() }
+    document.addEventListener('visibilitychange', vis); const t = setInterval(muat, 300000)
+    return () => { clearTimeout(batas); clearInterval(t); document.removeEventListener('visibilitychange', vis) }
+  }, [me?.id, offline, muat])   // eslint-disable-line react-hooks/exhaustive-deps
+  return { jadwal, siap, muat }
+}
+
 // Daftar outlet rayon terpilih dan penanda outlet yang sudah dikunjungi hari ini.
-export function useOutlets(me: Me | null, visitId: string | undefined, tz: string) {
+// `kunci`: rayon yang dikunci jadwal (mis. "5,6"). null = tidak terkunci (rayon dipilih frontliner), '' = terkunci tetapi tidak ada jadwal hari ini,
+// undefined = belum diketahui (daftar belum dimuat, supaya tidak sempat menampilkan rayon bebas lalu berganti).
+export function useOutlets(me: Me | null, visitId: string | undefined, tz: string, kunci?: string | null) {
   const [rayon, setRayon] = useState(1)
   const [rows, setRows] = useState<Outlet[]>([])
   const [loading, setLoading] = useState(true)
   const [visited, setVisited] = useState<Set<number>>(new Set())
   const load = useCallback((keep?: boolean) => {
-    if (!me) return
+    if (!me || kunci === undefined) return
     if (keep !== true) setLoading(true)
+    const kunciRayon = kunci === null ? null : kunci.split(',').filter(Boolean).map(Number)
+    if (kunciRayon && !kunciRayon.length) { setRows([]); setLoading(false); return }   // terkunci dan hari ini tanpa jadwal
     // dibaca berhalaman (1000 per permintaan) agar rayon besar tidak terpotong diam-diam
     ;(async () => {
       let all: Outlet[] = []
       for (let f = 0; ; f += 1000) {
-        const { data } = await supabase.from('outlets').select('*').eq('kode_md', me.user_id).eq('rayon', rayon).eq('status', 'AKTIF').order('id').range(f, f + 999)
+        const q = supabase.from('outlets').select('*').eq('kode_md', me.user_id).eq('status', 'AKTIF')
+        const { data } = await (kunciRayon ? q.in('rayon', kunciRayon) : q.eq('rayon', rayon)).order('id').range(f, f + 999)
         all = all.concat((data || []) as Outlet[]); if (!data || data.length < 1000) break
       }
       setRows(all); setLoading(false)
     })()
-  }, [me, rayon])
+  }, [me, rayon, kunci])
   useEffect(() => { load() }, [load])
   useEffect(() => {
     if (me) supabase.from('visits').select('outlet_id').eq('frontliner_id', me.id).gte('checkin_at', startOfDay(tz))

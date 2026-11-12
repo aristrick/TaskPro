@@ -14,16 +14,17 @@ export type Mock = ReturnType<typeof buatMock>
 export function buatMock(opsi: { role?: string } = {}) {
   const me = { id: 'u-fl-1', user_id: '0300-TMTB01', nama: 'Adin Shandi', role: opsi.role || 'frontliner', cabang_id: 'cab-1', project_id: 'proj-1', gps_required: true, min_checkout_menit: 0 }
   const outlets = [
-    { id: 1, name: 'Warung Sumber Rejeki', address: 'Jl. Rawa Kepiting 1', lat: -6.2, long: 106.8, kode_md: me.user_id, rayon: 1, status: 'AKTIF' },
-    { id: 2, name: 'Toko Berkah Jaya', address: 'Jl. Cakung 22', lat: -6.21, long: 106.81, kode_md: me.user_id, rayon: 1, status: 'AKTIF' }]
+    { id: 1, name: 'Warung Sumber Rejeki', address: 'Jl. Rawa Kepiting 1', lat: -6.2, long: 106.8, kode_md: me.user_id, rayon: 1, status: 'AKTIF', ext_id: '111222333' },
+    { id: 2, name: 'Toko Berkah Jaya', address: 'Jl. Cakung 22', lat: -6.21, long: 106.81, kode_md: me.user_id, rayon: 1, status: 'AKTIF', ext_id: '444555666' },
+    { id: 3, name: 'Kios Mawar', address: 'Jl. Pulo Lutut 3', lat: -6.22, long: 106.82, kode_md: me.user_id, rayon: 2, status: 'AKTIF', ext_id: '777888999' }]
   const produk: Produk[] = [
     { id: 'pr-1', product: 'BONTEH MATCHA', brand: 'Bonteh', price: 19500, active: true },
     { id: 'pr-2', product: 'BONTEH TEH TARIK', brand: 'Bonteh', price: 20000, active: true },
     { id: 'pr-3', product: 'SAYANG LIQUID 20ML', brand: 'Sayang', price: 2500, active: true }]
   const frontliners = [
-    { id: 'u-fl-1', user_id: '0300-TMTB01', nama: 'Adin Shandi', cabang_id: 'cab-1', project_id: 'proj-1' },
-    { id: 'u-fl-2', user_id: '0300-TMTB02', nama: 'Budi Santoso', cabang_id: 'cab-1', project_id: null as string | null },
-    { id: 'u-fl-3', user_id: '0300-TMTB03', nama: 'Sari Wulandari', cabang_id: 'cab-1', project_id: null as string | null }]
+    { id: 'u-fl-1', user_id: '0300-TMTB01', nama: 'Adin Shandi', cabang_id: 'cab-1', project_id: 'proj-1', schedule_locked: false },
+    { id: 'u-fl-2', user_id: '0300-TMTB02', nama: 'Budi Santoso', cabang_id: 'cab-1', project_id: null as string | null, schedule_locked: false },
+    { id: 'u-fl-3', user_id: '0300-TMTB03', nama: 'Sari Wulandari', cabang_id: 'cab-1', project_id: null as string | null, schedule_locked: false }]
   const projects = [{ id: 'proj-1', name: 'TASKFORCE BONTEH SUNTER', cabang_id: 'cab-1' }]
   const akunCabang = [
     { id: 'tl-1', user_id: '0300-TL01', nama: 'Rudi Hartono', role: 'tl', atasan_id: null as string | null, gps_required: true, min_checkout_menit: 0 },
@@ -35,7 +36,8 @@ export function buatMock(opsi: { role?: string } = {}) {
       sales: [{ id: 's1', qty: 2, price: 19500, value: 39000, product_id: 'pr-1' }, { id: 's2', qty: 1, price: 2500, value: 2500, product_id: 'pr-3' }] },
     { id: 'v-2', checkin_at: sekarang, checkout_at: sekarang, effective: false, cabang: { nama: 'Pulogadung', tz: 'Asia/Jakarta' }, fl: { user_id: '0300-TMTB02', nama: 'Budi Santoso' }, outlets: { name: 'Toko Berkah Jaya', code: 'OUT-2' }, sales: [] }]
   const s = {
-    me, outlets, produk, frontliners, projects, akunCabang, visitAdmin, aktifIds: ['u-fl-1'] as string[], akunPanggilan: [] as { method: string; body: Record<string, unknown> }[], sesiPanggilan: [] as Record<string, unknown>[], tolakHapus: '' as string, fokus: ['pr-1'], kunjungan: [] as Kunjungan[], online: true, passwordBenar: 'rahasia',
+    me, outlets, produk, frontliners, projects, akunCabang, visitAdmin, aktifIds: ['u-fl-1'] as string[], outletMasuk: [] as Record<string, unknown>[][], akunPanggilan: [] as { method: string; body: Record<string, unknown> }[], sesiPanggilan: [] as Record<string, unknown>[], tolakHapus: '' as string, fokus: ['pr-1'], kunjungan: [] as Kunjungan[], online: true, passwordBenar: 'rahasia',
+    jadwal: [] as { id: string; frontliner_id: string; minggu: number; hari: number; rayon: number }[], posisi: { minggu: 2, hari: 3 }, awalSiklus: null as string | null, kunciJadwal: false,
     rpc: [] as { fn: string; args: any }[], stokDibawa: 50, tolakSaveSales: '' as string, tanpaFungsiTertunda: false,
     aktif: () => s.kunjungan.find(v => !v.checkout_at) || null,
     panggilan: (fn: string) => s.rpc.filter(x => x.fn === fn),
@@ -58,6 +60,25 @@ function rpc(m: Mock, fn: string, a: any, route: Route) {
     case 'sesi_detak': return json(route, true)
     case 'stok_hari_ini': return json(route, m.produk.map(p => ({ product_id: p.id, dibawa: m.stokDibawa, terjual: 0 })))
     case 'rekap_saya': return json(route, {})
+    case 'jadwal_hari_ini': return json(route, { locked: m.kunciJadwal, minggu: m.posisi.minggu, hari: m.posisi.hari, rayon: m.jadwal.filter(x => x.frontliner_id === m.me.id && x.minggu === m.posisi.minggu && x.hari === m.posisi.hari).map(x => x.rayon).sort((p, q) => p - q) })
+    case 'schedule_posisi': return json(route, [m.posisi])
+    case 'schedule_tambah': {
+      const ada = m.jadwal.find(x => x.frontliner_id === a.p_frontliner && x.minggu === a.p_minggu && x.hari === a.p_hari && x.rayon === a.p_rayon)
+      if (ada) return json(route, ada.id)
+      const baru = { id: uuid(), frontliner_id: a.p_frontliner, minggu: a.p_minggu, hari: a.p_hari, rayon: a.p_rayon }; m.jadwal.push(baru); return json(route, baru.id)
+    }
+    case 'schedule_lepas': { m.jadwal = m.jadwal.filter(x => x.id !== a.p_id); return json(route, null) }
+    case 'schedule_kunci': {
+      if (m.me.role === 'mds') return galat(route, 'Hanya MDM dan RMDM yang dapat mengunci jadwal.')
+      if (a.p_kunci && !m.jadwal.some(x => x.frontliner_id === a.p_frontliner)) return galat(route, 'Isi jadwal frontliner ini dulu sebelum mengunci.')
+      const f = m.frontliners.find(x => x.id === a.p_frontliner); if (f) f.schedule_locked = a.p_kunci; if (a.p_frontliner === m.me.id) m.kunciJadwal = a.p_kunci; return json(route, null)
+    }
+    case 'schedule_set_start': m.awalSiklus = a.p_tgl; return json(route, null)
+    case 'schedule_isi_urut': {
+      let n = 0
+      for (let w = 1; w <= 4; w++) for (let h = 1; h <= 6; h++) if (!m.jadwal.some(x => x.frontliner_id === a.p_frontliner && x.minggu === w && x.hari === h)) { m.jadwal.push({ id: uuid(), frontliner_id: a.p_frontliner, minggu: w, hari: h, rayon: (w - 1) * 6 + h }); n++ }
+      return json(route, n)
+    }
     case 'kunjungan_hapus': {
       if (m.tolakHapus) return galat(route, m.tolakHapus)
       if (!a.p_alasan || String(a.p_alasan).trim().length < 3) return galat(route, 'Alasan penghapusan wajib diisi.')
@@ -98,10 +119,15 @@ function tabel(m: Mock, nama: string, u: URL) {
     case 'profiles': return u.searchParams.get('role') === 'eq.frontliner' ? m.frontliners : u.searchParams.get('cabang_id') ? m.akunCabang : [m.me]
     case 'device_sessions': return m.aktifIds.map(user_id => ({ user_id, last_seen: new Date().toISOString() }))
     case 'projects': return m.projects
-    case 'outlets': { const r = u.searchParams.get('rayon'); return m.outlets.filter(o => !r || r === `eq.${o.rayon}`) }
+    case 'outlets': {
+      const r = u.searchParams.get('rayon')
+      const dalam = r?.startsWith('in.(') ? r.slice(4, -1).split(',').map(Number) : null
+      return m.outlets.filter(o => !r || (dalam ? dalam.includes(o.rayon) : r === `eq.${o.rayon}`))
+    }
+    case 'schedule_taskforce': { const f = (u.searchParams.get('frontliner_id') || '').replace('eq.', ''); return m.jadwal.filter(x => !f || x.frontliner_id === f) }
     case 'products': return m.produk
     case 'project_focus': return m.fokus.map(product_id => ({ project_id: 'proj-1', product_id }))
-    case 'cabang': return [{ id: 'cab-1', kode: '0300', nama: 'Pulogadung', tz: 'Asia/Jakarta' }]
+    case 'cabang': return [{ id: 'cab-1', kode: '0300', nama: 'Pulogadung', tz: 'Asia/Jakarta', schedule_start: m.awalSiklus }]
     case 'settings': return u.searchParams.get('key') === 'eq.stok_enforced' ? [{ value: true }] : []
     case 'visits': {
       if (q.includes('fl%3Aprofiles') || q.includes('fl:profiles')) return m.visitAdmin
@@ -136,6 +162,7 @@ export async function pasang(page: Page, m: Mock, opsi: { masuk?: boolean } = { 
     if (p.startsWith('/rest/v1/rpc/')) return rpc(m, p.split('/').pop()!, JSON.parse(req.postData() || '{}'), route)
     if (p.startsWith('/rest/v1/') && req.method() !== 'GET') {   // tulis ke tabel: hanya project_focus yang punya keadaan
       const t = p.split('/').pop()!
+      if (t === 'outlets' && req.method() === 'POST') m.outletMasuk.push(JSON.parse(req.postData() || '[]'))
       if (t === 'project_focus' && req.method() === 'POST') m.fokus.push(JSON.parse(req.postData() || '{}').product_id)
       if (t === 'project_focus' && req.method() === 'DELETE') { const id = (u.searchParams.get('product_id') || '').replace('eq.', ''); m.fokus = m.fokus.filter(x => x !== id) }
       return route.fulfill({ status: req.method() === 'POST' ? 201 : 204, headers: CORS })

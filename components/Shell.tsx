@@ -13,7 +13,7 @@ import { KUNCI_INFO, perluInaktif } from '../lib/inaktif'
 
 const ALL = ['mds', 'mdm', 'rmdm', 'tl', 'kormot'], ADM = ['mds', 'mdm', 'rmdm']
 type Item = [string, string, string[], string]
-const MAIN: Item[] = [['/', 'Home', ALL, 'home'], ['/frontliner', 'Frontliner', ADM, 'users'], ['/project', 'Project', ADM, 'folder'], ['/outlet', 'Outlet', ALL, 'store'], ['/stok', 'Stok', ALL, 'basket'], ['/report', 'Report', ALL, 'chart'], ['/produk', 'Produk', ADM, 'box'], ['/pantau', 'Pantau', ALL, 'alert']]
+const MAIN: Item[] = [['/', 'Home', ALL, 'home'], ['/frontliner', 'Frontliner', ADM, 'users'], ['/project', 'Project', ADM, 'folder'], ['/schedule', 'Schedule', ADM, 'calendar'], ['/outlet', 'Outlet', ALL, 'store'], ['/stok', 'Stok', ALL, 'basket'], ['/report', 'Report', ALL, 'chart'], ['/produk', 'Produk', ADM, 'box'], ['/pantau', 'Pantau', ALL, 'alert']]
 const ADMIN: Item[] = [['/cabang', 'Cabang', ['mdm', 'rmdm'], 'building'], ['/mds', 'MDS & RMDM', ['mdm', 'rmdm'], 'shield'], ['/penjualan', 'Edit Penjualan', ['mdm'], 'edit']]
 
 export default function Shell({ roles, children }: { roles: string[]; children: React.ReactNode }) {

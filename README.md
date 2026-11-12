@@ -1,6 +1,6 @@
 # TaskPro
 ## Instalasi baru
-1. Supabase → SQL Editor: jalankan `database.sql` (sudah memuat migrasi 01–15), lalu `16_migration.sql`, `17_migration.sql`, dan `18_migration.sql`. Tabel lengkap dan cara mengecek versi: `docs/VERSI-DATABASE.md`.
+1. Supabase → SQL Editor: jalankan `database.sql` (sudah memuat migrasi 01–15), lalu `16_migration.sql`, `17_migration.sql`, `18_migration.sql`, dan `19_migration.sql`. Tabel lengkap dan cara mengecek versi: `docs/VERSI-DATABASE.md`.
 2. Authentication → Users → Add user `mdm01@taskpro.app` (Auto Confirm), lalu jalankan `seed_mdm.sql`.
 3. `.env.example` → `.env.local`, isi 3 nilai (Project Settings → API). Jangan di-commit.
 4. `npm install` → `npm run dev`. Login `MDM01`.
@@ -61,6 +61,9 @@ Aturan dijaga di database. Di HP, tombol Check-out menampilkan hitung mundur sam
 Kebijakan akses dibungkus agar dihitung sekali per query (Home, Report, Stok, dan daftar jauh lebih cepat) dan tab Rekap di HP mengirim data ±10x lebih kecil.
 Aplikasi tetap berjalan tanpa migrasi ini (otomatis memakai cara lama), hanya lebih lambat dan lebih boros kuota. Angka ukur: `docs/KAPASITAS.md`.
 
+## Import DMP
+Format file diperiksa sebelum diproses (jenis file, kolom wajib, nama kolom yang hampir sama, STATUS, baris contoh), dan ada tombol **Unduh format contoh** (sheet DMP, CONTOH, PETUNJUK) yang memakai kode cabang terpilih. Penjelasan lengkap aturan dan pemilihan sheet: `docs/IMPORT-DMP.md`.
+
 ## Keamanan sesi dan fitur admin
 - **Keluar otomatis:** akun MDS, RMDM, dan MDM yang tidak beraktivitas (klik, ketik, gulir, sentuh) selama 30 menit keluar otomatis. Satu menit sebelumnya muncul peringatan dengan hitung mundur dan tombol "Tetap masuk". Setelah keluar, halaman login menjelaskan alasannya. Waktu aktivitas disimpan di perangkat (dibagi antar tab), jadi sesi yang dibuka lagi setelah lama langsung diminta login. Frontliner, TL, dan Kormot tidak terkena. Batasnya ada di `lib/inaktif.ts` (`BATAS_MENIT`).
 - **Hapus (khusus MDM):** menu Edit Penjualan, tombol Hapus pada baris kunjungan, lalu pilih **penjualan saja** (kunjungan tetap ada, migrasi 17) atau **seluruh kunjungan** (kunjungan dan penjualannya hilang, termasuk yang masih berjalan, migrasi 18). Alasan wajib dan tercatat di Jejak Audit.
@@ -69,6 +72,10 @@ Aplikasi tetap berjalan tanpa migrasi ini (otomatis memakai cara lama), hanya le
 
 ## Mode sinyal lemah (layar frontliner)
 Aplikasi tetap bisa dibuka tanpa sinyal setelah pernah dibuka online sekali, dan check-out yang gagal karena jaringan disimpan di HP lalu dikirim otomatis. Check-in tetap butuh internet. Penjelasan, batasan, dan cara mengujinya: `docs/SINYAL-LEMAH.md`. Butuh migrasi 16 agar jam check-out tercatat tepat (tanpa 16 tetap berjalan).
+
+## Schedule Taskforce (jalankan `19_migration.sql` sekali)
+Menu **Schedule** (MDS, RMDM, MDM): jadwal rayon per frontliner untuk Senin–Sabtu selama Minggu ke 1–4 (24 rayon). Tekan **+** pada sebuah hari untuk memilih rayon; daftar outlet (nama dan Outlet ID) mengikuti rayon itu.
+Siklus berputar 1 → 4 → 1; MDM/RMDM mengatur **awal siklus** (Senin Minggu ke 1) per cabang. **Kunci jadwal** (hanya MDM dan RMDM): jika menyala, frontliner tidak bisa memilih rayon di HP dan check-in di luar rayon jadwal hari itu ditolak oleh database. Aplikasi tetap jalan tanpa migrasi 19 (jadwal dianggap tidak ada). Detail: `docs/VERSI-DATABASE.md`.
 
 ## Pengujian
 | Perintah | Isi |

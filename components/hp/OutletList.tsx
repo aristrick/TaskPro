@@ -5,14 +5,15 @@ import OutletForm from '../OutletForm'
 import { SkelRows } from '../Loaders'
 import { useDialog } from '../Dialog'
 import { buzz, fmt, meters } from '../../lib/hp'
+import { kodeRayon, labelHari, ringkasRayon, type JadwalHariIni } from '../../lib/jadwal'
 import type { Me, Outlet, Posisi } from '../../lib/types'
 
 type Baris = Outlet & { d: number | null }
 
 // Tab "Input": judul, pencarian dan rayon, progres kunjungan, lalu daftar outlet (terdekat dulu). Mode Edit Outlet dan menu ada di sini.
-export default function OutletList({ me, rayon, setRayon, rows, loading, visited, pos, getPos, busy, busyId, err, onMasuk, onReload, onToast, bar, luring }: {
+export default function OutletList({ me, rayon, setRayon, rows, loading, visited, pos, getPos, busy, busyId, err, onMasuk, onReload, onToast, bar, luring, jadwal }: {
   me: Me; rayon: number; setRayon: (r: number) => void; rows: Outlet[]; loading: boolean; visited: Set<number>; pos: Posisi | null; getPos: () => void
-  busy: boolean; busyId: number | null; err: string; onMasuk: (r: Outlet) => void; onReload: (keep?: boolean) => void; onToast: (t: string) => void; bar?: ReactNode; luring?: boolean }) {
+  busy: boolean; busyId: number | null; err: string; onMasuk: (r: Outlet) => void; onReload: (keep?: boolean) => void; onToast: (t: string) => void; bar?: ReactNode; luring?: boolean; jadwal?: JadwalHariIni | null }) {
   const dlg = useDialog()
   const [q, setQ] = useState('')
   const [editMode, setEditMode] = useState(false)
@@ -30,9 +31,13 @@ export default function OutletList({ me, rayon, setRayon, rows, loading, visited
     .filter(r => !q.trim() || (r.name + ' ' + r.address).toLowerCase().includes(q.trim().toLowerCase()))
     .sort((a, b) => (a.d ?? 1e12) - (b.d ?? 1e12))
   const done = rows.filter(r => visited.has(r.id)).length
+  // Jadwal dikunci MDM/RMDM: rayon tidak bisa dipilih, daftar mengikuti rayon jadwal hari ini.
+  const terkunci = !!jadwal?.locked, rayonJadwal = jadwal?.rayon || []
+  const namaRayon = terkunci ? (rayonJadwal.length ? ringkasRayon(rayonJadwal) : 'Tidak ada jadwal') : kodeRayon(rayon)
+  const saranJadwal = !terkunci && rayonJadwal.length > 0 && !rayonJadwal.includes(rayon) ? rayonJadwal[0] : null   // petunjuk saja: tidak mengubah pilihan sendiri
 
   return (<>
-    {form && <OutletForm me={me} rayon={rayon} pos={pos} outlet={form === 'new' ? null : form} onClose={() => setForm(null)} onSaved={() => { const id = form !== 'new' ? form?.id : null; setForm(null); onReload(true); onToast('Outlet tersimpan'); if (id) { setSavedId(id); setTimeout(() => setSavedId(null), 2000) } }}
+    {form && <OutletForm me={me} rayon={terkunci && rayonJadwal.length ? rayonJadwal[0] : rayon} rayonKunci={terkunci} pos={pos} outlet={form === 'new' ? null : form} onClose={() => setForm(null)} onSaved={() => { const id = form !== 'new' ? form?.id : null; setForm(null); onReload(true); onToast('Outlet tersimpan'); if (id) { setSavedId(id); setTimeout(() => setSavedId(null), 2000) } }}
       onDeleted={(r: string) => { setForm(null); setEditMode(false); onReload(); onToast(r === 'deleted' ? 'Outlet dihapus' : 'Outlet dinonaktifkan') }} />}
     {menu && <div className={`drawer ${closingMenu ? 'out' : ''}`} onClick={closeMenu}><div onClick={e => e.stopPropagation()}>
       <h3>Menu</h3>
@@ -47,15 +52,21 @@ export default function OutletList({ me, rayon, setRayon, rows, loading, visited
           : <>          <button className="icon" aria-label="Refresh lokasi" onClick={() => { setSpin(true); setTimeout(() => setSpin(false), 700); getPos(); buzz(10) }}><Icon name="refresh" className={spin ? 'spin' : ''} /></button>
           <button className="icon" aria-label="Tambah outlet" onClick={() => setForm('new')}><Icon name="plus" /></button></>}</div>
       <div className="hrow"><input placeholder="Cari outlet…" value={q} onChange={e => setQ(e.target.value)} style={{ flex: 1 }} />
-        <select aria-label="Rayon" value={rayon} style={{ width: 92 }} onChange={e => { setRayon(+e.target.value); localStorage.setItem('rayon', e.target.value) }}>
-          {Array.from({ length: 24 }, (_, i) => <option key={i} value={i + 1}>R{String(i + 1).padStart(2, '0')}</option>)}</select></div>
+        {terkunci
+          ? <div className="rayon-kunci" role="status" aria-label={`Rayon dikunci mengikuti jadwal: ${namaRayon}`} title="Rayon mengikuti jadwal yang ditetapkan admin"><Icon name="lock" size={16} />{namaRayon}</div>
+          : <select aria-label="Rayon" value={rayon} style={{ width: 92 }} onChange={e => { setRayon(+e.target.value); localStorage.setItem('rayon', e.target.value) }}>
+              {Array.from({ length: 24 }, (_, i) => <option key={i} value={i + 1}>R{String(i + 1).padStart(2, '0')}</option>)}</select>}</div>
       {!editMode && <div className="progress" role="progressbar" aria-label="Progres kunjungan" aria-valuemin={0} aria-valuemax={rows.length} aria-valuenow={done}><div className="bar" style={{ width: rows.length ? `${(done / rows.length) * 100}%` : 0 }} /></div>}
+      {!editMode && terkunci && jadwal?.minggu != null && jadwal.hari != null && <div className="jadwal-hint"><Icon name="lock" size={14} /> Jadwal dikunci · {labelHari(jadwal.minggu, jadwal.hari)}</div>}
+      {!editMode && saranJadwal && <div className="jadwal-hint"><Icon name="info" size={14} /> Jadwal hari ini {ringkasRayon(rayonJadwal)}
+        <button type="button" onClick={() => { setRayon(saranJadwal); localStorage.setItem('rayon', String(saranJadwal)) }}>Pakai {kodeRayon(saranJadwal)}</button></div>}
       <div className="hint">{editMode ? 'Ketuk outlet yang ingin diubah. Check-in dinonaktifkan sampai Anda menekan Selesai.' : `${done} dari ${rows.length} outlet sudah dikunjungi hari ini`}</div>
     </div>
     {bar}
     {err && <p className="err" role="alert" style={{ padding: '8px 16px', margin: 0 }}>{err}</p>}
     {loading ? <SkelRows n={6} /> : list.length === 0 && luring ? <div className="empty"><b>Daftar outlet butuh sinyal</b><p className="muted">Check-in baru bisa dilakukan setelah sinyal kembali. Check-out yang tersimpan di HP akan terkirim otomatis.</p></div>
-      : list.length === 0 ? <div className="empty"><b>Belum ada outlet di rayon R{String(rayon).padStart(2, '0')}</b><p className="muted">Pilih rayon lain, atau tambah outlet baru dengan tombol + di kanan atas.</p></div>
+      : terkunci && rayonJadwal.length === 0 ? <div className="empty"><b>Tidak ada jadwal kunjungan hari ini</b><p className="muted">Jadwal Anda dikunci oleh admin dan hari ini tidak ada rayon yang dijadwalkan. Hubungi MDS atau MDM jika ini keliru.</p></div>
+      : list.length === 0 ? <div className="empty"><b>Belum ada outlet di rayon {namaRayon}</b><p className="muted">{terkunci ? 'Hubungi MDS atau MDM untuk menambahkan outlet di rayon jadwal Anda.' : 'Pilih rayon lain, atau tambah outlet baru dengan tombol + di kanan atas.'}</p></div>
       : list.map((r, i) => <div className={`item ${r.lat == null ? 'nolat-row' : ''} ${savedId === r.id ? 'flash' : ''}`} style={{ ['--i' as string]: Math.min(i, 10) }} key={r.id} onClick={() => !busy && (editMode ? setForm(r) : onMasuk(r))}>
         <div className={`dist ${r.lat == null ? 'nolat' : r.d != null && r.d <= 50 ? 'near' : ''}`} title={r.lat == null ? 'Lokasi outlet belum ada' : undefined}>{busyId === r.id ? <span className="spinner" /> : r.lat == null ? <Icon name="alert" size={24} /> : r.d == null ? '?' : fmt(r.d)}</div>
         <div className="grow"><b>{r.name}</b>{visited.has(r.id) && <span className="badge ok"><Icon name="check" size={12} /> SUDAH</span>}

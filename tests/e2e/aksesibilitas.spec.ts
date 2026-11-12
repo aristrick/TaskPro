@@ -1,5 +1,7 @@
 import { test, expect, type Page } from '@playwright/test'
 import AxeBuilder from '@axe-core/playwright'
+import ExcelJS from 'exceljs'
+import { KOLOM_DMP } from '../../lib/dmp'
 import { buatMock, pasang } from './mock'
 
 // Pemeriksaan aksesibilitas otomatis (axe-core, aturan WCAG 2.0/2.1 level A dan AA). Aturannya ketat: nol pelanggaran, apa pun tingkatnya.
@@ -29,6 +31,13 @@ test.describe('admin (desktop)', () => {
   test('formulir tambah akun dan kolom pencarian bertipe combobox', async ({ page }) => {
     await pasang(page, buatMock({ role: 'mdm' })); await page.goto('/frontliner'); await page.getByRole('button', { name: 'Tambah akun' }).click(); await periksa(page, 'formulir tambah akun')
     await page.goto('/project'); await page.getByRole('combobox', { name: 'Tambah frontliner' }).click(); await expect(page.getByRole('listbox')).toBeVisible(); await periksa(page, 'combobox terbuka')
+  })
+  test('import DMP: hasil pemeriksaan format yang salah, dan yang sesuai beserta tinjauannya', async ({ page }) => {
+    await pasang(page, buatMock({ role: 'mdm' })); await page.goto('/import'); await page.getByLabel('Cabang tujuan impor').selectOption({ label: '0300 Pulogadung' })
+    const buat = async (rows: unknown[][]) => { const wb = new ExcelJS.Workbook(); const ws = wb.addWorksheet('DMP'); rows.forEach(r => ws.addRow(r)); return { name: 'dmp.xlsx', mimeType: 'application/octet-stream', buffer: Buffer.from(await wb.xlsx.writeBuffer()) } }
+    await page.getByLabel('File DMP (.xlsx)').setInputFiles(await buat([['Code Outlet', 'Nama', 'kode_md']])); await expect(page.getByRole('alert').filter({ hasText: 'Format file belum sesuai' })).toBeVisible(); await periksa(page, 'import: format salah')
+    const baris = KOLOM_DMP.map(k => ({ 'code outlet': 'A1', name: 'Warung A', full_address: 'Jl. A', latitude: '-6.2', longitude: '106.9', 'kode md': '0300-TMTB01', rayon: 'R01' })[k.nama as 'name'] ?? '')
+    await page.getByLabel('File DMP (.xlsx)').setInputFiles(await buat([KOLOM_DMP.map(k => k.judul), baris])); await expect(page.getByText('Format sesuai.')).toBeVisible(); await expect(page.getByText('1 outlet siap disimpan')).toBeVisible(); await periksa(page, 'import: format sesuai')
   })
   test('peringatan sesi akan berakhir', async ({ page }) => {
     await page.clock.install(); await pasang(page, buatMock({ role: 'mdm' })); await page.goto('/project'); await expect(page.getByText('TASKFORCE BONTEH SUNTER')).toBeVisible()

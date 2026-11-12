@@ -7,11 +7,17 @@ Anda tidak berwenang atas cabang ini.
 Anda tidak berwenang atas cabang ini.
 Anda tidak berwenang atas cabang ini.
 Anda tidak berwenang atas cabang ini.
+Anda tidak berwenang atas frontliner ini.
+Anda tidak berwenang atas frontliner ini.
+Awal siklus harus hari Senin.
 Check-out baru bisa dilakukan N menit setelah check-in.
 Check-out baru bisa dilakukan N menit setelah check-in. Tunggu N detik lagi.
 Check-out baru bisa dilakukan N menit setelah check-in. Tunggu N detik lagi.
 Data tertunda lebih dari N jam.
 Frontliner harus dari cabang yang sama dengan project.
+Hanya MDM dan RMDM yang dapat mengatur awal siklus.
+Hanya MDM dan RMDM yang dapat mengatur awal siklus.
+Hanya MDM dan RMDM yang dapat mengunci jadwal.
 Hanya MDM.
 Hanya MDM.
 Hanya MDM.
@@ -20,6 +26,12 @@ Hanya MDM.
 Hanya MDM.
 Hanya MDM.
 Hanya frontliner yang mengisi stok pembawaan.
+Hari harus Senin sampai Sabtu.
+Isi jadwal frontliner ini dulu sebelum mengunci.
+Jadwal dikunci dan hari ini tidak ada jadwal kunjungan untuk Anda.
+Jadwal dikunci. Hari ini jadwal Anda rayon RN, outlet ini rayon RN.
+Jadwal dikunci. Rayon outlet hanya bisa diubah oleh admin.
+Jadwal sedang dikunci dan ini rayon terakhirnya. Matikan kunci dulu sebelum mengosongkan jadwal.
 Jumlah (pcs) harus lebih dari N.
 Kode MD tujuan harus akun frontliner yang terdaftar.
 Kunjungan ini tidak punya penjualan.
@@ -29,8 +41,10 @@ Kunjungan tidak aktif.
 Kunjungan tidak ditemukan.
 Kunjungan tidak ditemukan.
 Masih ada kunjungan yang belum check-out.
+Minggu harus N sampai N.
 Pilih frontliner (Kode MD).
 Produk PN muncul dua kali. Gabungkan jumlahnya.
+Rayon harus N sampai N.
 Stok PN tidak cukup. Sisa N pcs, diminta N pcs.
 Stok PN tidak cukup. Sisa N pcs, diminta N pcs.
 Stok PN tidak cukup. Sisa N pcs, diminta N pcs.
@@ -49,6 +63,8 @@ new row violates row-level security policy for table "geocode_cache"
 new row violates row-level security policy for table "project_focus"
 new row violates row-level security policy for table "project_focus"
 new row violates row-level security policy for table "projects"
+new row violates row-level security policy for table "schedule_taskforce"
+new row violates row-level security policy for table "schedule_taskforce"
 permission denied for function audit_prune
 permission denied for function cek_radius
 permission denied for function cek_radius

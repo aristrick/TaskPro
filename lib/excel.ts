@@ -42,8 +42,9 @@ export async function buatXlsx(namaSheet: string, data: Record<string, unknown>[
 }
 
 // Unduh di browser.
-export async function unduhXlsx(namaFile: string, namaSheet: string, data: Record<string, unknown>[]) {
-  const url = URL.createObjectURL(new Blob([await buatXlsx(namaSheet, data)], { type: MIME }))
+export async function unduhXlsx(namaFile: string, namaSheet: string, data: Record<string, unknown>[]) { return unduhBuffer(namaFile, await buatXlsx(namaSheet, data)) }
+export function unduhBuffer(namaFile: string, isi: ArrayBuffer) {
+  const url = URL.createObjectURL(new Blob([isi], { type: MIME }))
   const a = document.createElement('a'); a.href = url; a.download = namaFile; document.body.appendChild(a); a.click(); a.remove()
   setTimeout(() => URL.revokeObjectURL(url), 10000)
 }
