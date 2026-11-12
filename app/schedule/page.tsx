@@ -4,7 +4,9 @@ import Shell from '../../components/Shell'
 import PageHead from '../../components/PageHead'
 import Empty from '../../components/Empty'
 import Combobox, { type Opsi } from '../../components/Combobox'
-import DayCard from '../../components/schedule/DayCard'
+import WeekBoard from '../../components/schedule/WeekBoard'
+import Ringkasan from '../../components/schedule/Ringkasan'
+import Icon from '../../components/Icon'
 import ProfilCard from '../../components/schedule/ProfilCard'
 import RayonPicker from '../../components/schedule/RayonPicker'
 import { SkelRows } from '../../components/Loaders'
@@ -14,7 +16,7 @@ import { supabase } from '../../lib/supabase'
 import { loadMe } from '../../lib/auth'
 import { dt, fetchAll } from '../../lib/rekap'
 import { friendly } from '../../lib/friendly'
-import { HARI, MINGGU, adalahSenin, hariIniDi, hariTerisi, kodeRayon, labelHari, perRayon, rayonHari, seninDari, tambahHari, tanggalPanjang, type Baris, type OutletJadwal } from '../../lib/jadwal'
+import { HARI, MINGGU, adalahSenin, hariAwal, hariIniDi, hariTerisi, kodeRayon, labelHari, perRayon, seninDari, tambahHari, tanggalPanjang, type Baris, type OutletJadwal } from '../../lib/jadwal'
 
 type Cab = { id: string; kode: string; nama: string; tz: string; schedule_start: string | null }
 type Fl = { id: string; user_id: string; nama: string; cabang_id: string; project_id: string | null; schedule_locked: boolean }
@@ -35,7 +37,8 @@ function Schedule() {
   const [sel, setSel] = useState('')
   const [det, setDet] = useState<Detail | null>(null)
   const [muat, setMuat] = useState(false)
-  const [tab, setTab] = useState<number | null>(null)          // 1–4 = satu minggu, 0 = semua minggu, null = minggu berjalan
+  const [tab, setTab] = useState<number | null>(null)          // 1–4 = satu minggu, 0 = ringkasan 4 minggu, null = minggu berjalan
+  const [hariSel, setHariSel] = useState<number | null>(null)  // hari (1–6) yang rincian outletnya dibuka; null = otomatis (hari ini / hari terisi pertama)
   const [picker, setPicker] = useState<{ minggu: number; hari: number } | null>(null)
   const req = useRef(0)
 
@@ -94,6 +97,7 @@ function Schedule() {
     setPicker(null)
     const { error } = await supabase.rpc('schedule_tambah', { p_frontliner: fl.id, p_minggu: minggu, p_hari: hari, p_rayon: rayon })
     if (error) return void galat('Rayon belum bisa ditambahkan', error)
+    setTab(minggu); setHariSel(hari)   // langsung tampilkan hari yang baru diisi agar hasilnya terlihat
     await segarkan()
     undo.tampil(`${kodeRayon(rayon)} ditambahkan ke ${labelHari(minggu, hari)}.`, async () => {
       const id = (await supabase.from('schedule_taskforce').select('id').eq('frontliner_id', fl.id).eq('minggu', minggu).eq('hari', hari).eq('rayon', rayon).maybeSingle()).data?.id
@@ -141,8 +145,13 @@ function Schedule() {
 
   const opsi: Opsi[] = fls.map(f => ({ value: f.id, label: f.nama, sub: `${f.user_id}${cabang.length > 1 ? ` · ${cabang.find(c => c.id === f.cabang_id)?.kode || ''}` : ''}${f.schedule_locked ? ' · terkunci' : ''}` }))
   const efektif = tab ?? det?.posisi?.minggu ?? 1
-  const minggu = efektif === 0 ? [...MINGGU] : [efektif]
-  const pilihFl = <div className="sc-pick"><Combobox kelas="cari" label="Cari frontliner" placeholder="Cari frontliner (nama atau ID)…" kosong="Frontliner tidak ditemukan" opsi={opsi} onPilih={id => { setSel(id); setTab(null) }} /></div>
+  const hari = det && efektif > 0 ? hariSel ?? hariAwal(det.rows, efektif, det.posisi) : 1
+  const idx = fls.findIndex(x => x.id === sel)
+  const ganti = (d: number) => { const n = fls[idx + d]; if (n) { setSel(n.id); setTab(null); setHariSel(null) } }
+  const pilihFl = <div className="sc-pick">
+    <button type="button" className="ghost sc-nav" aria-label="Frontliner sebelumnya" disabled={idx <= 0} onClick={() => ganti(-1)}><Icon name="back" size={18} /></button>
+    <Combobox kelas="cari" label="Cari frontliner" placeholder="Cari frontliner (nama atau ID)…" kosong="Frontliner tidak ditemukan" opsi={opsi} onPilih={id => { setSel(id); setTab(null); setHariSel(null) }} />
+    <button type="button" className="ghost sc-nav" aria-label="Frontliner berikutnya" disabled={idx < 0 || idx >= fls.length - 1} onClick={() => ganti(1)}><Icon name="chevron" size={18} /></button></div>
 
   return (<>
     <PageHead title="Schedule Taskforce" desc="Jadwal rayon kunjungan per frontliner: Senin sampai Sabtu selama 4 minggu (24 rayon).">{ready && fls.length > 0 && pilihFl}</PageHead>
@@ -163,17 +172,15 @@ function Schedule() {
     {fl && <>
       <ProfilCard nama={fl.nama} userId={fl.user_id} project={projects.find(p => p.id === fl.project_id)?.name} checkin={det?.last || undefined} terkunci={fl.schedule_locked}
         bisaKunci={bisaKunci} onKunci={kunci} posisi={det?.posisi || null} awalSiklus={cab?.schedule_start || null} bisaAtur={bisaKunci} onAtur={aturSiklus} onIsi={isiUrut} bisaUbah={!!det} />
-      <div className="sc-tabs seg" role="tablist" aria-label="Pilih minggu">
-        {MINGGU.map(m => <button key={m} type="button" role="tab" aria-selected={efektif === m} className={efektif === m ? 'on' : ''} onClick={() => setTab(m)}>
-          Minggu {m}<span className="tabn">{det ? hariTerisi(det.rows, m) : 0}/6</span></button>)}
-        <button type="button" role="tab" aria-selected={efektif === 0} className={efektif === 0 ? 'on' : ''} onClick={() => setTab(0)}>Semua</button>
-      </div>
+      <div className="sc-tabbar"><div className="sc-tabs" role="tablist" aria-label="Pilih minggu">
+        {MINGGU.map(m => <button key={m} type="button" role="tab" aria-selected={efektif === m} className={efektif === m ? 'on' : ''} onClick={() => { setTab(m); setHariSel(null) }}>
+          <span>Minggu {m}{det?.posisi?.minggu === m && <><i className="sc-dot" aria-hidden="true" /><span className="sr-only"> (minggu ini)</span></>}</span>
+          <small>{det ? hariTerisi(det.rows, m) : 0}/6 hari</small></button>)}
+        <button type="button" role="tab" aria-selected={efektif === 0} className={efektif === 0 ? 'on' : ''} onClick={() => setTab(0)}><span>Ringkasan</span><small>4 minggu</small></button>
+      </div></div>
       {muat && !det && <SkelRows n={3} />}
-      {det && minggu.map(m => <section key={m} className="sc-week" aria-label={`Minggu ke ${m}`}>
-        <h3 className="sc-wh">Minggu Ke {m}{det.posisi?.minggu === m && <span className="sc-now">Minggu ini</span>}</h3>
-        <div className="sc-grid">{HARI.map((_, i) => <DayCard key={i} minggu={m} hari={i + 1} rayons={rayonHari(det.rows, m, i + 1)} per={per}
-          hariIni={det.posisi?.minggu === m && det.posisi.hari === i + 1} bisaUbah onTambah={() => setPicker({ minggu: m, hari: i + 1 })} onLepas={lepas} />)}</div>
-      </section>)}
+      {det && efektif === 0 && <Ringkasan rows={det.rows} posisi={det.posisi} onBuka={(m, h) => { setTab(m); setHariSel(h) }} />}
+      {det && efektif > 0 && <WeekBoard minggu={efektif} rows={det.rows} per={per} posisi={det.posisi} hari={hari} onHari={setHariSel} bisaUbah onTambah={h => setPicker({ minggu: efektif, hari: h })} onLepas={lepas} />}
     </>}
     {picker && det && <RayonPicker minggu={picker.minggu} hari={picker.hari} rows={det.rows} jumlah={jumlah} onTutup={() => setPicker(null)} onPilih={r => tambah(picker.minggu, picker.hari, r)} />}
     {undo.node}

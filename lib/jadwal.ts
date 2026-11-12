@@ -53,3 +53,10 @@ export const adalahSenin = (t: string) => /^\d{4}-\d{2}-\d{2}$/.test(t) && !Numb
 export const seninDari = (t: string) => { const d = new Date(ms(t)).getUTCDay(); return tambahHari(t, -((d + 6) % 7)) }   // Senin pada minggu tanggal itu
 export const hariIniDi = (tz: string, now = new Date()) => now.toLocaleDateString('sv-SE', { timeZone: tz })
 export const tanggalPanjang = (t: string) => new Date(ms(t)).toLocaleDateString('id-ID', { timeZone: 'UTC', day: 'numeric', month: 'short', year: 'numeric' })
+
+// Hari yang dibuka otomatis pada sebuah minggu: hari ini jika minggu itu sedang berjalan (dan bukan Minggu), jika tidak hari pertama yang sudah punya rayon, jika tidak Senin.
+export function hariAwal(rows: Baris[], minggu: number, posisi: { minggu: number; hari: number } | null): number {
+  if (posisi && posisi.minggu === minggu && posisi.hari >= 1 && posisi.hari <= 6) return posisi.hari
+  const isi = rows.filter(x => x.minggu === minggu).map(x => x.hari).sort((a, b) => a - b)
+  return isi[0] ?? 1
+}

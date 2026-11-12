@@ -45,3 +45,13 @@ test('tanggal: Senin, awal minggu, dan penambahan hari', () => {
   assert.equal(hariIniDi('Asia/Jakarta', new Date('2026-11-10T20:00:00Z')), '2026-11-11')   // sudah lewat tengah malam WIB
   assert.equal(hariIniDi('Asia/Jayapura', new Date('2026-11-10T15:30:00Z')), '2026-11-11')
 })
+
+import { hariAwal } from '../../lib/jadwal'
+test('hari yang dibuka otomatis: hari ini bila minggu berjalan, jika tidak hari terisi pertama, jika tidak Senin', () => {
+  const rows = [b('a', 3, 4, 5), b('b', 3, 2, 6)]
+  assert.equal(hariAwal(rows, 2, { minggu: 2, hari: 5 }), 5)      // minggu berjalan: hari ini
+  assert.equal(hariAwal(rows, 3, { minggu: 2, hari: 5 }), 2)      // minggu lain: hari terisi pertama
+  assert.equal(hariAwal(rows, 4, { minggu: 2, hari: 5 }), 1)      // minggu kosong: Senin
+  assert.equal(hariAwal(rows, 2, { minggu: 2, hari: 7 }), 1)      // hari ini Minggu (tanpa jadwal): jangan memilih hari 7
+  assert.equal(hariAwal(rows, 1, null), 1)
+})
