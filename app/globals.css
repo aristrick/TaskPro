@@ -1000,3 +1000,19 @@ h1,h2,h3{text-wrap:balance}
 /* ===== v26: dialog konfirmasi harus di atas panel samping (z 50); isi panel tidak menggulirkan halaman di belakangnya ===== */
 .overlay{z-index:80}
 .sidepanel-body{overscroll-behavior:contain}
+
+/* ===== v28: menu bawah HP melayang (floating pill), indikator aktif bergeser antar tab ===== */
+.phone{padding-bottom:calc(104px + env(safe-area-inset-bottom,0px))}
+.phone>.tabbar{bottom:calc(12px + env(safe-area-inset-bottom,0px));width:calc(100% - 32px);max-width:400px;padding:6px;gap:0;border:1px solid var(--line);border-radius:999px;background:rgba(255,255,255,.94);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);box-shadow:0 2px 4px rgba(18,39,77,.06),0 10px 28px rgba(18,39,77,.16);isolation:isolate}
+.phone>.tabbar::before{content:"";position:absolute;z-index:-1;top:6px;bottom:6px;left:6px;width:calc((100% - 12px) / 3);border-radius:999px;background:var(--teal-100);transition:transform .3s var(--spring,var(--ease))}
+.phone>.tabbar:has(button:nth-child(2).on)::before{transform:translateX(100%)}
+.phone>.tabbar:has(button:nth-child(3).on)::before{transform:translateX(200%)}
+.phone>.tabbar button{min-height:56px;border-radius:999px;gap:1px}
+.phone>.tabbar .pill,.phone>.tabbar button.on .pill{background:transparent;width:auto;height:26px;transform:none}
+.phone>.tabbar button:active{transform:scale(.96)}
+.phone>.tabbar button.on{color:var(--teal-700)}
+/* elemen yang melayang di atas menu bawah ikut naik */
+.fab{bottom:calc(100px + env(safe-area-inset-bottom,0px))}
+.toast{bottom:calc(100px + env(safe-area-inset-bottom,0px))}
+@media (max-width:480px){.undo-toast{bottom:calc(100px + env(safe-area-inset-bottom,0px))}}
+@media (prefers-reduced-motion:reduce){.phone>.tabbar::before{transition:none}}
