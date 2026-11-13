@@ -963,3 +963,24 @@ input,select{min-height:44px;border-color:#D5DCEA}
 .fbtns .fhapus{flex:none;padding:0 18px}
 .fbtns button.belum{background:#C9D1E0;color:#fff}
 .fbtns button.belum:hover:not(:disabled){background:#C9D1E0}
+
+/* ===== v24: polesan UI (acuan: Impeccable "Operate" + UI/UX Pro Max). Identitas navy/teal tetap, hanya menambah. ===== */
+/* Permukaan bawaan browser: seleksi teks, kursor, scrollbar, flash ketuk Android */
+::selection{background:var(--teal-100,#DDF4F2);color:var(--navy)}
+input,select,textarea{caret-color:var(--teal-700,#0E7C78)}
+*{scrollbar-width:thin;scrollbar-color:#C3CCDD transparent}
+html{-webkit-tap-highlight-color:transparent}
+button,input,select,a,.item{touch-action:manipulation}
+h1,h2,h3{text-wrap:balance}
+.modal,.bsheet{overscroll-behavior:contain}
+/* Layar sentuh: area ketuk minimal 44px */
+@media (pointer:coarse){
+  button.ghost,button.small,.seg button,.chipcheck,.tag,.addsel,.pill-opt,.menit-btn,.fchip,.lrow-act,.sc-tile-add,.iconbtn,.stepper button{min-height:44px}
+  .iconbtn,.stepper button{min-width:44px}
+  .stepper button{width:44px;height:44px}
+  .fchip select{min-height:42px}
+  input,select{min-height:44px}
+  /* kontrol kecil di dalam bar/chip: tampilan tetap, area ketuk diperluas */
+  .undo-x,.toast-act,.jadwal-hint button,.sc-chip button{position:relative}
+  .undo-x::after,.toast-act::after,.jadwal-hint button::after,.sc-chip button::after{content:"";position:absolute;inset:-7px}
+}
