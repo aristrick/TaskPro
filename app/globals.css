@@ -996,3 +996,7 @@ h1,h2,h3{text-wrap:balance}
 .rp-aksi{gap:10px}
 @media (max-width:760px){.rp-waktu{grid-template-columns:1fr 1fr}.rp-waktu>:first-child{grid-column:1/-1}.rp-aksi button{width:100%}}
 .rp-grid select,.rp-grid input{min-height:44px} .rp-grid .seg{min-height:44px} .rp-grid .seg button{min-height:36px}
+
+/* ===== v26: dialog konfirmasi harus di atas panel samping (z 50); isi panel tidak menggulirkan halaman di belakangnya ===== */
+.overlay{z-index:80}
+.sidepanel-body{overscroll-behavior:contain}
