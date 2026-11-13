@@ -1032,3 +1032,12 @@ h1,h2,h3{text-wrap:balance}
 .rpnote{display:flex;align-items:center;gap:8px;color:var(--muted);font-size:13px;line-height:1.4;margin:14px 0 16px}
 .rpdot{flex:none;width:8px;height:8px;border-radius:50%;background:#E8890C}
 @media (max-width:480px){.rpgrid{grid-template-columns:repeat(3,minmax(0,1fr))}}
+
+/* ===== v30: jam berlaku aturan radius (halaman Aturan & Sistem) ===== */
+.jamrow{padding:4px 16px 16px;border-bottom:1px solid var(--line)}
+.jamhead{display:flex;align-items:center;justify-content:space-between;gap:12px 16px;flex-wrap:wrap}
+.jamhead b{font-size:15px} .jamhead p{margin:2px 0 0;color:var(--muted);font-size:14px;line-height:1.4}
+.jamfields{display:flex;align-items:flex-end;gap:12px;flex-wrap:wrap;margin-top:14px}
+.jamfields .fld{margin:0;min-width:130px} .jamfields input{min-height:44px} .jamfields button{min-height:44px}
+.jamnote{margin:10px 0 0;color:var(--muted);font-size:13px;line-height:1.4}
+@media (min-width:701px){.jamrow{padding-left:68px}}
