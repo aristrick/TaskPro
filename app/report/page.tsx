@@ -102,18 +102,20 @@ function Report() {
   return (<>
     <PageHead title="Report" desc="Unduh laporan kunjungan, penjualan, dan stok pembawaan ke Excel." />
     <div className="card">
-      <div className="row">
+      <div className="rp-grid">
         {multi && <label className="fld"><span className="label">Cabang</span>
           <select value={cab} onChange={e => { const c = e.target.value; setCab(c); setSel(''); if (proj && c && projs.find(p => p.id === proj)?.cabang_id !== c) setProj('') }}><option value="">Semua cabang</option>{cabs.map(c => <option key={c.id} value={c.id}>{c.kode} · {c.nama}</option>)}</select></label>}
         <label className="fld"><span className="label">Project</span>
           <select value={proj} onChange={e => { setProj(e.target.value); setSel('') }}><option value="">Semua project</option>{projOpsi.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}</select></label>
-        <div className="fld"><span className="label">Periode</span><PintasanTanggal dari={from} sampai={to} onPilih={(a, b) => { setFrom(a); setTo(b) }} /></div>
-        <label className="fld"><span className="label">Dari tanggal</span><input type="date" value={from} onChange={e => setFrom(e.target.value)} /></label>
-        <label className="fld"><span className="label">Sampai tanggal</span><input type="date" value={to} onChange={e => setTo(e.target.value)} /></label>
         <label className="fld"><span className="label">Frontliner</span>
           <select value={sel} onChange={e => setSel(e.target.value)}><option value="">Semua frontliner</option>{flOpsi.map(x => <option key={x.id} value={x.id}>{x.user_id} · {x.nama}</option>)}</select></label>
       </div>
-      <div className="row" style={{ margin: 0 }}>
+      <div className="rp-grid rp-waktu">
+        <div className="fld"><span className="label">Periode</span><PintasanTanggal dari={from} sampai={to} onPilih={(a, b) => { setFrom(a); setTo(b) }} /></div>
+        <label className="fld"><span className="label">Dari tanggal</span><input type="date" value={from} onChange={e => setFrom(e.target.value)} /></label>
+        <label className="fld"><span className="label">Sampai tanggal</span><input type="date" value={to} onChange={e => setTo(e.target.value)} /></label>
+      </div>
+      <div className="row rp-aksi" style={{ margin: 0 }}>
         <button disabled={busy} aria-busy={busy} onClick={() => unduh('kunjungan')}><Icon name="download" size={18} /> Download Kunjungan (Check-in)</button>
         <button disabled={busy} aria-busy={busy} onClick={() => unduh('selling')}><Icon name="download" size={18} /> Download Selling (Penjualan)</button>
         <button className="ghost" disabled={busy} aria-busy={busy} onClick={unduhStok}><Icon name="download" size={18} /> Download Stok Pembawaan</button></div>
