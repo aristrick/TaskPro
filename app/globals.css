@@ -1056,3 +1056,13 @@ h1,h2,h3{text-wrap:balance}
 .phone.dark .prow:not(.on):has(.stk.zero){opacity:.6}
 .phone.dark .label.sec{display:block;margin:12px 2px 8px;color:var(--muted)}
 .phone.dark .notice.warn{margin:12px 0 4px}
+
+/* ===== v32: bar aksi bawah (Simpan/Hapus/Check-out/dll.) melayang seperti menu bawah, dan tetap diam saat konten di-scroll ===== */
+/* Penyebab bug lama: bar bertipe sticky terdorong padding bawah panel/halaman (celah di bawah bar menampakkan konten yang bergulir),
+   dan margin -16px membuatnya tergeser ke kiri sehingga sisi kanan terpotong. Sekarang fixed terhadap layar. Modal lebar (desktop) tidak diubah. */
+.modal:not(.wide)>div>.stickybar,.phone>.stickybar{position:fixed;left:50%;right:auto;bottom:calc(12px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);width:calc(100% - 32px);max-width:448px;margin:0;padding:12px 14px;border:1px solid var(--line);border-radius:24px;background:rgba(255,255,255,.96);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);box-shadow:0 2px 4px rgba(18,39,77,.06),0 10px 28px rgba(18,39,77,.16);z-index:7}
+/* ruang di bawah isi agar baris terakhir tidak tertutup bar */
+.modal:not(.wide)>div:has(>.stickybar){padding-bottom:calc(132px + env(safe-area-inset-bottom,0px))}
+.phone.dark{padding-bottom:calc(124px + env(safe-area-inset-bottom,0px))}
+.phone>.sumbar{gap:12px} .phone>.sumbar button{min-width:140px}
+.modal:not(.wide)>div>.stickybar .fstat{margin-bottom:8px}
