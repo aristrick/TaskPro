@@ -1041,3 +1041,18 @@ h1,h2,h3{text-wrap:balance}
 .jamfields .fld{margin:0;min-width:130px} .jamfields input{min-height:44px} .jamfields button{min-height:44px}
 .jamnote{margin:10px 0 0;color:var(--muted);font-size:13px;line-height:1.4}
 @media (min-width:701px){.jamrow{padding-left:68px}}
+
+/* ===== v31: layar input penjualan (.phone.dark) — latar terang seperti layar lain; hanya header outlet yang navy ===== */
+/* Penyebab bug: desain terang membuat .sheet transparan, sementara latar halaman masih navy, sehingga teks gelap tampil di atas navy */
+.phone.dark{background:var(--bg)}
+.phone.dark .hero{background:var(--navy);border-radius:0 0 28px 28px;padding-bottom:24px}
+.phone.dark .sheet{background:transparent;margin-top:0;padding:4px 16px 24px;min-height:0}
+.phone.dark .shead{background:var(--bg);padding:14px 0 10px}
+.phone.dark .searchbox{background:#fff;border:1px solid var(--line)}
+.phone.dark .seg{background:#E7EBF3}
+.phone.dark .seg button.on{background:#fff;color:var(--navy)}
+.phone.dark .prow{margin:0 0 8px;padding:14px;background:#fff;border:1px solid var(--line)}
+.phone.dark .prow.on{background:var(--teal-100);border-color:var(--teal-700)}
+.phone.dark .prow:not(.on):has(.stk.zero){opacity:.6}
+.phone.dark .label.sec{display:block;margin:12px 2px 8px;color:var(--muted)}
+.phone.dark .notice.warn{margin:12px 0 4px}
