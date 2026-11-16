@@ -3,6 +3,7 @@ Alasan koreksi wajib diisi.
 Alasan penghapusan wajib diisi.
 Alasan penghapusan wajib diisi.
 Alasan perubahan wajib diisi.
+Anda N m dari outlet. Konfirmasi hanya bisa dilakukan di outlet (maksimal N m).
 Anda tidak berwenang atas cabang ini.
 Anda tidak berwenang atas cabang ini.
 Anda tidak berwenang atas cabang ini.
@@ -10,14 +11,18 @@ Anda tidak berwenang atas cabang ini.
 Anda tidak berwenang atas frontliner ini.
 Anda tidak berwenang atas frontliner ini.
 Awal siklus harus hari Senin.
+Cabang ini di luar wewenang Anda.
 Check-out baru bisa dilakukan N menit setelah check-in.
 Check-out baru bisa dilakukan N menit setelah check-in. Tunggu N detik lagi.
 Check-out baru bisa dilakukan N menit setelah check-in. Tunggu N detik lagi.
 Data tertunda lebih dari N jam.
 Frontliner harus dari cabang yang sama dengan project.
+Frontliner yang dinilai tidak ditemukan di cabang ini.
 Hanya MDM dan RMDM yang dapat mengatur awal siklus.
 Hanya MDM dan RMDM yang dapat mengatur awal siklus.
 Hanya MDM dan RMDM yang dapat mengunci jadwal.
+Hanya MDM, RMDM, MDS, TL, dan Kormot yang bisa mengisi OTJ.
+Hanya MDM, RMDM, MDS, TL, dan Kormot yang bisa mengonfirmasi kunjungan.
 Hanya MDM.
 Hanya MDM.
 Hanya MDM.
@@ -28,18 +33,23 @@ Hanya MDM.
 Hanya frontliner yang mengisi stok pembawaan.
 Hari harus Senin sampai Sabtu.
 Isi jadwal frontliner ini dulu sebelum mengunci.
+Isi status (Sesuai / TS / N/A) untuk semua indikator.
 Jadwal dikunci dan hari ini tidak ada jadwal kunjungan untuk Anda.
 Jadwal dikunci. Hari ini jadwal Anda rayon RN, outlet ini rayon RN.
 Jadwal dikunci. Rayon outlet hanya bisa diubah oleh admin.
 Jadwal sedang dikunci dan ini rayon terakhirnya. Matikan kunci dulu sebelum mengosongkan jadwal.
+Jawab dulu apakah toko ada dan apakah penjualannya sesuai.
 Jumlah (pcs) harus lebih dari N.
 Kode MD tujuan harus akun frontliner yang terdaftar.
+Kunjungan ini sudah dikonfirmasi.
 Kunjungan ini tidak punya penjualan.
 Kunjungan masih berjalan. Penjualan baru tersimpan saat check-out.
 Kunjungan tidak aktif.
 Kunjungan tidak aktif.
 Kunjungan tidak ditemukan.
 Kunjungan tidak ditemukan.
+Kunjungan tidak ditemukan.
+Lokasi Anda tidak terbaca. Aktifkan GPS lalu coba lagi.
 Masih ada kunjungan yang belum check-out.
 Minggu harus N sampai N.
 Pilih frontliner (Kode MD).
@@ -50,7 +60,11 @@ Stok PN tidak cukup. Sisa N pcs, diminta N pcs.
 Stok PN tidak cukup. Sisa N pcs, diminta N pcs.
 Stok tidak boleh kurang dari yang sudah terjual (N pcs).
 Stok tidak boleh kurang dari yang sudah terjual (N pcs).
+TL/Kormot hanya menilai frontliner bawahannya.
+Tambahkan minimal N toko yang dikunjungi.
+Tanggal tidak boleh di masa depan.
 Tidak ada outlet yang cocok.
+Tipe OTJ tidak dikenal.
 Waktu check-out tidak boleh sebelum check-in.
 Waktu check-out tidak valid.
 Waktu check-out tidak valid.
@@ -58,6 +72,7 @@ Waktu tidak boleh di masa depan.
 new row for relation "cabang" violates check constraint "cabang_tz_check"
 new row for relation "profiles" violates check constraint "profiles_min_checkout_menit_check"
 new row for relation "profiles" violates check constraint "profiles_min_checkout_menit_check"
+new row violates row-level security policy for table "backtrack_konfirmasi"
 new row violates row-level security policy for table "carry_stock"
 new row violates row-level security policy for table "geocode_cache"
 new row violates row-level security policy for table "project_focus"

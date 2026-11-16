@@ -16,6 +16,7 @@ type Item = [string, string, string[], string]
 // Menu dikelompokkan: Operasional (kerja harian), Data (master), Pengaturan.
 const GRUP: { judul: string; item: Item[] }[] = [
   { judul: 'Operasional', item: [['/', 'Home', ALL, 'home'], ['/schedule', 'Schedule', ADM, 'calendar'], ['/project', 'Project', ADM, 'folder'], ['/stok', 'Stok', ALL, 'basket'], ['/report', 'Report', ALL, 'chart'], ['/pantau', 'Pantau', ALL, 'alert']] },
+  { judul: 'Tracking Go', item: [['/tracking/backtrack', 'Back Tracking', ALL, 'locate'], ['/tracking/otj', 'OTJ', ALL, 'list'], ['/tracking/riwayat', 'Riwayat', ALL, 'receipt']] },
   { judul: 'Data', item: [['/frontliner', 'Frontliner', ADM, 'users'], ['/outlet', 'Outlet', ALL, 'store'], ['/produk', 'Produk', ADM, 'box']] },
   { judul: 'Pengaturan', item: [['/cabang', 'Cabang', ['mdm', 'rmdm'], 'building'], ['/mds', 'MDS & RMDM', ['mdm', 'rmdm'], 'shield'], ['/penjualan', 'Edit Penjualan', ['mdm'], 'edit'], ['/pengaturan', 'Aturan & Sistem', ALL, 'settings']] },
 ]

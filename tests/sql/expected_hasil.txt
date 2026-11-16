@@ -141,3 +141,21 @@ W35 TL melihat bawahannya: 2 frontliner
 W36 RMDM cabang lain melihat: 0
 W37 outlet tetap di R2, alamat boleh diubah: alamat baru
 W38 MDM boleh memindahkan rayon: R4
+Z6 TL di 60 m dengan akurasi 100 (dipotong 30): tersimpan
+Z8 isi tersimpan: 0300-TL01 / tl / 0300-TMTB01 / Outlet A / jarak 60 m / manual TS / Toko Ke-2
+Z9 tanggal kunjungan sesuai zona cabang: true
+Z11 RMDM cabang lain membaca: 0
+Z12 frontliner membaca: 0
+Z13 MDS membaca: 1
+Z14 RMDM cabang itu membaca: 1
+Z17 toko_ada tetap: true
+Z17b kunjungan dihapus: konfirmasi tetap ada sebagai arsip, tautan kosong: true / Outlet A
+Z18 MDS menghapus, sisa: 1
+Z19 RMDM menghapus, sisa: 0
+Z20 audit hapus: 1
+Z23 TL menilai bawahannya: true
+Z29 RMDM cabang lain membaca OTJ: 0
+Z30 MDS: skor di luar 0-100 disimpan kosong: true
+Z31 MDS membaca OTJ: 3
+Z32 TL membaca OTJ bawahannya saja (bukan frontliner TL lain): 2
+Z34 skor OTJ tetap: 100,kosong

@@ -1,6 +1,6 @@
 # TaskPro
 ## Instalasi baru
-1. Supabase → SQL Editor: jalankan `database.sql` (sudah memuat migrasi 01–15), lalu `16_migration.sql`, `17_migration.sql`, `18_migration.sql`, dan `19_migration.sql`. Tabel lengkap dan cara mengecek versi: `docs/VERSI-DATABASE.md`.
+1. Supabase → SQL Editor: jalankan `database.sql` (sudah memuat migrasi 01–15), lalu `16_migration.sql` sampai `22_migration.sql` (urut; 20 dan 21 untuk pembatalan check-in dan jam radius, 22 untuk Tracking Go). Tabel lengkap dan cara mengecek versi: `docs/VERSI-DATABASE.md`.
 2. Authentication → Users → Add user `mdm01@taskpro.app` (Auto Confirm), lalu jalankan `seed_mdm.sql`.
 3. `.env.example` → `.env.local`, isi 3 nilai (Project Settings → API). Jangan di-commit.
 4. `npm install` → `npm run dev`. Login `MDM01`.
@@ -76,6 +76,9 @@ Aplikasi tetap bisa dibuka tanpa sinyal setelah pernah dibuka online sekali, dan
 ## Schedule Taskforce (jalankan `19_migration.sql` sekali)
 Menu **Schedule** (MDS, RMDM, MDM): jadwal rayon per frontliner untuk Senin–Sabtu selama Minggu ke 1–4 (24 rayon). Tekan **+** pada sebuah hari untuk memilih rayon; daftar outlet (nama dan Outlet ID) mengikuti rayon itu.
 Siklus berputar 1 → 4 → 1; MDM/RMDM mengatur **awal siklus** (Senin Minggu ke 1) per cabang. **Kunci jadwal** (hanya MDM dan RMDM): jika menyala, frontliner tidak bisa memilih rayon di HP dan check-in di luar rayon jadwal hari itu ditolak oleh database. Aplikasi tetap jalan tanpa migrasi 19 (jadwal dianggap tidak ada). Detail: `docs/VERSI-DATABASE.md`.
+
+## Tracking Go (jalankan `22_migration.sql` sekali)
+Menu **Tracking Go**: **Back Tracking** (rute kunjungan, konfirmasi outlet di lokasi maksimal 50 m, unduh Report Back Track), **OTJ** (penilaian 3 tahap, Taskforce dan MD GT), dan **Riwayat**. Memakai data kunjungan, penjualan, dan outlet TaskPro, tanpa upload data. Penjelasan lengkap: `docs/TRACKING-GO.md`.
 
 ## Pengujian
 | Perintah | Isi |
