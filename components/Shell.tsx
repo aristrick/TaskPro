@@ -9,6 +9,7 @@ import { useDialog } from './Dialog'
 import Icon from './Icon'
 import InaktifGuard from './InaktifGuard'
 import { Logo } from './Logo'
+import BottomSheet from './ui/BottomSheet'
 import { KUNCI_INFO, perluInaktif } from '../lib/inaktif'
 
 const ALL = ['mds', 'mdm', 'rmdm', 'tl', 'kormot'], ADM = ['mds', 'mdm', 'rmdm']
@@ -21,10 +22,14 @@ const GRUP: { judul: string; item: Item[] }[] = [
   { judul: 'Pengaturan', item: [['/cabang', 'Cabang', ['mdm', 'rmdm'], 'building'], ['/mds', 'MDS & RMDM', ['mdm', 'rmdm'], 'shield'], ['/penjualan', 'Edit Penjualan', ['mdm'], 'edit'], ['/pengaturan', 'Aturan & Sistem', ALL, 'settings']] },
 ]
 
+// Menu bawah di HP: empat pintasan utama (urutan prioritas, diambil yang boleh diakses role ini) + tombol Menu untuk sisanya.
+const PRIMER = ['/', '/schedule', '/report', '/outlet', '/pantau']
+
 export default function Shell({ roles, children }: { roles: string[]; children: React.ReactNode }) {
   const router = useRouter(), path = usePathname(), dlg = useDialog()
   const [me, setMe] = useState<any>(cachedMe())
   const [gpsOff, setGpsOff] = useState(false)
+  const [menu, setMenu] = useState(false)
   const [fail, setFail] = useState(''); const [tries, setTries] = useState(0)
   useEffect(() => {
     let off = false
@@ -62,9 +67,17 @@ export default function Shell({ roles, children }: { roles: string[]; children: 
   if (!roles.includes(me.role)) return <p className="muted" style={{ padding: 24 }}>Halaman ini tidak tersedia untuk role {me.role}.</p>
   const on = (h: string) => (h === '/' ? path === '/' : path.startsWith(h) || (h === '/outlet' && path === '/import'))
   const link = ([h, t, , ic]: Item) => <Link key={h} href={h} className={on(h) ? 'active' : ''} aria-current={on(h) ? 'page' : undefined}><Icon name={ic} size={20} />{t}</Link>
+  const inisial = (me.nama || '?').trim().split(/\s+/).slice(0, 2).map((x: string) => x[0]).join('').toUpperCase()
+  const semua = GRUP.flatMap(g => g.item).filter(x => x[2].includes(me.role))
+  const utama = PRIMER.map(h => semua.find(x => x[0] === h)).filter((x): x is Item => !!x).slice(0, 4)
+  const diMenu = !utama.some(x => on(x[0]))   // halaman aktif ada di dalam Menu → tombol Menu ikut menyala
   return (
     <div className="shell">
       {perluInaktif(me.role) && <InaktifGuard onHabis={habisInaktif} />}
+      <header className="mtop">
+        <h1><Logo /></h1>
+        <button type="button" className="mtop-av" onClick={() => setMenu(true)} aria-label="Buka menu akun"><span className="avatar-i" aria-hidden="true">{inisial}</span></button>
+      </header>
       <nav>
         <h1><Logo /></h1>
         <div className="navscroll">
@@ -79,6 +92,19 @@ export default function Shell({ roles, children }: { roles: string[]; children: 
       <main><div className="page" key={path}>
         {gpsOff && <p className="notice">Lokasi belum aktif. Aplikasi tetap bisa dipakai, tetapi mengaktifkan lokasi membuat akun Anda lebih aman.</p>}
         {children}</div></main>
+      <div className="mtab" role="navigation" aria-label="Menu utama">
+        {utama.map(([h, t, , ic]) => <Link key={h} href={h} className={on(h) ? 'on' : ''} aria-current={on(h) ? 'page' : undefined}><span className="pill"><Icon name={ic} size={22} /></span>{t}</Link>)}
+        <button type="button" className={diMenu ? 'on' : ''} onClick={() => setMenu(true)} aria-haspopup="dialog"><span className="pill"><Icon name="list" size={22} /></span>Menu</button>
+      </div>
+      {menu && <BottomSheet judul="Menu" onClose={() => setMenu(false)}>
+        <div className="mmenu-user">
+          <span className="avatar-i" aria-hidden="true">{inisial}</span>
+          <span className="navuser-t"><b>{me.nama}</b><small>{me.role.toUpperCase()}<span className="onl"><i />Aktif</span></small></span>
+          <button type="button" className="ghost iconbtn" onClick={() => { setMenu(false); keluar() }} aria-label="Log out"><Icon name="logout" size={20} /></button>
+        </div>
+        {GRUP.map(g => { const it = g.item.filter(x => x[2].includes(me.role)); return it.length ? <section className="mmenu-grup" key={g.judul}><h4>{g.judul}</h4>
+          <div className="mmenu-grid">{it.map(([h, t, , ic]) => <Link key={h} href={h} onClick={() => setMenu(false)} className={on(h) ? 'on' : ''} aria-current={on(h) ? 'page' : undefined}><span className="mico"><Icon name={ic} size={22} /></span>{t}</Link>)}</div></section> : null })}
+      </BottomSheet>}
     </div>
   )
 }

@@ -576,7 +576,7 @@ a.tile2:hover{background:#F3F6FC;border-color:#C9D5EE} .tile2 b{font-size:22px;c
 .pill-opt.on{background:var(--navy);border-color:var(--navy);color:#fff}
 table.tfl{table-layout:fixed;min-width:920px}
 .tfl td{height:68px}
-.tfl col.c-atasan{width:130px} .tfl col.c-gps{width:92px} .tfl col.c-menit{width:156px} .tfl col.c-status{width:156px} .tfl col.c-aksi{width:272px}
+.tfl col.c-atasan{width:130px} .tfl col.c-gps{width:92px} .tfl col.c-menit{width:156px} .tfl col.c-status{width:156px} .tfl col.c-aksi{width:72px}
 .akun-sub{display:flex;align-items:center;gap:8px;min-width:0} .akun-sub small{white-space:nowrap}
 .akun-nama{display:flex;flex-direction:column;gap:2px;line-height:1.3;min-width:0} .akun-nama b{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap} .akun-nama small{color:var(--muted);font-size:13px}
 .menit-btn{display:inline-flex;align-items:center;justify-content:space-between;gap:10px;min-width:132px;white-space:nowrap;min-height:36px;padding:0 12px;border:1px solid var(--line);border-radius:999px;background:#fff;color:var(--text);font-size:14px;font-weight:600;box-shadow:none}
@@ -1109,3 +1109,107 @@ h1,h2,h3{text-wrap:balance}
 .tg-ringkas{display:flex;align-items:center;justify-content:space-between;gap:8px;background:#F6F7FA;border-radius:12px;padding:10px 14px;margin-bottom:8px;font-size:14px}
 .tg-tabel td,.tg-tabel th{vertical-align:top}
 .tg-sempit{max-width:760px}
+
+/* ===== v30: HP untuk MDS / RMDM / MDM / TL / Kormot — menu bawah melayang (sama seperti frontliner) + polesan tampilan HP ===== */
+.mtop,.mtab{display:none}
+.mmenu-user{display:flex;align-items:center;gap:12px;padding:12px;margin-bottom:4px;border-radius:20px;background:var(--bg)}
+.mmenu-user .onl{display:flex;align-items:center;gap:6px} .mmenu-user .onl i{width:8px;height:8px;border-radius:50%;background:#5EE0A0;box-shadow:0 0 0 3px rgba(94,224,160,.25)}
+.mmenu-user .iconbtn{background:#fff;color:var(--danger)}
+.mmenu-grup h4{margin:16px 4px 8px;font-size:12px;font-weight:700;color:var(--muted);letter-spacing:.02em}
+.mmenu-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.mmenu-grid a{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;min-height:88px;padding:10px 4px;border-radius:18px;background:var(--bg);color:var(--text);text-decoration:none;font-size:13px;font-weight:600;text-align:center;line-height:1.2;transition:transform .12s,background .2s}
+.mmenu-grid a:active{transform:scale(.96)}
+.mmenu-grid .mico{display:flex;align-items:center;justify-content:center;width:40px;height:40px;border-radius:50%;background:#fff;color:var(--navy)}
+.mmenu-grid a.on{background:var(--teal-100);color:var(--teal-700)} .mmenu-grid a.on .mico{color:var(--teal-700)}
+
+@media (max-width:1099px){.home{align-items:stretch}}   /* penyebab kartu Home menyempit: align-items:start dari tata letak desktop ikut terbawa */
+
+@media (max-width:700px){
+  :root{--mtop-h:calc(56px + env(safe-area-inset-top,0px))}
+  .shell>nav{display:none}
+  .shell{min-height:100dvh}
+  .mtop{display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:12;height:var(--mtop-h);padding:env(safe-area-inset-top,0px) 12px 0 16px;background:rgba(255,255,255,.94);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);border-bottom:1px solid var(--line)}
+  .mtop h1{margin:0;line-height:0;--logo-task:#324555} .mtop .logo-svg{width:112px}
+  .mtop-av{min-width:48px;min-height:48px;padding:0;border-radius:50%;background:transparent;display:flex;align-items:center;justify-content:center}
+  .mtop-av:hover:not(:disabled){background:var(--navy-100)}
+  main{padding:16px 16px calc(112px + env(safe-area-inset-bottom,0px))}
+
+  .mtab{display:flex;position:fixed;z-index:15;left:50%;transform:translateX(-50%);bottom:calc(12px + env(safe-area-inset-bottom,0px));width:calc(100% - 24px);max-width:440px;padding:6px;gap:2px;border:1px solid var(--line);border-radius:999px;background:rgba(255,255,255,.94);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);box-shadow:0 2px 4px rgba(18,39,77,.06),0 10px 28px rgba(18,39,77,.16)}
+  .mtab>*{flex:1 1 0;min-width:0;min-height:56px;padding:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;border-radius:999px;background:transparent;color:#5B6579;font-size:12px;font-weight:600;line-height:1.2;text-decoration:none;transition:background .25s var(--ease),color .25s var(--ease),transform .12s}
+  .mtab .pill{display:flex;align-items:center;justify-content:center;height:26px}
+  .mtab>*:active{transform:scale(.95)}
+  .mtab>button:hover:not(:disabled){background:transparent}
+  .mtab>.on,.mtab>button.on:hover:not(:disabled){background:var(--teal-100);color:var(--teal-700);font-weight:700}
+
+  /* elemen melayang naik di atas menu bawah */
+  .toast,.undo-toast{bottom:calc(100px + env(safe-area-inset-bottom,0px))}
+  .sc-tabbar{top:var(--mtop-h)}
+
+  /* tipografi dan jarak halaman */
+  h2{font-size:24px}
+  .pagehead{margin-bottom:16px;gap:10px}
+  .pagehead-a{width:100%} .pagehead-a>*{flex:1 1 auto} .pagehead-a .fld-inline{flex:1 1 100%;min-width:0}
+  .card{padding:16px;margin-bottom:12px}
+  input,select,textarea{font-size:16px}   /* 16px: iOS tidak memperbesar layar saat kolom diketuk */
+  th,td{padding:12px}
+
+  /* Home: kartu ringkasan lebih ringkas */
+  .home,.home .col{gap:12px}
+  .kpis2{grid-template-columns:1fr;gap:10px}
+  .kpi2{padding:14px 16px} .kpi2 b{font-size:24px} .kpi2.main b{font-size:28px}
+  .kpi2 .kico{width:30px;height:30px;margin-bottom:2px}
+}
+
+/* v30b: tabel Frontliner — kolom Akun tidak lagi tergencet (kolom aksi dulu 272px padahal hanya berisi menu titik tiga), kode akun tidak menimpa kolom Atasan */
+.tfl col.c-atasan{width:150px}
+.tfl td:first-child{min-width:0;overflow:hidden}
+.tfl .akun-sub{flex-wrap:wrap;row-gap:2px}
+.tfl .akun-sub small{overflow:hidden;text-overflow:ellipsis}
+
+/* ===== v31: Back Tracking & OTJ di HP — filter satu tanggal, kartu outlet vertikal, tombol navigasi jelas, pertanyaan berkartu ===== */
+.tg-filter{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px 16px;align-items:end;background:var(--surface);border-radius:var(--r);padding:16px;margin-bottom:16px}
+.tg-filter label,.tg-filter>div{min-width:0} .tg-filter select,.tg-filter input{width:100%}
+.tg-tgl{display:flex;gap:8px;align-items:center} .tg-tgl input{flex:1 1 150px;min-width:0}
+.tg-tgl button{flex:none;min-height:44px;padding:0 14px;border-radius:999px;font-size:14px}
+.tg-tgl button[aria-pressed="true"]{background:var(--teal-100);color:var(--teal-700)}
+
+.tg-stop{display:block;padding:14px 16px;scroll-margin-top:calc(var(--mtop-h,0px) + 12px)}
+.tg-panel{scroll-margin-top:calc(var(--mtop-h,0px) + 12px)}
+.tg-stop .tg-nama{min-height:48px;margin:0;padding:6px 8px 6px 6px;gap:10px;justify-content:flex-start}
+.tg-stop .tg-nama>svg{margin-left:auto;flex:none;color:var(--muted)}
+.tg-stop .tg-no{width:34px;height:34px}
+.tg-stop .tg-judul{flex:1;min-width:0;line-height:1.3}
+.tg-alamat{margin:8px 2px 0;font-size:14px;color:var(--muted);line-height:1.45}
+.tg-nav{display:flex;align-items:center;justify-content:center;gap:8px;min-height:48px;margin:12px 0 0;padding:0 18px;border-radius:999px;background:var(--teal-700);color:#fff;font-weight:700;font-size:15px;text-decoration:none;transition:background .2s,transform .12s}
+.tg-nav:hover{background:#0B6663} .tg-nav:active{transform:scale(.98)}
+.tg-nav.off{background:var(--navy-100);color:var(--muted);font-weight:600}
+.tg-meta{margin-top:12px;padding:10px 12px;border-radius:14px;background:var(--bg);gap:6px 16px}
+
+.tg-form{padding:12px;gap:12px;border-radius:20px}
+.tg-q{background:#fff;border-radius:18px;padding:14px}
+.tg-q .tg-lbl{display:flex;gap:10px;align-items:flex-start;font-size:15px;line-height:1.35;margin:0 0 10px}
+.tg-qn{flex:none;display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:50%;background:var(--navy-100);color:var(--navy);font-size:13px;font-weight:700}
+.tg-acuan{margin:-2px 0 10px} .tg-acuan summary{display:inline-flex;align-items:center;min-height:32px;cursor:pointer;color:var(--teal-700);font-size:13px;font-weight:600;list-style:none} .tg-acuan summary::-webkit-details-marker{display:none}
+.tg-acuan[open] summary{margin-bottom:6px} .tg-acuan .tg-petunjuk{margin:0;padding:10px 12px;border-radius:12px;background:var(--bg)}
+.tg-na{margin:0 0 10px;padding:8px 12px;border-radius:12px;background:#FFF4E0;color:#7A4B00;font-size:13px}
+.tg-q .tg-ta{min-height:56px;font-size:15px}
+
+.tg-opsi{display:grid;grid-template-columns:repeat(auto-fit,minmax(0,1fr));gap:8px;margin:0 0 10px}
+.tg-opsi button{min-height:48px;padding:0 10px;font-size:15px;font-weight:600;border-radius:14px;background:var(--bg);color:var(--text);border:2px solid transparent}
+.tg-opsi button:hover:not(:disabled){background:var(--navy-100)}
+.tg-opsi button[aria-pressed="true"]{background:var(--ok);color:#fff;border-color:var(--ok)}
+.tg-opsi button[aria-pressed="true"].bad{background:var(--danger);border-color:var(--danger)}
+.tg-opsi button[aria-pressed="true"].na{background:#5B6579;border-color:#5B6579}
+.tg-opsi button:disabled{opacity:.5}
+
+.tg-aksi button{min-height:48px}
+.tg-sticky{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.tg-prog{flex:1 1 100%;font-size:13px;color:var(--muted)} .tg-prog b{color:var(--navy)}
+.tg-sticky button:not(.ghost){flex:1 1 auto}
+
+@media (max-width:700px){
+  .tg-stop{padding:12px}
+  .tg-sticky{position:sticky;bottom:calc(92px + env(safe-area-inset-bottom,0px));z-index:5;margin:0 -12px -12px;padding:10px 12px;background:rgba(246,247,250,.96);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);border-top:1px solid var(--line);border-radius:0 0 20px 20px}
+  .tg-prog{flex-basis:100%;order:-1}
+  .tg-ceklis{padding:12px}
+}

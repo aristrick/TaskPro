@@ -118,6 +118,8 @@ export function jarakM(lat1: number, lon1: number, lat2: number, lon2: number): 
   return 2 * R_BUMI * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
 }
 export const urlMaps = (lat: number, lng: number) => `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`
+// Petunjuk arah ke outlet (membuka navigasi di aplikasi Google Maps)
+export const urlNavigasi = (lat: number, lng: number) => `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}&travelmode=driving`
 
 export type Titik = { lat: number; lng: number; acc: number }
 const PESAN_GPS: Record<number, string> = {
