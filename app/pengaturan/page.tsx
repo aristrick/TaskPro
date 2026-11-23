@@ -21,6 +21,7 @@ function Pengaturan() {
   const [draf, setDraf] = useState<Jam>({ aktif: false, dari: '08:00', sampai: '17:00' })
   const [simpanJam, setSimpanJam] = useState(false)
   const [stok, setStok] = useState<boolean | null>(null)
+  const [cetak, setCetak] = useState<boolean | null>(null)   // saklar cetak struk frontliner (bawaan aktif)
   const [usage, setUsage] = useState<any>(null)
   const mdm = role === 'mdm'
 
@@ -29,15 +30,16 @@ function Pengaturan() {
     supabase.from('settings').select('value').eq('key', 'radius_enforced').maybeSingle().then(({ data }) => setRadius(data ? data.value === true : true))
     supabase.from('settings').select('value').eq('key', 'radius_jam').maybeSingle().then(({ data }) => { const v = data?.value as Jam | undefined; setJam(v ?? null); if (v) setDraf(v) })
     supabase.from('settings').select('value').eq('key', 'stok_enforced').maybeSingle().then(({ data }) => setStok(data ? data.value === true : true))
+    supabase.from('settings').select('value').eq('key', 'cetak_aktif').maybeSingle().then(({ data }) => setCetak(data ? data.value !== false : true))
   }, [])
   useEffect(() => { if (mdm) supabase.rpc('db_usage').then(({ data }) => setUsage(data)) }, [mdm])
 
   // Mematikan aturan memengaruhi semua frontliner, jadi dikonfirmasi dulu. Tampilan diperbarui langsung dan dikembalikan jika gagal.
-  async function ubah(key: string, v: boolean, set: (x: boolean) => void, matikan: { title: string; message: ReactNode }) {
+  async function ubah(key: string, v: boolean, set: (x: boolean) => void, matikan: { title: string; message: ReactNode }, perluBaris = false) {
     if (!v && !(await dlg.confirm({ ...matikan, okText: 'Matikan', tone: 'danger' }))) return
     set(v)
-    const { error } = await supabase.from('settings').update({ value: v }).eq('key', key)
-    if (error) { set(!v); dlg.alert({ title: 'Gagal menyimpan', message: friendly(error), tone: 'danger', icon: 'close' }) }
+    const { data, error } = await supabase.from('settings').update({ value: v }).eq('key', key).select('key')
+    if (error || (perluBaris && !data?.length)) { set(!v); dlg.alert({ title: 'Gagal menyimpan', message: error ? friendly(error) : 'Pengaturan ini belum ada di database. Jalankan 23_migration.sql di Supabase SQL Editor, lalu coba lagi.', tone: 'danger', icon: 'close' }) }
   }
 
   // Menyimpan jam berlaku. Tampilan diperbarui lebih dulu, dikembalikan jika gagal.
@@ -77,6 +79,9 @@ function Pengaturan() {
       <SettingRow icon="basket" title="Batasi penjualan sesuai stok pembawaan" checked={stok} canEdit={mdm}
         desc={stok ? 'Aktif: frontliner harus mengisi stok pembawaan harian, dan penjualan tidak bisa melebihi stok yang dibawa hari itu.' : 'Nonaktif: penjualan tidak dibatasi stok.'}
         onChange={v => ubah('stok_enforced', v, setStok, { title: 'Matikan batas stok?', message: 'Penjualan tidak lagi dibatasi stok pembawaan. Frontliner bisa menjual berapa pun.' })} />
+      <SettingRow icon="printer" title="Cetak struk penjualan frontliner" checked={cetak} canEdit={mdm}
+        desc={cetak ? 'Aktif: frontliner bisa mencetak struk setelah check-out dan mengatur printer di menu Profile.' : 'Nonaktif: semua fitur cetak di HP frontliner dimatikan (tawaran cetak setelah check-out, Printer dan struk, cetak ulang struk terakhir).'}
+        onChange={v => ubah('cetak_aktif', v, setCetak, { title: 'Matikan fitur cetak?', message: 'Semua frontliner tidak bisa lagi mencetak struk penjualan, dan menu printer di Profile disembunyikan. Penjualan dan check-out tetap berjalan seperti biasa.' }, true)} />
     </div>
 
     {mdm && <section className="card">

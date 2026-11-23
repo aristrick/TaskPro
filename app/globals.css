@@ -1243,3 +1243,23 @@ h1,h2,h3{text-wrap:balance}
   /* menu bawah: dipasang dengan left/right + margin auto (bukan left:50% + transform) supaya selalu di tengah layar dan tidak bisa bergeser */
   .mtab{left:12px;right:12px;width:auto;max-width:440px;margin:0 auto;transform:none}
 }
+
+/* Dialog check-in: data outlet yang bisa disalin */
+.dialog.checkin{max-width:380px;padding:22px 18px 18px;display:flex;flex-direction:column;overflow:hidden}
+.dialog.checkin .dicon{width:48px;height:48px;margin-bottom:10px;flex:none}
+.dialog.checkin h3{margin-bottom:4px;text-align:center}
+.dialog.checkin .ci-sub{margin:0 0 14px;font-size:14.5px;text-align:center}
+.salin-list{list-style:none;margin:0 0 14px;padding:4px 0;text-align:left;background:#F5F7FB;border-radius:18px;overflow-y:auto;min-height:0}
+.salin-row{position:relative;display:grid;grid-template-columns:minmax(0,1fr) 44px;align-items:center;column-gap:12px;padding:10px 10px 10px 16px}
+.salin-row+.salin-row::before{content:"";position:absolute;top:0;left:16px;right:10px;height:1px;background:#E3E8F2}
+.salin-teks{display:flex;flex-direction:column;gap:2px;min-width:0}
+.salin-teks small{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.salin-teks span{font-size:15px;font-weight:500;line-height:1.4;color:var(--text);overflow-wrap:anywhere}
+.salin-teks .kosong{color:#8A93A6;font-style:italic;font-weight:400}
+.salin-btn{width:44px;height:44px;min-height:44px;padding:0;border-radius:14px;background:#fff;color:var(--navy);border:1px solid var(--line);box-shadow:0 1px 2px rgba(18,39,77,.05)}
+.salin-btn:hover:not(:disabled){background:var(--navy-100)}
+.salin-btn.ok{background:var(--ok-bg);border-color:transparent;color:var(--ok)}
+.salin-btn:disabled{opacity:.35;cursor:not-allowed;box-shadow:none}
+.dialog.checkin .salin-status{margin:-6px 0 12px;font-size:13px;text-align:center}
+.dialog.checkin .salin-status:empty{display:none}
+.dialog.checkin .dbtns{flex:none}

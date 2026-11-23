@@ -28,3 +28,6 @@ Pilih 58 mm (32 kolom) atau 80 mm (48 kolom). Teks dicetak sebagai ASCII (aksen 
 - Struk hanya dibuat di perangkat; tidak ada data struk yang disimpan di server.
 - Pelanggan menerima struk berisi nama outlet, waktu, daftar produk, jumlah, harga, dan total. Nomor struk adalah 8 karakter pertama ID kunjungan.
 - Jika dialog cetak muncul tetapi tidak mencetak, buka *Pengaturan printer* dan coba cara lain.
+
+## Mematikan semua fitur cetak (khusus MDM)
+MDM bisa mematikan cetak untuk semua frontliner di **Aturan & Sistem > Cetak struk penjualan frontliner** (butuh `23_migration.sql`). Saat mati, struk tidak ditawarkan setelah check-out dan menu printer di Profile disembunyikan; penjualan tetap tersimpan. HP membaca saklar ini saat aplikasi dibuka atau kembali ke layar depan, dan menyimpan nilai terakhir untuk saat sinyal lemah.

@@ -14,7 +14,7 @@ export type Mock = ReturnType<typeof buatMock>
 export function buatMock(opsi: { role?: string } = {}) {
   const me = { id: 'u-fl-1', user_id: '0300-TMTB01', nama: 'Adin Shandi', role: opsi.role || 'frontliner', cabang_id: 'cab-1', project_id: 'proj-1', gps_required: true, min_checkout_menit: 0 }
   const outlets = [
-    { id: 1, name: 'Warung Sumber Rejeki', address: 'Jl. Rawa Kepiting 1', lat: -6.2, long: 106.8, kode_md: me.user_id, rayon: 1, status: 'AKTIF', ext_id: '111222333' },
+    { id: 1, name: 'Warung Sumber Rejeki', address: 'Jl. Rawa Kepiting 1', district: 'Cakung', village: 'Rawa Terate', lat: -6.2, long: 106.8, kode_md: me.user_id, rayon: 1, status: 'AKTIF', ext_id: '111222333' },
     { id: 2, name: 'Toko Berkah Jaya', address: 'Jl. Cakung 22', lat: -6.21, long: 106.81, kode_md: me.user_id, rayon: 1, status: 'AKTIF', ext_id: '444555666' },
     { id: 3, name: 'Kios Mawar', address: 'Jl. Pulo Lutut 3', lat: -6.22, long: 106.82, kode_md: me.user_id, rayon: 2, status: 'AKTIF', ext_id: '777888999' }]
   const produk: Produk[] = [
@@ -38,7 +38,7 @@ export function buatMock(opsi: { role?: string } = {}) {
   const s = {
     me, outlets, produk, frontliners, projects, akunCabang, visitAdmin, aktifIds: ['u-fl-1'] as string[], outletMasuk: [] as Record<string, unknown>[][], akunPanggilan: [] as { method: string; body: Record<string, unknown> }[], sesiPanggilan: [] as Record<string, unknown>[], tolakHapus: '' as string, fokus: ['pr-1'], kunjungan: [] as Kunjungan[], online: true, passwordBenar: 'rahasia',
     jadwal: [] as { id: string; frontliner_id: string; minggu: number; hari: number; rayon: number }[], posisi: { minggu: 2, hari: 3 }, awalSiklus: null as string | null, kunciJadwal: false,
-    rpc: [] as { fn: string; args: any }[], stokDibawa: 50, tolakSaveSales: '' as string, tanpaFungsiTertunda: false,
+    rpc: [] as { fn: string; args: any }[], stokDibawa: 50, cetakAktif: true, tolakSaveSales: '' as string, tanpaFungsiTertunda: false,
     aktif: () => s.kunjungan.find(v => !v.checkout_at) || null,
     panggilan: (fn: string) => s.rpc.filter(x => x.fn === fn),
   }
@@ -129,7 +129,7 @@ function tabel(m: Mock, nama: string, u: URL) {
     case 'products': return m.produk
     case 'project_focus': return m.fokus.map(product_id => ({ project_id: 'proj-1', product_id }))
     case 'cabang': return [{ id: 'cab-1', kode: '0300', nama: 'Pulogadung', tz: 'Asia/Jakarta', schedule_start: m.awalSiklus }]
-    case 'settings': return u.searchParams.get('key') === 'eq.stok_enforced' ? [{ value: true }] : []
+    case 'settings': { const k = u.searchParams.get('key'); return k === 'eq.stok_enforced' ? [{ value: true }] : k === 'eq.cetak_aktif' ? [{ value: m.cetakAktif }] : [] }
     case 'visits': {
       if (q.includes('fl%3Aprofiles') || q.includes('fl:profiles')) return m.visitAdmin
       if (q.includes('checkout_at=is.null')) { const v = m.aktif(); const o = v && m.outlets.find(x => x.id === v.outlet_id); return v && o ? [{ id: v.id, outlet_id: v.outlet_id, checkin_at: v.checkin_at, project_id: v.project_id, outlets: { name: o.name, address: o.address, lat: o.lat, long: o.long } }] : [] }

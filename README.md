@@ -68,6 +68,8 @@ Format file diperiksa sebelum diproses (jenis file, kolom wajib, nama kolom yang
 - **Keluar otomatis:** akun MDS, RMDM, dan MDM yang tidak beraktivitas (klik, ketik, gulir, sentuh) selama 30 menit keluar otomatis. Satu menit sebelumnya muncul peringatan dengan hitung mundur dan tombol "Tetap masuk". Setelah keluar, halaman login menjelaskan alasannya. Waktu aktivitas disimpan di perangkat (dibagi antar tab), jadi sesi yang dibuka lagi setelah lama langsung diminta login. Frontliner, TL, dan Kormot tidak terkena. Batasnya ada di `lib/inaktif.ts` (`BATAS_MENIT`).
 - **Hapus (khusus MDM):** menu Edit Penjualan, tombol Hapus pada baris kunjungan, lalu pilih **penjualan saja** (kunjungan tetap ada, migrasi 17) atau **seluruh kunjungan** (kunjungan dan penjualannya hilang, termasuk yang masih berjalan, migrasi 18). Alasan wajib dan tercatat di Jejak Audit.
 - **Jumlah penjualan di HP** bisa diketik bebas ("20", "02", dikosongkan lalu ketik ulang); nilainya dirapikan saat kolom ditinggalkan dan dibatasi sisa stok.
+- **Dialog check-in:** mengetuk outlet selalu membuka dialog berisi nama, alamat, kecamatan, dan kelurahan, masing-masing dengan tombol **Salin** untuk ditempel ke aplikasi kantor.
+- **Saklar cetak (khusus MDM):** Aturan & Sistem > *Cetak struk penjualan frontliner* (jalankan `23_migration.sql`). Mati = semua fitur cetak di HP frontliner hilang.
 - **Batas minimal check-out:** diubah dari menu Frontliner lewat dialog (pilih menit, lihat ringkasan, Simpan) dan ada tombol Urungkan. Nilai 0 sampai 120 menit.
 
 ## Mode sinyal lemah (layar frontliner)

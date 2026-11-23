@@ -4,7 +4,7 @@ Satu sumber kebenaran agar tidak ragu mana yang perlu dijalankan.
 
 ## Aturan singkat
 
-- **Instalasi baru:** jalankan `database.sql`, lalu `16_migration.sql` sampai `22_migration.sql`. File `database.sql` **sudah memuat migrasi 03 sampai 15** (diperiksa otomatis terhadap isi tiap file migrasi), jadi 03 sampai 15 tidak perlu dijalankan lagi.
+- **Instalasi baru:** jalankan `database.sql`, lalu `16_migration.sql` sampai `23_migration.sql`. File `database.sql` **sudah memuat migrasi 03 sampai 15** (diperiksa otomatis terhadap isi tiap file migrasi), jadi 03 sampai 15 tidak perlu dijalankan lagi.
 - **Database yang sudah berjalan:** jalankan hanya migrasi yang belum terpasang, urut dari yang terkecil. Gunakan kolom "Cek terpasang" di bawah untuk memastikan; hasilnya `true` berarti sudah ada.
 - Semua migrasi aman dijalankan ulang dan hanya menambah (tidak menghapus atau mengubah data). Migrasi 16 tidak mengubah apa pun yang sudah ada.
 - `06b_ubah_data_lama.sql` bersifat **opsional** dan **mengubah data lama** (format kode outlet). Jalankan hanya jika memang ingin memigrasi kode outlet lama, setelah 06 dan sebelum menambah outlet baru.
@@ -34,6 +34,7 @@ Satu sumber kebenaran agar tidak ragu mana yang perlu dijalankan.
 | 20 | Pembatalan check-in (batal_checkin) | tidak | `select to_regproc('public.batal_checkin') is not null;` |
 | 21 | Jam berlaku aturan radius 50 m | tidak | `select exists(select 1 from settings where key='radius_jam');` |
 | 22 | Tracking Go: Back Tracking, OTJ, Riwayat | tidak | `select to_regproc('public.backtrack_simpan') is not null;` |
+| 23 | Saklar cetak struk frontliner (khusus MDM) | tidak | `select exists(select 1 from settings where key='cetak_aktif');` |
 
 ## Migrasi 16 (opsional, disarankan untuk frontliner di area sinyal lemah)
 
@@ -59,3 +60,7 @@ Menambah tabel `schedule_taskforce` (frontliner, minggu 1–4, hari Senin–Sabt
 ## Migrasi 22 (untuk menu Tracking Go)
 
 Menambah tabel `backtrack_konfirmasi` dan `otj_penilaian`, serta fungsi `backtrack_simpan` dan `otj_simpan`. Tidak mengubah data yang ada. Konfirmasi Back Tracking wajib dalam radius 50 m dari outlet (dihitung di database), hanya sekali per kunjungan, dan hanya MDM/RMDM yang bisa menghapus (tercatat di Jejak Audit). Tanpa migrasi ini aplikasi tetap berjalan; halaman Tracking Go menampilkan petunjuk menjalankannya. Detail: `docs/TRACKING-GO.md`.
+
+## Migrasi 23 (saklar cetak struk, khusus MDM)
+
+Menambah satu baris `cetak_aktif` di tabel `settings` (bawaan aktif). MDM mematikannya dari **Aturan & Sistem > Cetak struk penjualan frontliner**: tawaran cetak setelah check-out, menu *Printer dan struk*, dan *Cetak ulang struk terakhir* hilang di semua HP frontliner. Penjualan dan check-out tidak berubah. Tanpa migrasi ini aplikasi tetap jalan (cetak dianggap aktif), tetapi saklar tidak bisa disimpan. Perubahan tercatat di Jejak Audit.

@@ -18,6 +18,7 @@ import PrinterSettings from '../../components/PrinterSettings'
 import SellScreen from '../../components/hp/SellScreen'
 import OutletList from '../../components/hp/OutletList'
 import FarDialog, { type Jauh } from '../../components/hp/FarDialog'
+import CheckinDialog from '../../components/hp/CheckinDialog'
 import { OfflineBar, OutboxBar } from '../../components/hp/Bars'
 import { draftKey, useAntrean, useDraft, useGps, useJadwal, useKonteks, useOutlets, useStok, type Qty } from '../../components/hp/hooks'
 import { muatPref, prefBawaan, simpanTerakhir, muatTerakhir, type Pref } from '../../lib/printer'
@@ -49,6 +50,8 @@ export default function Frontliner() {
   const [toast, setToast] = useState('')
   const [toastAksi, setToastAksi] = useState<{ label: string; fn: () => void } | null>(null)   // mis. "Batalkan" setelah check-in satu ketukan
   const [far, setFar] = useState<Jauh | null>(null)
+  const [konfirmasi, setKonfirmasi] = useState<Outlet | null>(null)   // outlet yang sedang dikonfirmasi untuk check-in (dialog dengan tombol salin)
+  const [cetakOn, setCetakOn] = useState(true)                       // saklar MDM: false = semua fitur cetak struk frontliner dimatikan
   const [loadErr, setLoadErr] = useState('')
   const [tz, setTz] = useState('Asia/Jakarta')                // zona waktu cabang frontliner (WIB/WITA/WIT)
   const [pref, setPref] = useState<Pref>(prefBawaan())        // pengaturan printer (tersimpan di perangkat)
@@ -117,6 +120,19 @@ export default function Frontliner() {
     return () => clearTimeout(t)
   }, [router])   // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { setPref(muatPref()); setTerakhir(muatTerakhir()) }, [])
+  // Saklar cetak dari MDM (settings.cetak_aktif, bawaan aktif). Nilai terakhir disimpan di HP agar tetap berlaku saat sinyal lemah, dan dibaca ulang tiap aplikasi dibuka kembali.
+  useEffect(() => {
+    if (!me) return
+    try { if (localStorage.getItem('cetak_aktif') === '0') setCetakOn(false) } catch { /* abaikan */ }
+    const baca = () => supabase.from('settings').select('value').eq('key', 'cetak_aktif').maybeSingle().then(({ data, error }) => {
+      if (error) return                                    // gangguan jaringan: pertahankan nilai terakhir
+      const on = data ? data.value !== false : true; setCetakOn(on)
+      try { localStorage.setItem('cetak_aktif', on ? '1' : '0') } catch { /* abaikan */ }
+    })
+    baca()
+    const lihat = () => { if (document.visibilityState === 'visible') baca() }
+    document.addEventListener('visibilitychange', lihat); return () => document.removeEventListener('visibilitychange', lihat)
+  }, [me?.id])   // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { if (me?.cabang_id) supabase.from('cabang').select('tz').eq('id', me.cabang_id).maybeSingle().then(({ data }) => { if (data?.tz) setTz(data.tz) }) }, [me?.id])   // eslint-disable-line react-hooks/exhaustive-deps
 
   // Salinan kunjungan berjalan (untuk membuka aplikasi tanpa sinyal). Dihapus saat tidak ada kunjungan berjalan.
@@ -149,11 +165,13 @@ export default function Frontliner() {
     if (error) return void dlg.alert({ title: 'Check-in tidak bisa dibatalkan', icon: 'alert', tone: 'danger', message: friendly(error, 'Pembatalan hanya bisa beberapa saat setelah check-in dan sebelum ada penjualan.') })
     setToast(''); setToastAksi(null); setAnim('back'); setVisit(null); setQty({}); if (me) await loadVisit(me.id, 'back'); buzz(14); say('Check-in dibatalkan')
   }
-  async function masuk(r: Outlet) {
+  // Mengetuk outlet selalu membuka dialog konfirmasi (nama, alamat, kecamatan, kelurahan + tombol salin untuk aplikasi kantor). Check-in jalan setelah "Check-in" ditekan.
+  const masuk = (r: Outlet) => { if (me && !busy) setKonfirmasi(r) }
+  async function mulaiCheckin(r: Outlet) {
     if (!me) return
+    setKonfirmasi(null)
     const jarak = r.lat != null && r.long != null && pos ? meters(pos.lat, pos.lng, r.lat, r.long) : null
     const dekat = jarak != null && jarak <= 50
-    if (!dekat && !(await dlg.confirm({ title: 'Check-in di outlet ini?', icon: 'pin', okText: 'Check-in', message: <>Mulai kunjungan di <b>{r.name}</b>.</> }))) return
     setBusy(true); setBusyId(r.id); setErr('')
     try {
       if (muat().length) {   // kunjungan sebelumnya masih mengantre: kirim dulu, karena server hanya mengizinkan satu kunjungan berjalan
@@ -168,7 +186,7 @@ export default function Frontliner() {
     setBusy(false); setBusyId(null)
   }
   const selesai = (baru: Struk | null, pesan: string) => {
-    if (baru) { simpanTerakhir(baru); setTerakhir(baru); if (pref.tanya) setStruk(baru) }
+    if (baru && cetakOn) { simpanTerakhir(baru); setTerakhir(baru); if (pref.tanya) setStruk(baru) }   // cetak dimatikan MDM: struk tidak disimpan dan tidak ditawarkan
     setAnim('back'); setVisit(null); setQty({}); say(pesan)
   }
   async function keluar() {
@@ -228,8 +246,9 @@ export default function Frontliner() {
 
   return (
     <div className={`phone ${anim}`}>
-      {struk && !prefOpen && <ReceiptDialog struk={struk} pref={pref} onClose={() => setStruk(null)} onDone={() => { setStruk(null); say('Struk selesai') }} onSettings={() => setPrefOpen(true)} />}
-      {prefOpen && <PrinterSettings pref={pref} onChange={setPref} onClose={() => setPrefOpen(false)} onToast={say} />}
+      <CheckinDialog outlet={konfirmasi} onBatal={() => setKonfirmasi(null)} onLanjut={mulaiCheckin} />
+      {cetakOn && struk && !prefOpen && <ReceiptDialog struk={struk} pref={pref} onClose={() => setStruk(null)} onDone={() => { setStruk(null); say('Struk selesai') }} onSettings={() => setPrefOpen(true)} />}
+      {cetakOn && prefOpen && <PrinterSettings pref={pref} onChange={setPref} onClose={() => setPrefOpen(false)} onToast={say} />}
       {overlays}
       {tab === 'sell'
         ? <OutletList me={me} rayon={o.rayon} setRayon={o.setRayon} rows={o.rows} loading={o.loading} visited={o.visited} perRayon={o.perRayon} pos={pos} getPos={getPos}
@@ -243,7 +262,7 @@ export default function Frontliner() {
             {tab === 'profile' && <div className="bigtitle"><h1>Profile</h1></div>}
           </>}
       {tab === 'rekap' && <RekapTab rk={rk} sel={sel} sub={sub} tz={tz} onPick={x => { setSub('fwd'); setSel(x) }} />}
-      {tab === 'profile' && <ProfileTab nama={me.nama} userId={me.user_id} stokSum={stokSum} rayonHariIni={jd.jadwal?.rayon?.length ? ringkasRayon(jd.jadwal.rayon) : null} kunjunganHariIni={o.visited.size} penjualanHariIni={hariIni} onStok={() => setStokOpen(true)} onLogout={keluarAkun} onPrinter={() => setPrefOpen(true)}
+      {tab === 'profile' && <ProfileTab nama={me.nama} userId={me.user_id} stokSum={stokSum} rayonHariIni={jd.jadwal?.rayon?.length ? ringkasRayon(jd.jadwal.rayon) : null} kunjunganHariIni={o.visited.size} penjualanHariIni={hariIni} onStok={() => setStokOpen(true)} onLogout={keluarAkun} cetak={cetakOn} onPrinter={() => setPrefOpen(true)}
         onReprint={() => { const s = muatTerakhir(); if (s) setStruk(s) }}
         printerInfo={`${pref.metode === 'bt' ? 'Printer Bluetooth' : pref.metode === 'rawbt' ? 'RawBT' : 'Dialog cetak sistem'} · ${pref.lebar === 32 ? '58' : '80'} mm`}
         strukInfo={terakhir ? `${terakhir.outlet} · ${terakhir.waktu}` : null} />}

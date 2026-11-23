@@ -4,9 +4,9 @@ import { rp } from '../../lib/rekap'
 const inisial = (nama: string) => (nama || '?').trim().split(/\s+/).slice(0, 2).map(x => x[0]).join('').toUpperCase()
 
 // Tab Profile di HP frontliner: inisial, nama, User ID, kartu "Hari ini", menu berkelompok, dan Log out (teks merah di dasar halaman).
-export default function ProfileTab({ nama, userId, stokSum, rayonHariIni, kunjunganHariIni, penjualanHariIni, onStok, onLogout, onPrinter, onReprint, printerInfo, strukInfo }: {
+export default function ProfileTab({ nama, userId, stokSum, rayonHariIni, kunjunganHariIni, penjualanHariIni, onStok, onLogout, cetak = true, onPrinter, onReprint, printerInfo, strukInfo }: {
   nama: string; userId: string; stokSum: { n: number; pcs: number; sisa: number }; rayonHariIni: string | null; kunjunganHariIni: number; penjualanHariIni: number | null
-  onStok: () => void; onLogout: () => void; onPrinter: () => void; onReprint: () => void; printerInfo: string; strukInfo: string | null }) {
+  onStok: () => void; onLogout: () => void; cetak?: boolean; onPrinter: () => void; onReprint: () => void; printerInfo: string; strukInfo: string | null }) {
   return (
     <div className="profile fade">
       <div className="pheader">
@@ -28,14 +28,14 @@ export default function ProfileTab({ nama, userId, stokSum, rayonHariIni, kunjun
           <span className="mi"><Icon name="box" /></span>
           <span className="mt"><b>Tambahkan stok pembawaan</b><small>{stokSum.n ? `Hari ini: ${stokSum.n} produk · ${stokSum.pcs} pcs (sisa ${stokSum.sisa})` : 'Belum ada stok hari ini'}</small></span>
           <Icon name="chevron" size={18} /></button>
-        <button className="menurow" onClick={onPrinter}>
+        {cetak && <button className="menurow" onClick={onPrinter}>
           <span className="mi"><Icon name="printer" /></span>
           <span className="mt"><b>Printer dan struk</b><small>{printerInfo}</small></span>
-          <Icon name="chevron" size={18} /></button>
-        <button className="menurow" onClick={onReprint} disabled={!strukInfo}>
+          <Icon name="chevron" size={18} /></button>}
+        {cetak && <button className="menurow" onClick={onReprint} disabled={!strukInfo}>
           <span className="mi"><Icon name="receipt" /></span>
           <span className="mt"><b>Cetak ulang struk terakhir</b><small>{strukInfo || 'Belum ada struk'}</small></span>
-          <Icon name="chevron" size={18} /></button>
+          <Icon name="chevron" size={18} /></button>}
       </div>
 
       <button className="logout" onClick={onLogout}>Log out</button>

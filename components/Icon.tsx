@@ -37,6 +37,7 @@ const P: Record<string, React.ReactNode> = {
   calendar: <><rect x="4" y="5.500" width="16" height="14.500" rx="2" /><path d="M4 10h16M8.500 3.500v4M15.500 3.500v4" /></>,
   settings: <><circle cx="12" cy="12" r="3" /><path d="M12 3v2.500M12 18.500V21M3 12h2.500M18.500 12H21M5.600 5.600l1.800 1.800M16.600 16.600l1.800 1.800M5.600 18.400l1.800-1.800M16.600 7.400l1.800-1.800" /></>,
   filter: <path d="M4 6h16M7 12h10M10 18h4" />,
+  copy: <><rect x="9" y="9" width="11" height="11" rx="2" /><path d="M5 15V6a2 2 0 0 1 2-2h9" /></>,
   info: <><circle cx="12" cy="12" r="9" /><path d="M12 11v5M12 8h.01" /></>,
 }
 export default function Icon({ name, size = 22, className }: { name: string; size?: number; className?: string }) {
